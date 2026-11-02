@@ -5,6 +5,7 @@ import {
   LFM_2_5_EMBEDDING_MODEL_FILE,
   LFM_2_5_EMBEDDING_SOURCES,
 } from '../constants/embedding-model';
+import { cancelFetchingSources } from './cancelFetching';
 
 export const isEmbeddingModelDownloaded = async (): Promise<boolean> => {
   try {
@@ -31,3 +32,9 @@ export const fetchEmbeddingModelFiles = async (
   );
   return paths !== null;
 };
+
+export const cancelEmbeddingModelFetch = () =>
+  cancelFetchingSources([
+    LFM_2_5_EMBEDDING_SOURCES.modelSource!,
+    LFM_2_5_EMBEDDING_SOURCES.tokenizerSource!,
+  ]);

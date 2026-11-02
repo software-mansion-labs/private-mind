@@ -4,6 +4,8 @@ import {
   whenEmbeddingStatusKnown,
 } from '../store/embeddingModelStore';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
+import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 
 const makeStore = (load: jest.Mock) =>
   ({ load }) as unknown as OPSQLiteVectorStore;
@@ -115,6 +117,37 @@ describe('embeddingModelStore.ensureReady', () => {
     expect(second).toBe(true);
     expect(load).toHaveBeenCalledTimes(2);
     expect(useEmbeddingModelStore.getState().status).toBe('ready');
+  });
+});
+
+describe('embeddingModelStore.cancelDownload', () => {
+  const fetch = ResourceFetcher.fetch as jest.Mock;
+  const cancelFetching = ExpoResourceFetcher.cancelFetching as jest.Mock;
+
+  it('returns to not downloaded instead of an error after the user cancels', async () => {
+    const fetching = createDeferred<string[] | null>();
+    fetch.mockReturnValueOnce(fetching.promise);
+    const load = jest.fn();
+
+    const ready = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(load));
+    await useEmbeddingModelStore.getState().cancelDownload();
+    fetching.resolve(null);
+
+    expect(await ready).toBe(false);
+    expect(cancelFetching).toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+    expect(useEmbeddingModelStore.getState().status).toBe('not_downloaded');
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when no download is running', async () => {
+    cancelFetching.mockClear();
+
+    await useEmbeddingModelStore.getState().cancelDownload();
+
+    expect(cancelFetching).not.toHaveBeenCalled();
   });
 });
 

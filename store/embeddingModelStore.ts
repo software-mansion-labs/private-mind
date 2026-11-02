@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-import { fetchEmbeddingModelFiles } from '../utils/embeddingModel';
+import {
+  cancelEmbeddingModelFetch,
+  fetchEmbeddingModelFiles,
+} from '../utils/embeddingModel';
 
 export type EmbeddingModelStatus =
   'unknown' | 'not_downloaded' | 'downloading' | 'ready' | 'error';
@@ -21,9 +24,11 @@ type EmbeddingModelStore = {
     vectorStore: OPSQLiteVectorStore,
     loadModel?: EmbeddingModelLoader
   ) => Promise<boolean>;
+  cancelDownload: () => Promise<void>;
 };
 
 let inFlightLoad: Promise<boolean> | null = null;
+let cancelRequested = false;
 
 export const useEmbeddingModelStore = create<EmbeddingModelStore>(
   (set, get) => ({
@@ -51,6 +56,7 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
       if (inFlightLoad) return inFlightLoad;
 
       set({ status: 'downloading', progress: 0 });
+      cancelRequested = false;
 
       inFlightLoad = (async () => {
         try {
@@ -63,6 +69,10 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
           set({ status: 'ready', progress: 1 });
           return true;
         } catch (error) {
+          if (cancelRequested) {
+            set({ status: 'not_downloaded', progress: 0 });
+            return false;
+          }
           console.error('Failed to download/load embedding model', error);
           set({ status: 'error', progress: 0 });
           return false;
@@ -72,6 +82,12 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
       })();
 
       return inFlightLoad;
+    },
+
+    cancelDownload: async () => {
+      if (!inFlightLoad) return;
+      cancelRequested = true;
+      await cancelEmbeddingModelFetch();
     },
   })
 );

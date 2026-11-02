@@ -1,10 +1,16 @@
 import { useSTTStore } from '../store/sttStore';
 import { SpeechToTextModule } from 'react-native-executorch/legacy';
-import { isWhisperDownloaded } from '../utils/sttModelFiles';
+import {
+  cancelWhisperFetch,
+  fetchWhisperFiles,
+  isWhisperDownloaded,
+} from '../utils/sttModelFiles';
 import { pauseModelDownloadsWhile } from '../store/modelStore';
 
 jest.mock('../utils/sttModelFiles', () => ({
   isWhisperDownloaded: jest.fn(async () => true),
+  fetchWhisperFiles: jest.fn(async () => true),
+  cancelWhisperFetch: jest.fn(async () => undefined),
 }));
 
 jest.mock('../store/modelStore', () => ({
@@ -35,6 +41,8 @@ beforeEach(() => {
     isLoading: false,
     isDownloading: false,
     loadProgress: 0,
+    isFetchingFiles: false,
+    filesProgress: 0,
   });
   jest.clearAllMocks();
   (isWhisperDownloaded as jest.Mock).mockResolvedValue(true);
@@ -175,5 +183,73 @@ describe('the first dictation, when the model still has to be downloaded', () =>
 
     expect(useSTTStore.getState().isDownloading).toBe(false);
     expect(useSTTStore.getState().isLoading).toBe(false);
+  });
+});
+
+describe('fetching Whisper ahead of the first dictation', () => {
+  it('downloads the files without loading the model', async () => {
+    const fetched = await useSTTStore.getState().fetchFiles();
+
+    expect(fetched).toBe(true);
+    expect(mockFromModelName).not.toHaveBeenCalled();
+    expect(useSTTStore.getState()).toMatchObject({
+      isFetchingFiles: false,
+      filesProgress: 1,
+      isReady: false,
+    });
+  });
+
+  it('reports a failed download as not fetched', async () => {
+    (fetchWhisperFiles as jest.Mock).mockRejectedValueOnce(
+      new Error('offline')
+    );
+
+    expect(await useSTTStore.getState().fetchFiles()).toBe(false);
+    expect(useSTTStore.getState()).toMatchObject({
+      isFetchingFiles: false,
+      filesProgress: 0,
+    });
+  });
+
+  it('shares one download between overlapping requests', async () => {
+    const first = useSTTStore.getState().fetchFiles();
+    const second = useSTTStore.getState().fetchFiles();
+
+    expect(second).toBe(first);
+    await first;
+    expect(fetchWhisperFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for an ongoing download before the first dictation loads the model', async () => {
+    let finishFetch!: (fetched: boolean) => void;
+    (fetchWhisperFiles as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishFetch = resolve;
+      })
+    );
+    mockFromModelName.mockResolvedValue(mockModule);
+
+    const fetching = useSTTStore.getState().fetchFiles();
+    const loading = useSTTStore.getState().ensureLoaded();
+    await Promise.resolve();
+    expect(isWhisperDownloaded).not.toHaveBeenCalled();
+
+    finishFetch(true);
+    await fetching;
+    await loading;
+
+    expect(pauseModelDownloadsWhile).not.toHaveBeenCalled();
+    expect(useSTTStore.getState().isReady).toBe(true);
+  });
+
+  it('cancels only while a download is running', async () => {
+    await useSTTStore.getState().cancelFetchFiles();
+    expect(cancelWhisperFetch).not.toHaveBeenCalled();
+
+    (fetchWhisperFiles as jest.Mock).mockReturnValueOnce(new Promise(() => {}));
+    useSTTStore.getState().fetchFiles();
+    await useSTTStore.getState().cancelFetchFiles();
+
+    expect(cancelWhisperFetch).toHaveBeenCalledTimes(1);
   });
 });
