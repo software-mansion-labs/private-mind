@@ -5,7 +5,6 @@ import ComposerActionButton, {
   MORPH_IN_MS,
   MORPH_OUT_MS,
   morphFillOpacity,
-  stopGrowth,
   morphOpacity,
   morphScale,
 } from '../components/chat-screen/ComposerActionButton';
@@ -36,11 +35,6 @@ describe('composer action morph', () => {
     expect(morphFillOpacity(1, 0)).toBe(1);
     expect(morphFillOpacity(0, 1)).toBe(1);
     expect(morphFillOpacity(0, 0)).toBe(0);
-  });
-
-  it('grows the circle only for stop', () => {
-    expect(stopGrowth(0)).toBe(1);
-    expect(stopGrowth(1)).toBeCloseTo(40 / 36);
   });
 
   it('leaves a state faster than it enters one', () => {
