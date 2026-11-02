@@ -102,7 +102,7 @@ describe('orderFamiliesForDevice', () => {
     expect(deadEnd).toMatchObject({ name: 'Gemma 4', runnable: false });
   });
 
-  it('lists the families the device can run first, each group by name', () => {
+  it('lists the families the device can run first, each group in priority order', () => {
     const names = orderFamiliesForDevice(
       [
         { name: 'Gemma 4', models: [makeModel({ modelSize: 4 })] },
@@ -112,7 +112,7 @@ describe('orderFamiliesForDevice', () => {
       ],
       fits
     ).map((family) => family.name);
-    expect(names).toEqual(['LFM 2.5', 'Qwen 3', 'Bielik', 'Gemma 4']);
+    expect(names).toEqual(['Qwen 3', 'LFM 2.5', 'Gemma 4', 'Bielik']);
   });
 
   it('treats an empty family as a dead end rather than crashing', () => {

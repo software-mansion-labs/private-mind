@@ -105,29 +105,29 @@ describe('getStartingModels', () => {
 
   it('replaces incompatible mid-range candidates with low-end fallbacks', () => {
     expect(getStartingModels(4)).toEqual([
-      'LFM 2.5 - 1.2B',
+      'LFM 3 - 1.7B',
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
     ]);
     expect(getStartingModels(6)).toEqual([
+      'LFM 3 - 1.7B',
       'Qwen 3 - 1.7B',
-      'LFM 2.5 - 1.2B',
-      'LFM 2.5 VL - 1.6B',
+      'Qwen 3 - 0.6B',
     ]);
   });
 
   it('offers the large models only where the device budget covers them', () => {
     expect(getStartingModels(7.6)).toEqual([
+      'LFM 3 - 1.7B',
+      'LFM 3 VL - 2B',
       'Gemma 4 - 2B',
-      'Gemma 4 VL - 2B',
-      'Qwen 3 - 1.7B',
     ]);
   });
 
   it('drops a 6 GB phone down to what it can actually hold', () => {
     expect(getStartingModels(5.4959)).toEqual([
+      'LFM 3 - 1.7B',
       'Qwen 3 - 1.7B',
-      'LFM 2.5 - 1.2B',
       'Qwen 3 - 0.6B',
     ]);
   });

@@ -2,13 +2,17 @@ import { type SQLiteDatabase } from 'expo-sqlite';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
-import { addModel } from './modelRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSourceStore } from '../store/sourceStore';
 import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
 import { migrateLegacyVectorStore } from './vectorStoreMigration';
 import { restoreTruncatedChatTitles } from './chatTitleMigration';
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
+import {
+  applyCatalogWhenItArrives,
+  insertCatalogModels,
+  updateCatalogRows,
+} from './catalogSync';
 import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
 
 const discardPeakMemoryMeasuredWithTheOldMetric = async (
@@ -234,31 +238,7 @@ export const runMigrations = async (db: SQLiteDatabase) => {
     ...defaultModelNames
   );
 
-  for (const model of catalog) {
-    await db.runAsync(
-      `UPDATE models SET family = ?, featured = ?, experimental = ?, thinking = ?, vision = ?, labels = ?, systemPrompt = ? WHERE modelName = ?`,
-      model.family || null,
-      model.featured ? 1 : 0,
-      model.experimental ? 1 : 0,
-      model.thinking ? 1 : 0,
-      model.vision ? 1 : 0,
-      model.labels ? JSON.stringify(model.labels) : null,
-      model.systemPrompt || null,
-      model.modelName
-    );
-
-    // Refresh stale download URLs. Downloaded rows keep theirs — the stored
-    // URL is the resource fetcher's key to the local files.
-    await db.runAsync(
-      `UPDATE models SET modelPath = ?, tokenizerPath = ?, tokenizerConfigPath = ?, modelSize = ?
-       WHERE modelName = ? AND source = 'built-in' AND isDownloaded = 0`,
-      model.modelPath,
-      model.tokenizerPath,
-      model.tokenizerConfigPath,
-      model.modelSize ?? null,
-      model.modelName
-    );
-  }
+  await updateCatalogRows(db, catalog);
 };
 
 export const initDatabase = async (db: SQLiteDatabase) => {
@@ -376,8 +356,8 @@ export const initDatabase = async (db: SQLiteDatabase) => {
     );
   `);
 
-  const { models } = await resolveModelCatalog();
-  setActiveCatalog(models);
+  const resolved = await resolveModelCatalog();
+  setActiveCatalog(resolved.models);
 
   // Run migration before inserting default models
   await runMigrations(db);
@@ -399,36 +379,10 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   }
 
   await db.withTransactionAsync(async () => {
-    for (const model of getActiveCatalog()) {
-      const {
-        modelName,
-        modelPath,
-        tokenizerPath,
-        tokenizerConfigPath,
-        featured,
-        thinking,
-        systemPrompt,
-      } = model;
-
-      await addModel(db, {
-        modelName,
-        source: 'built-in',
-        isDownloaded: false,
-        modelPath,
-        tokenizerPath,
-        tokenizerConfigPath,
-        family: model.family,
-        parameters: model.parameters,
-        modelSize: model.modelSize,
-        featured: !!featured,
-        experimental: !!model.experimental,
-        thinking: !!thinking,
-        vision: !!model.vision,
-        labels: model.labels,
-        systemPrompt,
-      });
-    }
+    await insertCatalogModels(db, getActiveCatalog());
   });
 
   await useModelStore.getState().loadModels();
+
+  applyCatalogWhenItArrives(db, resolved);
 };

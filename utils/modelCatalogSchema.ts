@@ -30,10 +30,14 @@ export const modelCatalogEntrySchema = z.object({
   vision: z.boolean().optional(),
   labels: z.array(z.string()).optional(),
   systemPrompt: z.string().nullable().optional(),
+  minAppVersion: z
+    .string()
+    .regex(/^\d+(\.\d+){0,3}$/)
+    .optional(),
 });
 
 export const modelCatalogManifestSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   models: z.array(modelCatalogEntrySchema).min(1),
 });
 

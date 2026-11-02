@@ -6,7 +6,6 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import {
-  SCRAPE_IDLE_SOURCE,
   SCRAPE_HOST_OFFSCREEN_TOP,
   SCRAPE_HOST_OFFSCREEN_HEIGHT,
 } from '../../constants/web';
@@ -51,24 +50,26 @@ const WebScrapeSheet = () => {
       )}
 
       <View style={revealed ? styles.frame : styles.frameOffscreen}>
-        <WebView
-          key={nav?.key ?? 'idle'}
-          ref={webRef}
-          source={nav ? { uri: nav.uri } : SCRAPE_IDLE_SOURCE}
-          originWhitelist={['*']}
-          onShouldStartLoadWithRequest={(request) =>
-            isAllowedScrapeNavigation(request.url)
-          }
-          incognito
-          javaScriptEnabled
-          domStorageEnabled
-          thirdPartyCookiesEnabled
-          injectedJavaScript={onLoadScript}
-          onMessage={handleMessage}
-          onLoadEnd={handleLoadEnd}
-          onNavigationStateChange={handleNavigationStateChange}
-          style={styles.webview}
-        />
+        {nav && (
+          <WebView
+            key={nav.key}
+            ref={webRef}
+            source={{ uri: nav.uri }}
+            originWhitelist={['*']}
+            onShouldStartLoadWithRequest={(request) =>
+              isAllowedScrapeNavigation(request.url)
+            }
+            incognito
+            javaScriptEnabled
+            domStorageEnabled
+            thirdPartyCookiesEnabled
+            injectedJavaScript={onLoadScript}
+            onMessage={handleMessage}
+            onLoadEnd={handleLoadEnd}
+            onNavigationStateChange={handleNavigationStateChange}
+            style={styles.webview}
+          />
+        )}
       </View>
 
       {revealed && (

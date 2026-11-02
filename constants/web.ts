@@ -5,6 +5,7 @@ export const WEB_VERBATIM_MIN_RESULTS = 3;
 export const WEB_MIN_SAME_SCRIPT_RESULTS = 1;
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SEARCH_OVERALL_TIMEOUT_MS = 90000;
+export const WEB_SLOW_DEVICE_NOTE_MS = 8000;
 export const WEB_SNIPPET_MAX_CHARS = 500;
 export const WEB_FETCH_TOP_N_CONTENT = 2;
 export const WEB_CONTENT_MAX_CHARS = 1500;
@@ -134,8 +135,5 @@ export const SCRAPE_CHALLENGE_TIMEOUT_MS = 120000;
 export const SCRAPE_REINJECT_DELAY_MIN_MS = 1000;
 export const SCRAPE_REINJECT_DELAY_MAX_MS = 2200;
 
-export const SCRAPE_IDLE_SOURCE = {
-  html: '<!DOCTYPE html><html><head></head><body></body></html>',
-} as const;
 export const SCRAPE_HOST_OFFSCREEN_TOP = -10000;
 export const SCRAPE_HOST_OFFSCREEN_HEIGHT = 600;

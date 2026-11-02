@@ -94,7 +94,8 @@ export interface WebSearchProgressEvent {
     | 'offline'
     | 'skipped'
     | 'recovering'
-    | 'timeout';
+    | 'timeout'
+    | 'slow';
   query?: string;
   host?: string;
   url?: string;
@@ -283,6 +284,7 @@ const searchWithCleanup = async (
           passage: quote.text,
           used: true,
           read: true,
+          ordinal: 1,
         },
       ],
       telemetry: {

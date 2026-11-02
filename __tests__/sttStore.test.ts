@@ -1,5 +1,17 @@
 import { useSTTStore } from '../store/sttStore';
 import { SpeechToTextModule } from 'react-native-executorch/legacy';
+import { isWhisperDownloaded } from '../utils/sttModelFiles';
+import { pauseModelDownloadsWhile } from '../store/modelStore';
+
+jest.mock('../utils/sttModelFiles', () => ({
+  isWhisperDownloaded: jest.fn(async () => true),
+}));
+
+jest.mock('../store/modelStore', () => ({
+  pauseModelDownloadsWhile: jest.fn(async (work: () => Promise<unknown>) =>
+    work()
+  ),
+}));
 
 jest.mock('react-native-executorch/legacy', () => ({
   SpeechToTextModule: {
@@ -21,9 +33,11 @@ beforeEach(() => {
     module: null,
     isReady: false,
     isLoading: false,
+    isDownloading: false,
     loadProgress: 0,
   });
   jest.clearAllMocks();
+  (isWhisperDownloaded as jest.Mock).mockResolvedValue(true);
 });
 
 describe('ensureLoaded', () => {
@@ -117,5 +131,49 @@ describe('ensureLoaded', () => {
 
     expect(useSTTStore.getState().isReady).toBe(true);
     expect(useSTTStore.getState().module).toBe(mockModule);
+  });
+});
+
+describe('the first dictation, when the model still has to be downloaded', () => {
+  it('holds the other model downloads while Whisper downloads, then releases them', async () => {
+    (isWhisperDownloaded as jest.Mock).mockResolvedValue(false);
+    let resolveLoad!: (m: typeof mockModule) => void;
+    mockFromModelName.mockReturnValue(
+      new Promise((res) => {
+        resolveLoad = res;
+      })
+    );
+
+    const loading = useSTTStore.getState().ensureLoaded();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(pauseModelDownloadsWhile).toHaveBeenCalledTimes(1);
+    expect(useSTTStore.getState().isDownloading).toBe(true);
+
+    resolveLoad(mockModule);
+    await loading;
+
+    expect(useSTTStore.getState().isDownloading).toBe(false);
+    expect(useSTTStore.getState().isReady).toBe(true);
+  });
+
+  it('leaves the other downloads running when Whisper is already on the phone', async () => {
+    await useSTTStore.getState().ensureLoaded();
+
+    expect(pauseModelDownloadsWhile).not.toHaveBeenCalled();
+    expect(useSTTStore.getState().isDownloading).toBe(false);
+  });
+
+  it('stops reporting a download when it fails', async () => {
+    (isWhisperDownloaded as jest.Mock).mockResolvedValue(false);
+    mockFromModelName.mockRejectedValue(new Error('offline'));
+
+    await expect(useSTTStore.getState().ensureLoaded()).rejects.toThrow(
+      'offline'
+    );
+
+    expect(useSTTStore.getState().isDownloading).toBe(false);
+    expect(useSTTStore.getState().isLoading).toBe(false);
   });
 });

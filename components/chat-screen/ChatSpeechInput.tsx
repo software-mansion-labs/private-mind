@@ -37,8 +37,15 @@ const ACTION_NOTES: Record<Phase, string> = {
   ended: 'Dictation stopped',
 };
 
-const shownTranscript = (committed: string, nonCommitted: string) =>
-  (committed.trim() + ' ' + nonCommitted.trim()).trim();
+const BRACKETED_ANNOTATION_ONLY = /^[([][^)\]]*[)\]]$/;
+
+const isAnnotationOnly = (transcript: string): boolean =>
+  BRACKETED_ANNOTATION_ONLY.test(transcript);
+
+const shownTranscript = (committed: string, nonCommitted: string) => {
+  const heard = (committed.trim() + ' ' + nonCommitted.trim()).trim();
+  return isAnnotationOnly(heard) ? '' : heard;
+};
 
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
@@ -75,14 +82,15 @@ const ChatSpeechInput: React.FC<Props> = ({
     onCancelProp();
   });
 
-  const { loadProgress, status, start, stop, abandon } = useSpeechInput({
-    onAudioData: (data) => {
-      setRecordingDuration(
-        Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
-      );
-      animationRef.current?.pushChunk(data);
-    },
-  });
+  const { loadProgress, isDownloading, status, start, stop, abandon } =
+    useSpeechInput({
+      onAudioData: (data) => {
+        setRecordingDuration(
+          Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
+        );
+        animationRef.current?.pushChunk(data);
+      },
+    });
 
   const [hasStarted, setHasStarted] = useState(false);
   const unmountedRef = useRef(false);
@@ -253,6 +261,13 @@ const ChatSpeechInput: React.FC<Props> = ({
     if (phase === 'ended') return null;
 
     const progressPercentage = Math.round(loadProgress * 100);
+    if (status === 'loading' && isDownloading) {
+      return (
+        <Text style={styles.secondaryNote}>
+          Downloading the dictation model ({progressPercentage}%)
+        </Text>
+      );
+    }
     return (
       <Text style={styles.secondaryNote}>
         Loading...{status === 'loading' ? ` (${progressPercentage}%)` : ''}

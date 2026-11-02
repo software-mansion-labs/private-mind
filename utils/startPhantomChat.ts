@@ -8,7 +8,7 @@ import { getNextChatId } from '../database/chatRepository';
 import { getLastUsedModelId, setLastUsedModelId } from './lastUsedModel';
 import type { ChatEntryAction } from '../constants/chat-route-params';
 
-type NavMode = 'push' | 'replace';
+type NavMode = 'push' | 'replace' | 'replace-immediately';
 
 type NavTarget = {
   readonly pathname: string;
@@ -81,7 +81,11 @@ export const startPhantomChat = async (
       : { modelId: String(model.id) },
   } as const;
 
-  if (mode === 'replace') {
+  if (mode === 'replace-immediately') {
+    if (useChatStore.getState().phantomChat?.id === nextChatId) {
+      router.replace(target);
+    }
+  } else if (mode === 'replace') {
     await replaceWhenNavSettles(
       target,
       () => useChatStore.getState().phantomChat?.id === nextChatId
