@@ -41,6 +41,11 @@ jest.mock('expo-router', () => ({
 
 jest.mock('../components/model-hub/ModelFamilyTile', () => () => null);
 
+jest.mock('react-native-gesture-handler', () => {
+  const RN = require('react-native');
+  return { Pressable: RN.Pressable };
+});
+
 jest.mock('../components/bottomSheets/BottomSheetSearchInput', () => {
   const { TextInput } = require('react-native');
   return ({
@@ -86,14 +91,16 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const BottomSheetFlatList = ({
     data,
     renderItem,
+    ListEmptyComponent,
   }: {
     data: Model[];
     renderItem: (info: { item: Model }) => React.ReactNode;
+    ListEmptyComponent?: React.ReactNode;
   }) => (
     <View>
-      {data.map((item, i) => (
-        <View key={i}>{renderItem({ item })}</View>
-      ))}
+      {data.length === 0
+        ? ListEmptyComponent
+        : data.map((item, i) => <View key={i}>{renderItem({ item })}</View>)}
     </View>
   );
   const BottomSheetView = ({
@@ -280,5 +287,21 @@ describe('search filtering', () => {
     fireEvent.changeText(screen.getByTestId('search-input'), '');
     expect(screen.getByText('Llama-3B')).toBeTruthy();
     expect(screen.getByText('Qwen-1B')).toBeTruthy();
+  });
+
+  it('shows a no-match state when nothing matches the search', () => {
+    renderSheet();
+    fireEvent.changeText(screen.getByTestId('search-input'), 'mistral');
+    expect(screen.getByText('No models match "mistral"')).toBeTruthy();
+    expect(screen.getByText('Manage models')).toBeTruthy();
+  });
+
+  it('opens model hub from the no-match state', () => {
+    const onSheetStateChange = jest.fn();
+    renderSheet({ onSheetStateChange });
+    fireEvent.changeText(screen.getByTestId('search-input'), 'mistral');
+    fireEvent.press(screen.getByTestId('model-select-empty-manage-models'));
+    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 });
