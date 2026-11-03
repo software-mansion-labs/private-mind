@@ -45,6 +45,8 @@ interface ChatStore {
   setPhantomChatSettings: (settings: ChatSettings) => Promise<void>;
 }
 
+export const UNSET_CHAT_MODEL = -1;
+
 export const useChatStore = create<ChatStore>((set, get) => ({
   chats: [],
   db: null,
@@ -88,7 +90,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         id: phantomChatId,
         title: '',
         lastUsed: Date.now(),
-        modelId: -1,
+        modelId: model?.id ?? UNSET_CHAT_MODEL,
         enabledSources: [],
         settings: {
           ...defaultSettings,
@@ -183,6 +185,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       chats: state.chats.map((chat) =>
         chat.id === id ? { ...chat, modelId } : chat
       ),
+      phantomChat:
+        state.phantomChat?.id === id
+          ? { ...state.phantomChat, modelId }
+          : state.phantomChat,
     }));
   },
 

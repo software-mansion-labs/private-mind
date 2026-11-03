@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useLLMStore } from '../../../store/llmStore';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
-import { useChatStore } from '../../../store/chatStore';
+import { UNSET_CHAT_MODEL, useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
 import { useChatBackGuard } from '../../../hooks/useChatBackGuard';
 import {
@@ -38,18 +38,23 @@ function ChatScreenInner() {
     entryAction?: ChatEntryAction;
   } = useLocalSearchParams();
   const { activeChatMessages, activeChatId } = useLLMStore();
-  const { getModelById } = useModelStore();
   const { getChatById, setChatModel, loadChats, phantomChat } = useChatStore();
   const chatId = parseInt(rawId, 10);
   const chat = getChatById(chatId);
   const isPhantom = phantomChat?.id === chatId && !chat;
   const shouldPlayBranchEntryAnimation =
     entryAnimation === CHAT_ENTRY_ANIMATION.BranchCreated;
-  const resolvedModelId = chat?.modelId ?? modelId;
-  const resolvedModel = resolvedModelId
-    ? getModelById(parseInt(resolvedModelId.toString(), 10))
-    : undefined;
-  const [model, setModel] = useState<Model | undefined>(resolvedModel);
+  const phantomModelId =
+    isPhantom && phantomChat.modelId !== UNSET_CHAT_MODEL
+      ? phantomChat.modelId
+      : undefined;
+  const resolvedModelId =
+    chat?.modelId ?? phantomModelId ?? (modelId ? Number(modelId) : undefined);
+  const model = useModelStore((state) =>
+    resolvedModelId === undefined
+      ? undefined
+      : state.models.find((m) => m.id === resolvedModelId)
+  );
   // Only show the loading/empty state on the very first mount for this
   // chat. useFocusEffect refires on every refocus (including returning
   // from a bottom sheet), and flipping messageHistory to [] mid-session
@@ -95,9 +100,8 @@ function ChatScreenInner() {
   useChatBackGuard(shouldExitOnBack);
 
   const handleSetModel = async (newModel: Model) => {
-    setChatModel(chatId, newModel.id);
+    await setChatModel(chatId, newModel.id);
     loadChats();
-    setModel(newModel);
   };
 
   return (
