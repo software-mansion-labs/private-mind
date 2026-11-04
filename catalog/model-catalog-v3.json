@@ -9,7 +9,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/LFM3-ExecuTorch/resolve/v1.0.0/1_7b/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.73,
-      "modelSize": 1.25,
+      "modelSize": 1.27,
       "featured": true,
       "thinking": true,
       "labels": ["Balanced", "Reasoning"],
@@ -23,7 +23,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/LFM3-ExecuTorch/resolve/v1.0.0/vl_2b/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.92,
-      "modelSize": 2.01,
+      "modelSize": 2.03,
       "featured": true,
       "thinking": true,
       "vision": true,
@@ -39,7 +39,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Qwen3-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 0.75,
-      "modelSize": 0.94,
+      "modelSize": 0.53,
       "featured": true,
       "thinking": true,
       "labels": ["Fast", "Reasoning"]
@@ -52,7 +52,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Qwen3-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 2.03,
-      "modelSize": 2.16,
+      "modelSize": 1.32,
       "featured": true,
       "thinking": true,
       "labels": ["Smart", "Reasoning"]
@@ -65,7 +65,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.9.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.24,
-      "modelSize": 1.18,
+      "modelSize": 1.19,
       "featured": true,
       "labels": ["Good at coding"]
     },
@@ -77,7 +77,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Llama-3.2-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.24,
-      "modelSize": 1.14,
+      "modelSize": 1.09,
       "featured": true,
       "labels": ["Good at coding", "Fast", "Great first model"]
     },
@@ -89,7 +89,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.9.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 3.21,
-      "modelSize": 2.65,
+      "modelSize": 2.66,
       "featured": true,
       "labels": ["Good at coding"]
     },
@@ -101,7 +101,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Llama-3.2-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 3.21,
-      "modelSize": 2.55,
+      "modelSize": 2.39,
       "featured": true,
       "labels": ["Good at coding", "Fast"]
     },
@@ -113,7 +113,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Qwen2.5-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 0.49,
-      "modelSize": 0.81,
+      "modelSize": 0.44,
       "featured": true,
       "labels": ["Fast", "Small"]
     },
@@ -125,7 +125,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Qwen2.5-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.54,
-      "modelSize": 1.76,
+      "modelSize": 1.17,
       "featured": true,
       "labels": ["Balanced"]
     },
@@ -137,7 +137,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Qwen2.5-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 3.09,
-      "modelSize": 2.89,
+      "modelSize": 2.11,
       "featured": true,
       "labels": ["Powerful"]
     },
@@ -149,7 +149,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/LFM2.5-ExecuTorch/resolve/v0.11.0/1_2b/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.2,
-      "modelSize": 1.14,
+      "modelSize": 0.82,
       "featured": true,
       "labels": ["Balanced"]
     },
@@ -161,7 +161,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/LFM2.5-ExecuTorch/resolve/v0.11.0/vl_1_6b/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.6,
-      "modelSize": 2.43,
+      "modelSize": 2.48,
       "featured": true,
       "thinking": false,
       "vision": true,
@@ -191,7 +191,7 @@
       "tokenizerConfigPath": "https://huggingface.co/software-mansion/Bielik-1.5B-v3.0-Instruct-ExecuTorch/resolve/v0.11.0/tokenizer_config.json",
       "source": "remote",
       "parameters": 1.5,
-      "modelSize": 0.86,
+      "modelSize": 0.94,
       "featured": true,
       "experimental": true,
       "thinking": false,
@@ -210,8 +210,8 @@
       "source": "remote",
       "parameters": 2,
       "modelSize": {
-        "ios": 2.9,
-        "android": 2.5
+        "ios": 2.56,
+        "android": 2.99
       },
       "featured": true,
       "thinking": false,
@@ -229,8 +229,8 @@
       "source": "remote",
       "parameters": 2,
       "modelSize": {
-        "ios": 3.0,
-        "android": 4.0
+        "ios": 2.76,
+        "android": 3.84
       },
       "featured": true,
       "thinking": false,

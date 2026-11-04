@@ -93,22 +93,22 @@ describe('getStartingModels', () => {
       'LFM 2.5 VL - 450M',
       'LFM 2.5 - 1.2B',
     ]);
-    expect(getStartingModels(3.3)).toEqual([
+    expect(getStartingModels(2.75)).toEqual([
       'Qwen 3 - 0.6B',
       'LFM 2.5 VL - 450M',
     ]);
-    expect(getStartingModels(2.9)).toEqual(['LFM 2.5 VL - 450M']);
+    expect(getStartingModels(2.5)).toEqual(['Qwen 3 - 0.6B']);
   });
 
   it('offers nothing when no starting model fits the device', () => {
     expect(getStartingModels(0)).toEqual([]);
   });
 
-  it('replaces incompatible mid-range candidates with low-end fallbacks', () => {
+  it('fills the mid-range list on a 4 GB phone now that Qwen 3 1.7B fits it', () => {
     expect(getStartingModels(4)).toEqual([
       'LFM 3 - 1.7B',
+      'Qwen 3 - 1.7B',
       'Qwen 3 - 0.6B',
-      'LFM 2.5 VL - 450M',
     ]);
     expect(getStartingModels(6)).toEqual([
       'LFM 3 - 1.7B',
