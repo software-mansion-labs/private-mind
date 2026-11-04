@@ -84,6 +84,45 @@ export const isModelCompatibleWithRam = (
   return cost <= modelBudgetForGB(deviceRamGB);
 };
 
+const LARGEST_DEVICE_RAM_GB = 64;
+const INCOMPATIBLE_LABEL = 'Incompatible';
+
+export const requiredDeviceRamGB = (
+  model: CompatibilityCheckedModel,
+  reportedShareOfNominal = 1
+): number | null => {
+  const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
+  if (declaredMinRamGB !== undefined) return declaredMinRamGB;
+
+  const cost = getModelMemoryCostGB(model);
+  if (cost === null) return null;
+
+  for (let ramGB = 1; ramGB <= LARGEST_DEVICE_RAM_GB; ramGB++) {
+    if (cost <= modelBudgetForGB(ramGB * reportedShareOfNominal)) return ramGB;
+  }
+  return null;
+};
+
+const reportedShareOfNominalRam = (): number => {
+  const total = getTotalMemoryGB();
+  return total / Math.ceil(total);
+};
+
+export const incompatibilityLabel = (
+  models: CompatibilityCheckedModel[]
+): string => {
+  try {
+    const share = reportedShareOfNominalRam();
+    const requirements = models
+      .map((model) => requiredDeviceRamGB(model, share))
+      .filter((ramGB): ramGB is number => ramGB !== null);
+    if (requirements.length === 0) return INCOMPATIBLE_LABEL;
+    return `Needs ${Math.min(...requirements)} GB RAM`;
+  } catch {
+    return INCOMPATIBLE_LABEL;
+  }
+};
+
 export const isModelCompatible = (model: Model): boolean => {
   try {
     return isModelCompatibleWithRam(model, getTotalMemoryGB());

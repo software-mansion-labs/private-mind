@@ -8,6 +8,9 @@ import {
   hasMemoryForWebSearch,
   isMemoryConstrained,
   isHighMemoryDevice,
+  isModelCompatibleWithRam,
+  incompatibilityLabel,
+  requiredDeviceRamGB,
 } from '../utils/modelCompatibility';
 import { Model } from '../database/modelRepository';
 
@@ -390,5 +393,45 @@ describe('the starting models offered on a first run', () => {
     mockGetTotalMemorySync.mockReturnValue(gb(12));
 
     expect(getStartingModels(12)).toHaveLength(3);
+  });
+});
+
+describe('incompatibilityLabel', () => {
+  it('names the RAM a model declares it needs', () => {
+    const model = { ...baseModel, modelName: 'Gemma 4 VL - 2B' };
+    expect(incompatibilityLabel([model])).toBe('Needs 7 GB RAM');
+  });
+
+  it('names the smallest phone whose budget fits the model', () => {
+    setPlatform('ios');
+    const model = { ...baseModel, modelSize: 2.4 };
+    const ramGB = requiredDeviceRamGB(model)!;
+    expect(isModelCompatibleWithRam(model, ramGB)).toBe(true);
+    expect(isModelCompatibleWithRam(model, ramGB - 1)).toBe(false);
+    expect(incompatibilityLabel([model])).toBe(`Needs ${ramGB} GB RAM`);
+  });
+
+  it('never tells a phone it needs the RAM it already has', () => {
+    setPlatform('ios');
+    mockGetTotalMemorySync.mockReturnValue(gb(5.6));
+    const model = { ...baseModel, modelSize: 2.5 };
+    expect(isModelCompatible(model)).toBe(false);
+    expect(incompatibilityLabel([model])).not.toBe('Needs 6 GB RAM');
+  });
+
+  it('names the lightest variant of a family', () => {
+    const models = [
+      { ...baseModel, modelSize: 4 },
+      { ...baseModel, modelSize: 1.2 },
+    ];
+    expect(incompatibilityLabel(models)).toBe(
+      `Needs ${requiredDeviceRamGB(models[1]!)} GB RAM`
+    );
+  });
+
+  it('falls back to Incompatible when no size is known', () => {
+    expect(incompatibilityLabel([{ ...baseModel, modelSize: undefined }])).toBe(
+      'Incompatible'
+    );
   });
 });
