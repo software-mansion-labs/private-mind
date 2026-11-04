@@ -200,6 +200,16 @@ describe('LLMEngine', () => {
     ]);
   });
 
+  it('sends only the text of an image message to a model without vision', async () => {
+    const engine = await loadEngine(makeRunner(() => {}));
+    await engine.generate([
+      { role: 'user', content: 'What is this?', mediaPath: 'file:///a.jpg' },
+    ]);
+    expect(decodeImageRgba).not.toHaveBeenCalled();
+    const [history] = (preprocessor.process as jest.Mock).mock.calls[0];
+    expect(history[0].content).toBe('What is this?');
+  });
+
   it('does not stop a runner it already released', async () => {
     const runner = makeRunner(() => {});
     const engine = await loadEngine(runner);
