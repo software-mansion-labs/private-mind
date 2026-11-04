@@ -9,6 +9,7 @@ import {
   updateModel,
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
+import { moveChatsToModel } from '../database/chatRepository';
 import Toast from 'react-native-toast-message';
 import {
   ResourceFetcher,
@@ -295,6 +296,26 @@ const outdatedSourcesNoOtherModelNeeds = (model: Model): string[] => {
 
 let updatingOutdatedModels: Promise<void> | null = null;
 
+const replaceRetiredModel = async (retired: Model, replacementName: string) => {
+  const store = useModelStore.getState();
+  const replacement = store.models.find((m) => m.modelName === replacementName);
+  if (!replacement || !store.db) return;
+
+  if (!replacement.isDownloaded) await store.downloadModel(replacement);
+  else if (needsUpdate(replacement))
+    await store.updateOutdatedModel(replacement);
+
+  const current = useModelStore.getState().getModelById(replacement.id);
+  if (!current?.isDownloaded || needsUpdate(current)) return;
+
+  await moveChatsToModel(store.db, retired.id, replacement.id);
+  await useModelStore.getState().removeModel(retired.id);
+  Toast.show({
+    type: 'defaultToast',
+    text1: `${retired.modelName} is no longer supported. Your chats now use ${replacement.modelName}.`,
+  });
+};
+
 const runDownload = async (model: Model, attempt: DownloadAttempt) => {
   const isCurrent = () =>
     attempts.get(model.id) === attempt && !attempt.cancelled;
@@ -541,6 +562,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
 
   updateOutdatedModel: async (model: Model) => {
     if (!needsUpdate(model)) return;
+    if (model.replacedBy) {
+      await replaceRetiredModel(model, model.replacedBy);
+      return;
+    }
 
     await get().downloadModel(model);
     const db = get().db;

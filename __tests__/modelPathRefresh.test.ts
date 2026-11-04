@@ -66,4 +66,21 @@ describe('runMigrations built-in model path refresh', () => {
       'Bielik - v3.0',
     ]);
   });
+
+  it('keeps a downloaded retired model until the user swaps it for its replacement', async () => {
+    const { db, calls } = makeFakeDb();
+
+    await runMigrations(db);
+
+    const cleanup = calls.find(
+      (c) => c.sql.includes('DELETE FROM models') && c.sql.includes('NOT IN')
+    );
+    expect(cleanup!.sql).toContain('NOT (isDownloaded = 1 AND modelName IN');
+    expect(cleanup!.params).toEqual(
+      expect.arrayContaining([
+        'LLaMA 3.2 - 1B - QLoRa',
+        'LLaMA 3.2 - 3B - QLoRa',
+      ])
+    );
+  });
 });

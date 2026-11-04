@@ -1,4 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
+import { RETIRED_MODEL_REPLACEMENTS } from '../constants/retired-models';
 import { getActiveCatalog } from '../utils/modelCatalogState';
 
 export type Model = {
@@ -19,6 +20,7 @@ export type Model = {
   modelSize?: number;
   systemPrompt?: string | null;
   outdatedSources?: string[];
+  replacedBy?: string;
 };
 
 export const addModel = async (
@@ -162,10 +164,15 @@ const hydrateModel = (model: RawModel): Model => {
       ? getActiveCatalog().find((m) => m.modelName === model.modelName)
       : undefined;
   const outdatedSources = sourcesTheCatalogReplaced(model, defaults ?? null);
+  const replacedBy =
+    model.source === 'built-in' && !defaults
+      ? RETIRED_MODEL_REPLACEMENTS[model.modelName]
+      : undefined;
 
   return {
     ...model,
     ...(outdatedSources.length > 0 && { outdatedSources }),
+    ...(replacedBy && { replacedBy }),
     modelPath: defaults?.modelPath ?? model.modelPath,
     tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:

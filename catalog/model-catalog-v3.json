@@ -58,18 +58,6 @@
       "labels": ["Smart", "Reasoning"]
     },
     {
-      "modelName": "LLaMA 3.2 - 1B - QLoRa",
-      "family": "LLaMA 3.2",
-      "tokenizerPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.9.0/tokenizer.json",
-      "modelPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.8.0/llama-3.2-1B/QLoRA/llama3_2_qat_lora.pte",
-      "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.9.0/tokenizer_config.json",
-      "source": "remote",
-      "parameters": 1.24,
-      "modelSize": 1.19,
-      "featured": true,
-      "labels": ["Good at coding"]
-    },
-    {
       "modelName": "LLaMA 3.2 - 1B - SpinQuant",
       "family": "LLaMA 3.2",
       "tokenizerPath": "https://huggingface.co/software-mansion/Llama-3.2-ExecuTorch/resolve/v0.11.0/tokenizer.json",
@@ -80,18 +68,6 @@
       "modelSize": 1.09,
       "featured": true,
       "labels": ["Good at coding", "Fast", "Great first model"]
-    },
-    {
-      "modelName": "LLaMA 3.2 - 3B - QLoRa",
-      "family": "LLaMA 3.2",
-      "tokenizerPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.9.0/tokenizer.json",
-      "modelPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.8.0/llama-3.2-3B/QLoRA/llama3_2-3B_qat_lora.pte",
-      "tokenizerConfigPath": "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.9.0/tokenizer_config.json",
-      "source": "remote",
-      "parameters": 3.21,
-      "modelSize": 2.66,
-      "featured": true,
-      "labels": ["Good at coding"]
     },
     {
       "modelName": "LLaMA 3.2 - 3B - SpinQuant",
