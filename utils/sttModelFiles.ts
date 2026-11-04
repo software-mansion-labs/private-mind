@@ -1,5 +1,19 @@
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
-import { WHISPER_TINY_EN } from 'react-native-executorch/legacy';
+import { Platform } from 'react-native';
+import {
+  ResourceFetcher,
+  WHISPER_TINY_EN,
+} from 'react-native-executorch/legacy';
+import { cancelFetchingSources } from './cancelFetching';
+
+const WHISPER_TINY_EN_COREML_BYTES = 76_477_024;
+const WHISPER_TINY_EN_XNNPACK_BYTES = 232_606_208;
+const WHISPER_TINY_EN_TOKENIZER_BYTES = 2_405_679;
+
+export const WHISPER_DOWNLOAD_SIZE_BYTES =
+  (Platform.OS === 'ios'
+    ? WHISPER_TINY_EN_COREML_BYTES
+    : WHISPER_TINY_EN_XNNPACK_BYTES) + WHISPER_TINY_EN_TOKENIZER_BYTES;
 
 const remoteSources = (): string[] =>
   typeof WHISPER_TINY_EN === 'object' && WHISPER_TINY_EN !== null
@@ -21,3 +35,15 @@ export const isWhisperDownloaded = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export const fetchWhisperFiles = async (
+  onProgress: (progress: number) => void
+): Promise<boolean> => {
+  const sources = remoteSources();
+  if (sources.length === 0) return false;
+  const paths = await ResourceFetcher.fetch(onProgress, ...sources);
+  return paths !== null;
+};
+
+export const cancelWhisperFetch = (isStillFetching: () => boolean) =>
+  cancelFetchingSources(remoteSources(), isStillFetching);

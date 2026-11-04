@@ -285,6 +285,26 @@ describe('download state rendering', () => {
     );
   });
 
+  it('spins instead of showing 0% before the first bytes arrive', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0 },
+    });
+    renderRow();
+    expect(screen.getByTestId('download-percent-starting')).toBeTruthy();
+    expect(screen.queryByText('0%')).toBeNull();
+    expect(screen.queryByText('Starting…')).toBeNull();
+    expect(screen.getByTestId('download-progress-starting')).toBeTruthy();
+  });
+
+  it('shows the progress bar fill once the first bytes arrive', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.004 },
+    });
+    renderRow();
+    expect(screen.getByText('<1%')).toBeTruthy();
+    expect(screen.queryByTestId('download-progress-starting')).toBeNull();
+  });
+
   it('shows no time left before the rate is known', () => {
     withDownloadStates({
       1: { status: ModelState.Downloading, progress: 0.4 },
@@ -378,5 +398,116 @@ describe('download action', () => {
     renderRow({ isDownloaded: true });
     fireEvent.press(screen.getByTestId('model-download-row-delete'));
     await waitFor(() => expect(removeModelFiles).toHaveBeenCalledWith(1));
+  });
+});
+
+describe('selection', () => {
+  const renderSelectable = ({
+    selected = false,
+    locked = false,
+    onPress = jest.fn(),
+    onCancelled = jest.fn(),
+    onDeleted = jest.fn(),
+    ...model
+  }: Partial<
+    typeof baseModel & {
+      selected: boolean;
+      locked: boolean;
+      onPress: RowProps['onPress'];
+      onCancelled: RowProps['onCancelled'];
+      onDeleted: RowProps['onDeleted'];
+    }
+  > = {}) =>
+    render(
+      <ModelDownloadRow
+        model={{ ...baseModel, ...model }}
+        onPress={onPress}
+        showFamilyTile
+        selection={{ selected, locked }}
+        onCancelled={onCancelled}
+        onDeleted={onDeleted}
+      />
+    );
+
+  it('shows a checkbox instead of the download button', () => {
+    renderSelectable();
+    expect(screen.getByTestId('model-download-row-checkbox')).toBeTruthy();
+    expect(screen.queryByTestId('model-download-row-download')).toBeNull();
+  });
+
+  it('reports the checked state to accessibility', () => {
+    renderSelectable({ selected: true });
+    expect(screen.getByRole('checkbox', { checked: true })).toBeTruthy();
+  });
+
+  it('toggles even when the model is built-in and not downloaded', () => {
+    const onPress = jest.fn();
+    renderSelectable({ source: 'built-in', onPress });
+    fireEvent.press(screen.getByText('Llama-3B'));
+    expect(onPress).toHaveBeenCalled();
+  });
+
+  it('is disabled when the model is incompatible', () => {
+    mockIsModelCompatible.mockReturnValue(false);
+    renderSelectable();
+    expect(screen.getByRole('checkbox', { disabled: true })).toBeTruthy();
+  });
+
+  it('is disabled while downloads run', () => {
+    renderSelectable({ locked: true });
+    expect(screen.getByRole('checkbox', { disabled: true })).toBeTruthy();
+  });
+
+  it('keeps the checkbox on an unselected model while downloads run', () => {
+    renderSelectable({ locked: true, isDownloaded: true });
+    expect(screen.getByTestId('model-download-row-checkbox')).toBeTruthy();
+    expect(screen.queryByTestId('model-download-row-delete')).toBeNull();
+  });
+
+  it('swaps the checkbox for the cancel button while its download runs', () => {
+    withDownloadStates({
+      1: { status: ModelState.Downloading, progress: 0.4, rate: 0.01 },
+    });
+    renderSelectable({ selected: true, locked: true });
+    expect(screen.queryByTestId('model-download-row-checkbox')).toBeNull();
+    expect(screen.getByText('40%')).toBeTruthy();
+    expect(screen.getByText('1.00 of 2.50 GB')).toBeTruthy();
+    expect(screen.getByText('~1 min left')).toBeTruthy();
+  });
+
+  it('reports a cancelled download', async () => {
+    const cancelDownload = jest.fn();
+    withDownloadStates(
+      { 1: { status: ModelState.Downloading, progress: 0.4 } },
+      { cancelDownload }
+    );
+    const onCancelled = jest.fn();
+    renderSelectable({ selected: true, locked: true, onCancelled });
+    fireEvent.press(screen.getByTestId('model-download-row-cancel'));
+    await waitFor(() => expect(onCancelled).toHaveBeenCalled());
+    expect(cancelDownload).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 })
+    );
+  });
+
+  it('reports deleted files of a finished model', async () => {
+    const removeModelFiles = jest.fn();
+    withDownloadStates({}, { removeModelFiles });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons?: AlertButton[]) =>
+        buttons?.find((b) => b.style === 'destructive')?.onPress?.()
+      );
+    const onDeleted = jest.fn();
+    renderSelectable({
+      selected: true,
+      locked: true,
+      isDownloaded: true,
+      onDeleted,
+    });
+    expect(screen.getByTestId('model-download-row-downloaded')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('model-download-row-delete'));
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled());
+    expect(removeModelFiles).toHaveBeenCalledWith(1);
   });
 });

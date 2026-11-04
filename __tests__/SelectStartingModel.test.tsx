@@ -4,10 +4,16 @@ import {
   screen,
   fireEvent,
   waitFor,
+  act,
 } from '@testing-library/react-native';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
+}));
+
+jest.mock('react-native-gesture-handler', () => ({
+  ...jest.requireActual('react-native-gesture-handler'),
+  Pressable: require('react-native').Pressable,
 }));
 
 jest.mock('expo-sqlite', () => ({
@@ -92,43 +98,106 @@ jest.mock('../store/modelStore', () => {
   return { ModelState, useModelStore };
 });
 
-jest.mock('../components/onboarding/StartingModelCard', () => {
+jest.mock('../components/model-hub/ModelDownloadRow', () => {
   const { Text, Pressable } = require('react-native');
+  const { useModelStore } = require('../store/modelStore');
   return ({
     model,
-    selected,
-    locked,
-    downloadStatus,
+    selection,
     onPress,
-    onCancel,
+    onCancelled,
   }: {
     model: { id: number; modelName: string };
-    selected: boolean;
-    locked: boolean;
-    downloadStatus?: string;
+    selection: { selected: boolean; locked: boolean };
     onPress: (model: unknown) => void;
-    onCancel: (model: unknown) => void;
-  }) => (
-    <>
-      <Pressable
-        testID={`card-${model.modelName}`}
-        accessibilityState={{ checked: selected, disabled: locked }}
-        onPress={() => !locked && onPress(model)}
-      >
-        <Text>{downloadStatus ?? 'idle'}</Text>
-      </Pressable>
-      {downloadStatus === 'downloading' && (
+    onCancelled: (model: unknown) => void;
+  }) => {
+    const status = useModelStore(
+      (state: { downloadStates: Record<number, { status: string }> }) =>
+        state.downloadStates[model.id]?.status
+    );
+    const cancelDownload = useModelStore(
+      (state: { cancelDownload: (model: unknown) => Promise<void> }) =>
+        state.cancelDownload
+    );
+    return (
+      <>
         <Pressable
-          testID={`cancel-${model.modelName}`}
-          onPress={() => onCancel(model)}
-        />
-      )}
-    </>
+          testID={`card-${model.modelName}`}
+          accessibilityState={{
+            checked: selection.selected,
+            disabled: selection.locked,
+          }}
+          onPress={() => !selection.locked && onPress(model)}
+        >
+          <Text>{status ?? 'idle'}</Text>
+        </Pressable>
+        {status === 'downloading' && (
+          <Pressable
+            testID={`cancel-${model.modelName}`}
+            onPress={async () => {
+              await cancelDownload(model);
+              onCancelled(model);
+            }}
+          />
+        )}
+      </>
+    );
+  };
+});
+
+jest.mock('../hooks/useStartingFeatures', () => {
+  const { create } = require('zustand');
+  const useFeatureStatuses = create(() => ({
+    documents: 'available',
+    dictation: 'available',
+  }));
+  const setFeatureStatus = (key: string, status: string) =>
+    useFeatureStatuses.setState({ [key]: status });
+  const download = jest.fn((key: string) => {
+    setFeatureStatus(key, 'downloading');
+    return new Promise<boolean>(() => {});
+  });
+  const cancel = jest.fn(async (key: string) =>
+    setFeatureStatus(key, 'available')
   );
+  return {
+    STARTING_FEATURE_KEYS: ['documents', 'dictation'],
+    useFeatureStatuses,
+    download,
+    cancel,
+    useStartingFeatures: () => {
+      const statuses = useFeatureStatuses();
+      return {
+        features: [
+          {
+            key: 'documents',
+            name: 'Documents & web search',
+            description: 'Chat with files, search the web',
+            sizeGb: 0.58,
+            status: statuses.documents,
+            progress: 0,
+          },
+          {
+            key: 'dictation',
+            name: 'Voice dictation',
+            description: 'Speak instead of typing',
+            sizeGb: 0.08,
+            status: statuses.dictation,
+            progress: 0,
+          },
+        ],
+        download,
+        cancel,
+      };
+    },
+  };
 });
 
 import SelectStartingModelScreen from '../app/(modals)/select-starting-model';
-import { useModelStore } from '../store/modelStore';
+import { ModelState, useModelStore } from '../store/modelStore';
+
+const startingFeatures = jest.requireMock('../hooks/useStartingFeatures');
 
 const defaultRows = () => [
   { id: 1, modelName: 'Gemma', modelSize: 2.9, isDownloaded: false },
@@ -137,6 +206,11 @@ const defaultRows = () => [
 
 beforeEach(() => {
   useModelStore.setState({ downloadStates: {} });
+  startingFeatures.useFeatureStatuses.setState({
+    documents: 'available',
+    dictation: 'available',
+  });
+  startingFeatures.download.mockClear();
   jest
     .requireMock('../database/modelRepository')
     .getModelsByNames.mockResolvedValue(defaultRows());
@@ -160,25 +234,25 @@ describe('select starting model', () => {
     expect(screen.getByText('Select a model')).toBeTruthy();
   });
 
-  it('sums the size of every selected model in the download label', async () => {
+  it('sums the size of every selected model and feature in the download label', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('card-Qwen'));
-    expect(screen.getByText('Download 2 models · 5.06 GB')).toBeTruthy();
+    expect(screen.getByText('Download 4 models · 5.72 GB')).toBeTruthy();
   });
 
   it('downloads every selected model at the same time', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('card-Qwen'));
-    await startDownload('Download 2 models · 5.06 GB', 2);
-    expect(screen.getByText('Downloading… 0%')).toBeTruthy();
+    await startDownload('Download 4 models · 5.72 GB', 2);
+    expect(screen.getByText('Starting download…')).toBeTruthy();
   });
 
   it('goes back to selecting multiple models after cancelling a download', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
-    await startDownload('Download 1 model · 2.90 GB', 1);
+    await startDownload('Download 3 models · 3.56 GB', 1);
 
     fireEvent.press(screen.getByTestId('cancel-Gemma'));
     await waitFor(() =>
@@ -190,6 +264,139 @@ describe('select starting model', () => {
     expect(screen.getByText('Download 2 models · 5.06 GB')).toBeTruthy();
 
     await startDownload('Download 2 models · 5.06 GB', 2);
+  });
+
+  it('leaves an unticked feature out of the download size', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    fireEvent.press(screen.getByTestId('starting-feature-documents'));
+    expect(screen.getByText('Download 2 models · 2.98 GB')).toBeTruthy();
+  });
+
+  it('downloads the ticked features at the same time as the model', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    fireEvent.press(screen.getByTestId('starting-feature-dictation'));
+    await startDownload('Download 2 models · 3.48 GB', 1);
+
+    expect(startingFeatures.download).toHaveBeenCalledWith('documents');
+    expect(startingFeatures.download).not.toHaveBeenCalledWith('dictation');
+  });
+
+  it('lets the user start chatting while features keep downloading', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    act(() =>
+      useModelStore.setState({
+        downloadStates: { 1: { progress: 1, status: ModelState.Downloaded } },
+      })
+    );
+
+    expect(await screen.findByText('Start chatting')).toBeTruthy();
+    expect(screen.getByText('You can still get these later.')).toBeTruthy();
+  });
+
+  it('shows a downloading feature with the same progress details as a model', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    expect(
+      screen.getByLabelText('Documents & web search download progress')
+    ).toBeTruthy();
+    expect(screen.getByText('0.00 of 0.58 GB')).toBeTruthy();
+    expect(
+      screen.getByTestId('starting-feature-documents-cancel')
+    ).toBeTruthy();
+  });
+
+  it('drops a feature from the selection when its download is cancelled', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    fireEvent.press(screen.getByTestId('starting-feature-dictation-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('starting-feature-dictation').props
+          .accessibilityState
+      ).toMatchObject({ checked: false })
+    );
+  });
+
+  it('unticks a cancelled feature without waiting for the cancel to land', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+    startingFeatures.cancel.mockImplementationOnce(
+      () => new Promise<void>(() => {})
+    );
+
+    fireEvent.press(screen.getByTestId('starting-feature-dictation-cancel'));
+
+    expect(
+      screen.getByTestId('starting-feature-dictation').props.accessibilityState
+    ).toMatchObject({ checked: false });
+    expect(
+      jest.requireMock('../utils/Feedback').Feedback.cancelDownload
+    ).toHaveBeenCalled();
+  });
+
+  it('takes a cancelled feature out of the overall progress', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+    act(() =>
+      useModelStore.setState({
+        downloadStates: {
+          1: { progress: 0.5, status: ModelState.Downloading },
+        },
+      })
+    );
+    expect(screen.getByText('Downloading… 40%')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents-cancel'));
+
+    expect(await screen.findByText('Downloading… 48%')).toBeTruthy();
+  });
+
+  it('keeps a feature ticked again when its cancelled download settles late', async () => {
+    let settleCancelled!: (finished: boolean) => void;
+    startingFeatures.download.mockImplementationOnce((key: string) => {
+      startingFeatures.useFeatureStatuses.setState({ [key]: 'downloading' });
+      return new Promise<boolean>((resolve) => {
+        settleCancelled = resolve;
+      });
+    });
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents-cancel'));
+    fireEvent.press(screen.getByTestId('cancel-Gemma'));
+    await screen.findByText('Select a model');
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents'));
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    settleCancelled(false);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(screen.getByText('Download 2 models · 3.48 GB')).toBeTruthy();
+  });
+
+  it('hides the features once both are already on the phone', async () => {
+    startingFeatures.useFeatureStatuses.setState({
+      documents: 'downloaded',
+      dictation: 'downloaded',
+    });
+    await renderScreen();
+
+    expect(screen.queryByText('More features')).toBeNull();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    expect(screen.getByText('Download 1 model · 2.90 GB')).toBeTruthy();
   });
 
   it('never lists a model the card would mark incompatible', async () => {

@@ -13,6 +13,7 @@ import {
 } from '../../store/embeddingModelStore';
 import { embeddingModelDownloadSizeLabel } from '../../utils/embeddingModel';
 import { radius, space } from '../../constants/design-system';
+import { formatDownloadPercent } from '../../utils/downloadProgress';
 
 type DownloadContext = 'document' | 'web';
 
@@ -110,7 +111,7 @@ const EmbeddingDownloadSheet = ({
               />
             </View>
             <Text style={styles.progressText}>
-              {Math.floor(progress * 100)}%
+              {formatDownloadPercent(progress)}
             </Text>
           </View>
         ) : (

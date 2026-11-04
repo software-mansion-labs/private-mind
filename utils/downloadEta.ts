@@ -3,7 +3,7 @@ export interface RateSample {
   at: number;
 }
 
-const RATE_SMOOTHING = 0.3;
+const RATE_SMOOTHING_WINDOW_MS = 5_000;
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 
@@ -18,9 +18,9 @@ export const nextProgressRate = (
     return previousRate;
   }
   const rate = gained / (elapsedMs / 1000);
-  return previousRate === undefined
-    ? rate
-    : previousRate + RATE_SMOOTHING * (rate - previousRate);
+  if (previousRate === undefined) return rate;
+  const weight = 1 - Math.exp(-elapsedMs / RATE_SMOOTHING_WINDOW_MS);
+  return previousRate + weight * (rate - previousRate);
 };
 
 export const secondsLeft = (progress: number, rate: number | undefined) =>

@@ -10,10 +10,7 @@ import {
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
-import {
-  ResourceFetcher,
-  RnExecutorchErrorCode,
-} from 'react-native-executorch/legacy';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { Feedback } from '../utils/Feedback';
 import {
@@ -22,6 +19,12 @@ import {
   type DownloadPhase,
 } from '../utils/downloadDiagnostics';
 import { RateSample, nextProgressRate } from '../utils/downloadEta';
+import {
+  CANCEL_DEADLINE_MS,
+  CANCEL_POLL_MS,
+  isNotFetchingYet,
+  wait,
+} from '../utils/cancelFetching';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -188,21 +191,7 @@ interface ModelStore {
   ) => Promise<void>;
 }
 
-const MS_PER_FRAME = 16; // ~60 fps
-
-const CANCEL_POLL_MS = 50;
-const CANCEL_DEADLINE_MS = 30_000;
-
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-const errorCode = (error: unknown): unknown =>
-  typeof error === 'object' && error !== null
-    ? (error as { code?: unknown }).code
-    : undefined;
-
-const isNotFetchingYet = (error: unknown) =>
-  errorCode(error) === RnExecutorchErrorCode.ResourceFetcherNotActive;
+const PROGRESS_PUBLISH_INTERVAL_MS = 250;
 
 const stopFetching = async (model: Model, attempt: DownloadAttempt) => {
   const deadline = Date.now() + CANCEL_DEADLINE_MS;
@@ -361,20 +350,17 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
 
     recordDownloadEvent(model.id, model.modelName, 'started');
 
-    let lastReportedPercent = -1;
-
-    // used for avoiding updates more frequent than 60 per second, which can cause
-    // glitches due to the UI becoming out of sync with the actual progress
-    let lastReportTime = Date.now();
+    let lastReportedProgress = 0;
+    let lastReportTime = 0;
 
     const reportProgress = (p: number) => {
-      const currentPercent = Math.floor(p * 100);
+      const now = Date.now();
       if (
-        currentPercent !== lastReportedPercent &&
-        lastReportTime + MS_PER_FRAME < Date.now()
+        p > lastReportedProgress &&
+        now - lastReportTime >= PROGRESS_PUBLISH_INTERVAL_MS
       ) {
-        lastReportedPercent = currentPercent;
-        lastReportTime = Date.now();
+        lastReportedProgress = p;
+        lastReportTime = now;
         publish(p, ModelState.Downloading);
       }
     };

@@ -11,9 +11,9 @@ import {
   useModelStore,
 } from '../../store/modelStore';
 import PrimaryButton from '../../components/PrimaryButton';
-import StartingModelCard, {
-  StartingDownloadStatus,
-} from '../../components/onboarding/StartingModelCard';
+import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
+import SectionHeader from '../../components/model-hub/SectionHeader';
+import StartingFeatureList from '../../components/onboarding/StartingFeatureList';
 import EntryButton from '../../components/EntryButton';
 import { getNextChatId } from '../../database/chatRepository';
 import { useChatStore } from '../../store/chatStore';
@@ -27,20 +27,35 @@ import {
   getDeviceMemoryGB,
   isModelCompatible,
 } from '../../utils/modelCompatibility';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
+import {
+  formatDownloadPercent,
+  hasDownloadStarted,
+} from '../../utils/downloadProgress';
+import {
+  STARTING_FEATURE_KEYS,
+  StartingFeature,
+  StartingFeatureKey,
+  useStartingFeatures,
+} from '../../hooks/useStartingFeatures';
 
 const APP_ICON_SIZE = 72;
 const SECTION_GAP = 28;
 const CARD_BORDER_ROOM = stroke.strong;
 
-const downloadLabel = (models: Model[]) => {
+const downloadLabel = (models: Model[], features: StartingFeature[]) => {
   if (models.length === 0) return 'Select a model';
-  const noun = models.length === 1 ? 'model' : 'models';
-  const totalGb = models.reduce(
-    (sum, model) => sum + (model.modelSize ?? 0),
-    0
-  );
-  return `Download ${models.length} ${noun} · ${totalGb.toFixed(2)} GB`;
+  const count = models.length + features.length;
+  const noun = count === 1 ? 'model' : 'models';
+  const totalGb =
+    models.reduce((sum, model) => sum + (model.modelSize ?? 0), 0) +
+    features.reduce((sum, feature) => sum + feature.sizeGb, 0);
+  return `Download ${count} ${noun} · ${totalGb.toFixed(2)} GB`;
 };
 
 type Phase = 'select' | 'downloading' | 'ready';
@@ -64,11 +79,22 @@ function SelectStartingModelScreen() {
   const { styles } = useThemedStyles(createStyles);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [started, setStarted] = useState(false);
+  const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<
+    StartingFeatureKey[]
+  >(STARTING_FEATURE_KEYS);
+  const [startedFeatureKeys, setStartedFeatureKeys] = useState<
+    StartingFeatureKey[]
+  >([]);
+  const {
+    features,
+    download: downloadFeature,
+    cancel: cancelFeature,
+  } = useStartingFeatures();
   const isContinuingRef = useRef(false);
+  const cancelledFeaturesRef = useRef(new Set<StartingFeatureKey>());
   const { initPhantomChat } = useChatStore();
   const { setActiveChatId } = useLLMStore();
   const downloadModel = useModelStore((state) => state.downloadModel);
-  const cancelDownload = useModelStore((state) => state.cancelDownload);
   const downloadStates = useModelStore((state) => state.downloadStates);
   const storeModels = useModelStore((state) => state.models);
   const [startingModels, setStartingModels] = useState<Model[] | null>(null);
@@ -85,6 +111,15 @@ function SelectStartingModelScreen() {
 
   const selectedModels = (startingModels ?? []).filter((model) =>
     selectedIds.includes(model.id)
+  );
+
+  const featuresToDownload = features.filter(
+    (feature) =>
+      feature.status === 'available' &&
+      selectedFeatureKeys.includes(feature.key)
+  );
+  const startedFeatures = features.filter((feature) =>
+    startedFeatureKeys.includes(feature.key)
   );
 
   const isDownloaded = (modelId: number) =>
@@ -104,6 +139,25 @@ function SelectStartingModelScreen() {
 
   const deselect = (modelId: number) =>
     setSelectedIds((ids) => ids.filter((id) => id !== modelId));
+
+  const dropFeature = (key: StartingFeatureKey) => {
+    setSelectedFeatureKeys((keys) => keys.filter((k) => k !== key));
+    setStartedFeatureKeys((keys) => keys.filter((k) => k !== key));
+  };
+
+  const toggleFeature = (key: StartingFeatureKey) => {
+    if (phase !== 'select') return;
+    setSelectedFeatureKeys((keys) =>
+      keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]
+    );
+  };
+
+  const stopFeature = async (key: StartingFeatureKey) => {
+    Feedback.cancelDownload();
+    cancelledFeaturesRef.current.add(key);
+    dropFeature(key);
+    await cancelFeature(key);
+  };
 
   const toggleModel = (model: Model) => {
     if (phase !== 'select') return;
@@ -125,29 +179,22 @@ function SelectStartingModelScreen() {
     }
 
     setStarted(true);
+    setStartedFeatureKeys(featuresToDownload.map((feature) => feature.key));
     Feedback.downloadStart();
 
-    await Promise.all(
-      selectedModels
+    await Promise.all([
+      ...selectedModels
         .filter((model) => !isModelDownloaded(model.id))
         .map(async (model) => {
           await downloadModel(model);
           if (!isModelDownloaded(model.id)) deselect(model.id);
-        })
-    );
-  };
-
-  const handleCancel = async (model: Model) => {
-    deselect(model.id);
-    Feedback.cancelDownload();
-    await cancelDownload(model);
-  };
-
-  const downloadStatusFor = (
-    model: Model
-  ): StartingDownloadStatus | undefined => {
-    if (phase === 'select' || !selectedIds.includes(model.id)) return undefined;
-    return isDownloaded(model.id) ? 'done' : 'downloading';
+        }),
+      ...featuresToDownload.map(async (feature) => {
+        const finished = await downloadFeature(feature.key);
+        if (cancelledFeaturesRef.current.delete(feature.key)) return;
+        if (!finished) dropFeature(feature.key);
+      }),
+    ]);
   };
 
   const handleStartChatting = async () => {
@@ -168,30 +215,38 @@ function SelectStartingModelScreen() {
     }
   };
 
-  const totalSize = selectedModels.reduce(
-    (sum, model) => sum + (model.modelSize ?? 0),
-    0
-  );
-  const downloadedSize = selectedModels.reduce(
-    (sum, model) =>
-      sum +
-      (model.modelSize ?? 0) *
-        (isDownloaded(model.id)
-          ? 1
-          : (downloadStates[model.id]?.progress ?? 0)),
-    0
-  );
-  const overallPercent =
-    totalSize > 0 ? Math.floor((downloadedSize / totalSize) * 100) : 0;
+  const totalSize =
+    selectedModels.reduce((sum, model) => sum + (model.modelSize ?? 0), 0) +
+    startedFeatures.reduce((sum, feature) => sum + feature.sizeGb, 0);
+  const downloadedSize =
+    selectedModels.reduce(
+      (sum, model) =>
+        sum +
+        (model.modelSize ?? 0) *
+          (isDownloaded(model.id)
+            ? 1
+            : (downloadStates[model.id]?.progress ?? 0)),
+      0
+    ) +
+    startedFeatures.reduce(
+      (sum, feature) => sum + feature.sizeGb * feature.progress,
+      0
+    );
+  const featuresAlreadyOnPhone =
+    startedFeatures.length === 0 &&
+    features.every((feature) => feature.status === 'downloaded');
+  const overallProgress = totalSize > 0 ? downloadedSize / totalSize : 0;
 
   const primaryButton = {
     select: {
-      text: downloadLabel(selectedModels),
+      text: downloadLabel(selectedModels, featuresToDownload),
       onPress: downloadSelected,
       disabled: selectedModels.length === 0,
     },
     downloading: {
-      text: `Downloading… ${overallPercent}%`,
+      text: hasDownloadStarted(overallProgress)
+        ? `Downloading… ${formatDownloadPercent(overallProgress)}`
+        : 'Starting download…',
       onPress: () => {},
       disabled: true,
     },
@@ -225,24 +280,44 @@ function SelectStartingModelScreen() {
           style={styles.modelsScroll}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.modelsContainer}>
-            {startingModels?.length === 0 && (
-              <Text style={styles.noModelsFit}>
-                No suggested model fits this device's memory.
-              </Text>
+          <View style={styles.sections}>
+            <View style={styles.section}>
+              <SectionHeader title="Chat models" />
+              {startingModels?.length === 0 && (
+                <Text style={styles.noModelsFit}>
+                  No suggested model fits this device's memory.
+                </Text>
+              )}
+              {startingModels?.map((model) => (
+                <ModelDownloadRow
+                  key={model.id}
+                  model={model}
+                  onPress={toggleModel}
+                  showFamilyTile
+                  selection={{
+                    selected: selectedIds.includes(model.id),
+                    locked: phase !== 'select',
+                  }}
+                  onCancelled={(cancelled) => deselect(cancelled.id)}
+                  onDeleted={(deleted) => deselect(deleted.id)}
+                />
+              ))}
+            </View>
+            {!featuresAlreadyOnPhone && (
+              <View style={styles.section}>
+                <SectionHeader title="More features" summary="Optional" />
+                <StartingFeatureList
+                  features={features}
+                  selectedKeys={selectedFeatureKeys}
+                  locked={phase !== 'select'}
+                  onToggle={toggleFeature}
+                  onCancel={stopFeature}
+                />
+                <Text style={styles.caption}>
+                  You can still get these later.
+                </Text>
+              </View>
             )}
-            {startingModels?.map((model) => (
-              <StartingModelCard
-                key={model.id}
-                model={model}
-                onPress={toggleModel}
-                selected={selectedIds.includes(model.id)}
-                locked={phase !== 'select'}
-                downloadStatus={downloadStatusFor(model)}
-                onCancel={handleCancel}
-                onDeleted={(deleted) => deselect(deleted.id)}
-              />
-            ))}
           </View>
         </ScrollView>
       </View>
@@ -314,9 +389,17 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
       textAlign: 'center',
     },
-    modelsContainer: {
-      gap: space.two,
+    sections: {
+      gap: space.five,
       padding: CARD_BORDER_ROOM,
+    },
+    section: {
+      gap: space.two,
+    },
+    caption: {
+      ...textStyles.bodyTertiaryRegular,
+      color: theme.text.defaultTertiary,
+      paddingHorizontal: space.one,
     },
     footer: {
       gap: space.twoHalf,

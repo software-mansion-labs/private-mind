@@ -25,6 +25,16 @@ describe('nextProgressRate', () => {
     expect(rate).toBeLessThan(0.02);
   });
 
+  it('barely reacts to a burst within a fraction of a second', () => {
+    const rate = nextProgressRate(
+      0.01,
+      { progress: 0.2, at: 0 },
+      { progress: 0.205, at: 250 }
+    );
+    expect(rate).toBeGreaterThan(0.01);
+    expect(rate).toBeLessThan(0.011);
+  });
+
   it('measures slow downloads that take minutes per percent', () => {
     expect(
       nextProgressRate(
