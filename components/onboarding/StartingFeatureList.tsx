@@ -1,6 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Pressable } from 'react-native-gesture-handler';
+import {
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useProgressRate } from '../../hooks/useProgressRate';
 import {
@@ -8,41 +13,32 @@ import {
   StartingFeatureKey,
 } from '../../hooks/useStartingFeatures';
 import { Theme } from '../../styles/colors';
-import { pressedOpacity } from '../../styles/pressable';
 import {
   radius,
   space,
   stroke,
   textStyles,
 } from '../../constants/design-system';
-import {
-  formatDownloadPercent,
-  hasDownloadStarted,
-} from '../../utils/downloadProgress';
-import { formatTimeLeft, secondsLeft } from '../../utils/downloadEta';
 import { SvgComponent } from '../../utils/SvgComponent';
-import SpinningCircle from '../SpinningCircle';
+import CircleButton, { CIRCLE_BUTTON_SIZE } from '../CircleButton';
 import DownloadedBadge from '../model-hub/DownloadedBadge';
+import DownloadPercent from '../model-hub/DownloadPercent';
 import DownloadProgressBar from '../model-hub/DownloadProgressBar';
+import DownloadProgressDetails from '../model-hub/DownloadProgressDetails';
 import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
 import SourceIcon from '../../assets/icons/source.svg';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
 import CheckIcon from '../../assets/icons/check.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 
-const ICON_TILE_SIZE = 32;
-const ICON_TILE_RADIUS = 10;
-const ICON_SIZE = 18;
-const ROW_MIN_HEIGHT = 60;
-const TRAILING_SIZE = 28;
-const CHECKBOX_SIZE = 20;
-const CHECKBOX_RADIUS = 6;
+const ICON_TILE_SIZE = 40;
+const ICON_SIZE = 24;
+const CHECKBOX_SIZE = 24;
+const CHECKBOX_RADIUS = 7;
 const CHECKBOX_BORDER_WIDTH = 1.5;
-const CHECKBOX_ICON_SIZE = 12;
-const CANCEL_ICON_SIZE = 10;
-const SPINNER_SIZE = 12;
-const SPINNER_STROKE = 2;
-const BAR_HEIGHT = 3;
+const CHECKBOX_ICON_SIZE = 14;
+const CANCEL_ICON_SIZE = 13.33;
 const LOCKED_OPACITY = 0.4;
 
 const FEATURE_ICONS: Record<StartingFeatureKey, SvgComponent> = {
@@ -74,37 +70,27 @@ const StartingFeatureRow = ({
 
   const downloading = status === 'downloading';
   const downloaded = status === 'downloaded';
-  const started = downloading && hasDownloadStarted(progress);
-  const remaining = started ? secondsLeft(progress, rate) : undefined;
   const disabled = locked || status !== 'available';
 
-  const meta = downloaded
-    ? 'Ready'
-    : started
-      ? [
-          formatDownloadPercent(progress),
-          remaining !== undefined && formatTimeLeft(remaining),
-        ]
-          .filter(Boolean)
-          .join(' · ')
-      : downloading
-        ? formatSize(sizeGb)
-        : `${description} · ${formatSize(sizeGb)}`;
+  const accessibilityActions: AccessibilityActionInfo[] = downloading
+    ? [{ name: 'cancelDownload', label: `Cancel ${name} download` }]
+    : [];
+
+  const handleAccessibilityAction = ({
+    nativeEvent,
+  }: AccessibilityActionEvent) => {
+    if (nativeEvent.actionName === 'cancelDownload') onCancel(key);
+  };
 
   const trailing = downloading ? (
-    <Pressable
+    <CircleButton
       onPress={() => onCancel(key)}
-      style={({ pressed }) => [styles.cancel, pressed && pressedOpacity]}
-      accessibilityRole="button"
-      accessibilityLabel={`Cancel ${name} download`}
+      backgroundColor={theme.bg.tile}
+      color={theme.text.primary}
+      icon={CloseIcon}
+      size={CANCEL_ICON_SIZE}
       testID={`starting-feature-${key}-cancel`}
-    >
-      <CloseIcon
-        width={CANCEL_ICON_SIZE}
-        height={CANCEL_ICON_SIZE}
-        color={theme.text.primary}
-      />
-    </Pressable>
+    />
   ) : downloaded ? (
     <DownloadedBadge size="medium" testID={`starting-feature-${key}-ready`} />
   ) : (
@@ -124,48 +110,45 @@ const StartingFeatureRow = ({
 
   return (
     <ModelRow
+      align="top"
       onPress={() => onToggle(key)}
       disabled={disabled}
       style={[styles.row, locked && !selected && !downloaded && styles.locked]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected || downloaded, disabled }}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={handleAccessibilityAction}
       testID={`starting-feature-${key}`}
     >
       <View style={styles.iconTile}>
         <Icon width={ICON_SIZE} height={ICON_SIZE} color={theme.text.primary} />
       </View>
-      <View style={styles.text}>
-        <Text style={styles.name} numberOfLines={1}>
-          {name}
-        </Text>
-        <View style={styles.metaRow}>
-          {downloading && !started && (
-            <SpinningCircle
-              size={SPINNER_SIZE}
-              strokeWidth={SPINNER_STROKE}
-              trackColor={theme.bg.tile}
-              arcColor={theme.bg.main}
-              testID={`starting-feature-${key}-starting`}
+      <ModelRowText
+        title={name}
+        titleLines={0}
+        titleAccessory={
+          downloading ? <DownloadPercent progress={progress} /> : undefined
+        }
+        accessoryPlacement="end"
+        subtitle={downloaded ? 'Ready' : description}
+        style={styles.text}
+      >
+        {!downloaded && <Text style={styles.size}>{formatSize(sizeGb)}</Text>}
+        {downloading && (
+          <View style={styles.progress}>
+            <DownloadProgressBar
+              progress={progress}
+              accessibilityLabel={`${name} download progress`}
             />
-          )}
-          <Text
-            style={[styles.meta, started && styles.metaActive]}
-            numberOfLines={1}
-          >
-            {meta}
-          </Text>
-        </View>
-      </View>
+            <DownloadProgressDetails
+              modelSize={sizeGb}
+              progress={progress}
+              rate={rate}
+            />
+          </View>
+        )}
+      </ModelRowText>
       <View style={styles.trailing}>{trailing}</View>
-      {started && (
-        <View style={styles.bar}>
-          <DownloadProgressBar
-            progress={progress}
-            height={BAR_HEIGHT}
-            accessibilityLabel={`${name} download progress`}
-          />
-        </View>
-      )}
     </ModelRow>
   );
 };
@@ -212,15 +195,12 @@ const createStyles = (theme: Theme) =>
     group: {
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       overflow: 'hidden',
       backgroundColor: theme.bg.softPrimary,
     },
     row: {
-      minHeight: ROW_MIN_HEIGHT,
-      paddingVertical: space.three,
-      paddingLeft: space.three,
-      paddingRight: space.three,
+      padding: space.four,
     },
     divider: {
       height: stroke.soft,
@@ -232,35 +212,25 @@ const createStyles = (theme: Theme) =>
     iconTile: {
       width: ICON_TILE_SIZE,
       height: ICON_TILE_SIZE,
-      borderRadius: ICON_TILE_RADIUS,
+      borderRadius: radius.twelve,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bg.tile,
     },
     text: {
-      flex: 1,
-      minWidth: 0,
-    },
-    name: {
-      ...textStyles.bodySecondaryMedium,
-      color: theme.text.primary,
-    },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
       gap: space.one,
     },
-    meta: {
-      flexShrink: 1,
-      ...textStyles.bodyTertiaryRegular,
+    size: {
+      ...textStyles.bodySecondaryRegular,
       fontVariant: ['tabular-nums'],
       color: theme.text.defaultSecondary,
     },
-    metaActive: {
-      color: theme.text.accent,
+    progress: {
+      marginTop: space.two,
+      gap: space.two,
     },
     trailing: {
-      width: TRAILING_SIZE,
+      width: CIRCLE_BUTTON_SIZE,
       alignItems: 'center',
     },
     checkbox: {
@@ -275,19 +245,5 @@ const createStyles = (theme: Theme) =>
     checkboxSelected: {
       borderWidth: 0,
       backgroundColor: theme.bg.strongPrimary,
-    },
-    cancel: {
-      width: TRAILING_SIZE,
-      height: TRAILING_SIZE,
-      borderRadius: radius.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bg.tile,
-    },
-    bar: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
     },
   });

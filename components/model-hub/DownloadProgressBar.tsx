@@ -20,15 +20,10 @@ const STARTING_SWEEP_MS = 1200;
 interface Props {
   progress: number;
   accessibilityLabel: string;
-  height?: number;
 }
 
-const DownloadProgressBar = ({
-  progress,
-  accessibilityLabel,
-  height = TRACK_HEIGHT,
-}: Props) => {
-  const { styles } = useThemedStyles(createStyles, height);
+const DownloadProgressBar = ({ progress, accessibilityLabel }: Props) => {
+  const { styles } = useThemedStyles(createStyles);
   const started = hasDownloadStarted(progress);
   const sweep = useSharedValue(0);
 
@@ -80,10 +75,10 @@ const DownloadProgressBar = ({
 
 export default DownloadProgressBar;
 
-const createStyles = (theme: Theme, height: number) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     track: {
-      height,
+      height: TRACK_HEIGHT,
       borderRadius: radius.full,
       overflow: 'hidden',
       backgroundColor: theme.bg.tile,

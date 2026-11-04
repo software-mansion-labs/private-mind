@@ -297,6 +297,20 @@ describe('select starting model', () => {
     expect(screen.getByText('You can still get these later.')).toBeTruthy();
   });
 
+  it('shows a downloading feature with the same progress details as a model', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 1 model · 3.56 GB', 1);
+
+    expect(
+      screen.getByLabelText('Documents & web search download progress')
+    ).toBeTruthy();
+    expect(screen.getByText('0.00 of 0.58 GB')).toBeTruthy();
+    expect(
+      screen.getByTestId('starting-feature-documents-cancel')
+    ).toBeTruthy();
+  });
+
   it('drops a feature from the selection when its download is cancelled', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
