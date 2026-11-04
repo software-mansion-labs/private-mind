@@ -739,6 +739,17 @@ export const renameChat = async (
   return;
 };
 
+export const moveChatsToModel = async (
+  db: SQLiteDatabase,
+  fromModelId: number,
+  toModelId: number
+) => {
+  await db.runAsync(`UPDATE chats SET modelId = ? WHERE modelId = ?`, [
+    toModelId,
+    fromModelId,
+  ]);
+};
+
 export const setChatModel = async (
   db: SQLiteDatabase,
   id: number,

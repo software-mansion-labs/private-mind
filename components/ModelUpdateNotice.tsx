@@ -28,7 +28,10 @@ const ModelUpdateNotice = () => {
     <View style={styles.container} testID="model-update-notice">
       <Text style={styles.title}>{MODEL_UPDATE_TEXT.title}</Text>
       <Text style={styles.body}>
-        {MODEL_UPDATE_TEXT.body(outdated.length, updateSizeGB(outdated))}
+        {MODEL_UPDATE_TEXT.body(
+          outdated.length,
+          updateSizeGB(outdated, models)
+        )}
       </Text>
       <PrimaryButton
         text={

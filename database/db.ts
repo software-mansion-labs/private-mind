@@ -14,6 +14,7 @@ import {
   updateCatalogRows,
 } from './catalogSync';
 import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
+import { RETIRED_MODEL_NAMES } from '../constants/retired-models';
 
 const discardPeakMemoryMeasuredWithTheOldMetric = async (
   db: SQLiteDatabase
@@ -239,12 +240,16 @@ export const runMigrations = async (db: SQLiteDatabase) => {
   const defaultModelNames = catalog.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
+  const retiredPlaceholders = RETIRED_MODEL_NAMES.map(() => '?').join(',');
+
   await db.runAsync(
     `
     DELETE FROM models
     WHERE source = 'built-in' AND modelName NOT IN (${placeholders})
+      AND NOT (isDownloaded = 1 AND modelName IN (${retiredPlaceholders}))
     `,
-    ...defaultModelNames
+    ...defaultModelNames,
+    ...RETIRED_MODEL_NAMES
   );
 
   await updateCatalogRows(db, catalog);
