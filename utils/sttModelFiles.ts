@@ -45,4 +45,5 @@ export const fetchWhisperFiles = async (
   return paths !== null;
 };
 
-export const cancelWhisperFetch = () => cancelFetchingSources(remoteSources());
+export const cancelWhisperFetch = (isStillFetching: () => boolean) =>
+  cancelFetchingSources(remoteSources(), isStillFetching);

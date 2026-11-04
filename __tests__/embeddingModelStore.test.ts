@@ -4,7 +4,11 @@ import {
   whenEmbeddingStatusKnown,
 } from '../store/embeddingModelStore';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
-import { ResourceFetcher } from 'react-native-executorch/legacy';
+import {
+  ResourceFetcher,
+  RnExecutorchError,
+  RnExecutorchErrorCode,
+} from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 
 const makeStore = (load: jest.Mock) =>
@@ -140,6 +144,123 @@ describe('embeddingModelStore.cancelDownload', () => {
     expect(load).not.toHaveBeenCalled();
     expect(useEmbeddingModelStore.getState().status).toBe('not_downloaded');
     expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it('resets the status as soon as the user cancels, before the fetch settles', async () => {
+    const fetching = createDeferred<string[] | null>();
+    fetch.mockReturnValueOnce(fetching.promise);
+
+    const ready = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(jest.fn()));
+    const cancelling = useEmbeddingModelStore.getState().cancelDownload();
+
+    expect(useEmbeddingModelStore.getState().status).toBe('not_downloaded');
+    expect(useEmbeddingModelStore.getState().progress).toBe(0);
+
+    await cancelling;
+    fetching.resolve(null);
+    await ready;
+  });
+
+  it('retries the cancel until the fetcher registers the download', async () => {
+    const fetching = createDeferred<string[] | null>();
+    fetch.mockReturnValueOnce(fetching.promise);
+    cancelFetching.mockClear();
+    cancelFetching.mockRejectedValueOnce(
+      new RnExecutorchError(
+        RnExecutorchErrorCode.ResourceFetcherNotActive,
+        'Not active yet'
+      )
+    );
+
+    const ready = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(jest.fn()));
+    await useEmbeddingModelStore.getState().cancelDownload();
+
+    expect(cancelFetching).toHaveBeenCalledTimes(2);
+    fetching.resolve(null);
+    await ready;
+  });
+
+  it('ignores progress reported after the cancel', async () => {
+    const fetching = createDeferred<string[] | null>();
+    let report: (progress: number) => void = () => {};
+    fetch.mockImplementationOnce((onProgress) => {
+      report = onProgress;
+      return fetching.promise;
+    });
+
+    const ready = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(jest.fn()));
+    await useEmbeddingModelStore.getState().cancelDownload();
+    report(0.5);
+
+    expect(useEmbeddingModelStore.getState().progress).toBe(0);
+    fetching.resolve(null);
+    await ready;
+  });
+
+  it('does not load the model when the fetch finishes after the cancel', async () => {
+    const fetching = createDeferred<string[] | null>();
+    fetch.mockReturnValueOnce(fetching.promise);
+    const load = jest.fn();
+
+    const ready = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(load));
+    await useEmbeddingModelStore.getState().cancelDownload();
+    fetching.resolve(['/model', '/tokenizer']);
+
+    expect(await ready).toBe(false);
+    expect(load).not.toHaveBeenCalled();
+    expect(useEmbeddingModelStore.getState().status).toBe('not_downloaded');
+  });
+
+  it('starts a new download only after the cancelled one has settled', async () => {
+    const cancelled = createDeferred<string[] | null>();
+    fetch.mockReset();
+    fetch.mockReturnValueOnce(cancelled.promise);
+    fetch.mockResolvedValueOnce(['/model', '/tokenizer']);
+    const load = jest.fn().mockResolvedValue(undefined);
+
+    const first = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(load));
+    await useEmbeddingModelStore.getState().cancelDownload();
+    const second = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(load));
+
+    expect(useEmbeddingModelStore.getState().status).toBe('downloading');
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    cancelled.resolve(null);
+
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(useEmbeddingModelStore.getState().status).toBe('ready');
+  });
+
+  it('lets the load finish when the files have already arrived', async () => {
+    const loading = createDeferred<void>();
+    fetch.mockResolvedValueOnce(['/model', '/tokenizer']);
+    const load = jest.fn(() => loading.promise);
+
+    const ready = useEmbeddingModelStore
+      .getState()
+      .ensureReady(makeStore(load));
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(load).toHaveBeenCalled();
+
+    await useEmbeddingModelStore.getState().cancelDownload();
+    loading.resolve();
+
+    expect(await ready).toBe(true);
+    expect(useEmbeddingModelStore.getState().status).toBe('ready');
   });
 
   it('does nothing when no download is running', async () => {

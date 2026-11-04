@@ -10,10 +10,7 @@ import {
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
 import Toast from 'react-native-toast-message';
-import {
-  ResourceFetcher,
-  RnExecutorchErrorCode,
-} from 'react-native-executorch/legacy';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { Feedback } from '../utils/Feedback';
 import {
@@ -22,6 +19,12 @@ import {
   type DownloadPhase,
 } from '../utils/downloadDiagnostics';
 import { RateSample, nextProgressRate } from '../utils/downloadEta';
+import {
+  CANCEL_DEADLINE_MS,
+  CANCEL_POLL_MS,
+  isNotFetchingYet,
+  wait,
+} from '../utils/cancelFetching';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -189,20 +192,6 @@ interface ModelStore {
 }
 
 const PROGRESS_PUBLISH_INTERVAL_MS = 250;
-
-const CANCEL_POLL_MS = 50;
-const CANCEL_DEADLINE_MS = 30_000;
-
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-const errorCode = (error: unknown): unknown =>
-  typeof error === 'object' && error !== null
-    ? (error as { code?: unknown }).code
-    : undefined;
-
-const isNotFetchingYet = (error: unknown) =>
-  errorCode(error) === RnExecutorchErrorCode.ResourceFetcherNotActive;
 
 const stopFetching = async (model: Model, attempt: DownloadAttempt) => {
   const deadline = Date.now() + CANCEL_DEADLINE_MS;

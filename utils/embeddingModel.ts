@@ -33,8 +33,11 @@ export const fetchEmbeddingModelFiles = async (
   return paths !== null;
 };
 
-export const cancelEmbeddingModelFetch = () =>
-  cancelFetchingSources([
-    LFM_2_5_EMBEDDING_SOURCES.modelSource!,
-    LFM_2_5_EMBEDDING_SOURCES.tokenizerSource!,
-  ]);
+export const cancelEmbeddingModelFetch = (isStillFetching: () => boolean) =>
+  cancelFetchingSources(
+    [
+      LFM_2_5_EMBEDDING_SOURCES.modelSource!,
+      LFM_2_5_EMBEDDING_SOURCES.tokenizerSource!,
+    ],
+    isStillFetching
+  );

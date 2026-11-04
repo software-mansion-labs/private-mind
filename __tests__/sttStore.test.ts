@@ -28,6 +28,16 @@ jest.mock('react-native-executorch/legacy', () => ({
 
 const mockFromModelName = SpeechToTextModule.fromModelName as jest.Mock;
 
+const deferredFetch = () => {
+  let finish!: (fetched: boolean) => void;
+  (fetchWhisperFiles as jest.Mock).mockReturnValueOnce(
+    new Promise<boolean>((resolve) => {
+      finish = resolve;
+    })
+  );
+  return { finish };
+};
+
 const mockModule = {
   stream: jest.fn(),
   streamInsert: jest.fn(),
@@ -246,10 +256,72 @@ describe('fetching Whisper ahead of the first dictation', () => {
     await useSTTStore.getState().cancelFetchFiles();
     expect(cancelWhisperFetch).not.toHaveBeenCalled();
 
-    (fetchWhisperFiles as jest.Mock).mockReturnValueOnce(new Promise(() => {}));
-    useSTTStore.getState().fetchFiles();
+    const fetch = deferredFetch();
+    const fetching = useSTTStore.getState().fetchFiles();
     await useSTTStore.getState().cancelFetchFiles();
 
     expect(cancelWhisperFetch).toHaveBeenCalledTimes(1);
+    fetch.finish(false);
+    await fetching;
+  });
+
+  it('stops retrying the cancel once the fetch has settled', async () => {
+    const fetch = deferredFetch();
+    const fetching = useSTTStore.getState().fetchFiles();
+    await useSTTStore.getState().cancelFetchFiles();
+
+    const isStillFetching = (cancelWhisperFetch as jest.Mock).mock.calls[0][0];
+    expect(isStillFetching()).toBe(true);
+
+    fetch.finish(false);
+    await fetching;
+
+    expect(isStillFetching()).toBe(false);
+  });
+
+  it('clears the fetching state as soon as the user cancels', async () => {
+    const fetch = deferredFetch();
+    const fetching = useSTTStore.getState().fetchFiles();
+    useSTTStore.setState({ filesProgress: 0.5 });
+
+    const cancelling = useSTTStore.getState().cancelFetchFiles();
+
+    expect(useSTTStore.getState().isFetchingFiles).toBe(false);
+    expect(useSTTStore.getState().filesProgress).toBe(0);
+
+    await cancelling;
+    fetch.finish(false);
+    await fetching;
+  });
+
+  it('ignores a fetch that finishes after the cancel', async () => {
+    const fetch = deferredFetch();
+    const fetching = useSTTStore.getState().fetchFiles();
+    await useSTTStore.getState().cancelFetchFiles();
+
+    fetch.finish(true);
+
+    expect(await fetching).toBe(false);
+    expect(useSTTStore.getState().filesProgress).toBe(0);
+  });
+
+  it('starts a new fetch only after the cancelled one has settled', async () => {
+    const cancelled = deferredFetch();
+    const first = useSTTStore.getState().fetchFiles();
+    await useSTTStore.getState().cancelFetchFiles();
+
+    (fetchWhisperFiles as jest.Mock).mockResolvedValueOnce(true);
+    const second = useSTTStore.getState().fetchFiles();
+
+    expect(useSTTStore.getState().isFetchingFiles).toBe(true);
+    expect(fetchWhisperFiles).toHaveBeenCalledTimes(1);
+
+    cancelled.finish(false);
+
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(fetchWhisperFiles).toHaveBeenCalledTimes(2);
+    expect(useSTTStore.getState().isFetchingFiles).toBe(false);
+    expect(useSTTStore.getState().filesProgress).toBe(1);
   });
 });

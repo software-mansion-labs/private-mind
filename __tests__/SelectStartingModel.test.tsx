@@ -165,6 +165,7 @@ jest.mock('../hooks/useStartingFeatures', () => {
     STARTING_FEATURE_KEYS: ['documents', 'dictation'],
     useFeatureStatuses,
     download,
+    cancel,
     useStartingFeatures: () => {
       const statuses = useFeatureStatuses();
       return {
@@ -324,6 +325,66 @@ describe('select starting model', () => {
           .accessibilityState
       ).toMatchObject({ checked: false })
     );
+  });
+
+  it('unticks a cancelled feature without waiting for the cancel to land', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+    startingFeatures.cancel.mockImplementationOnce(
+      () => new Promise<void>(() => {})
+    );
+
+    fireEvent.press(screen.getByTestId('starting-feature-dictation-cancel'));
+
+    expect(
+      screen.getByTestId('starting-feature-dictation').props.accessibilityState
+    ).toMatchObject({ checked: false });
+    expect(
+      jest.requireMock('../utils/Feedback').Feedback.cancelDownload
+    ).toHaveBeenCalled();
+  });
+
+  it('takes a cancelled feature out of the overall progress', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+    act(() =>
+      useModelStore.setState({
+        downloadStates: {
+          1: { progress: 0.5, status: ModelState.Downloading },
+        },
+      })
+    );
+    expect(screen.getByText('Downloading… 40%')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents-cancel'));
+
+    expect(await screen.findByText('Downloading… 48%')).toBeTruthy();
+  });
+
+  it('keeps a feature ticked again when its cancelled download settles late', async () => {
+    let settleCancelled!: (finished: boolean) => void;
+    startingFeatures.download.mockImplementationOnce((key: string) => {
+      startingFeatures.useFeatureStatuses.setState({ [key]: 'downloading' });
+      return new Promise<boolean>((resolve) => {
+        settleCancelled = resolve;
+      });
+    });
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents-cancel'));
+    fireEvent.press(screen.getByTestId('cancel-Gemma'));
+    await screen.findByText('Select a model');
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents'));
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    settleCancelled(false);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(screen.getByText('Download 2 models · 3.48 GB')).toBeTruthy();
   });
 
   it('hides the features once both are already on the phone', async () => {

@@ -27,8 +27,13 @@ type EmbeddingModelStore = {
   cancelDownload: () => Promise<void>;
 };
 
-let inFlightLoad: Promise<boolean> | null = null;
-let cancelRequested = false;
+interface LoadAttempt {
+  cancelled: boolean;
+  stage: 'queued' | 'fetching' | 'loading' | 'settled';
+  result: Promise<boolean>;
+}
+
+let currentAttempt: LoadAttempt | null = null;
 
 export const useEmbeddingModelStore = create<EmbeddingModelStore>(
   (set, get) => ({
@@ -53,41 +58,55 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
 
     ensureReady: async (vectorStore, loadModel = loadInPlace) => {
       if (get().status === 'ready') return true;
-      if (inFlightLoad) return inFlightLoad;
 
+      const previous = currentAttempt;
+      if (previous && !previous.cancelled) return previous.result;
+
+      const attempt: LoadAttempt = {
+        cancelled: false,
+        stage: 'queued',
+        result: Promise.resolve(false),
+      };
+      currentAttempt = attempt;
       set({ status: 'downloading', progress: 0 });
-      cancelRequested = false;
 
-      inFlightLoad = (async () => {
+      const run = async () => {
         try {
-          const fetched = await fetchEmbeddingModelFiles(get().setProgress);
+          if (attempt.cancelled) return false;
+          attempt.stage = 'fetching';
+          const fetched = await fetchEmbeddingModelFiles((progress) => {
+            if (!attempt.cancelled) get().setProgress(progress);
+          });
+          if (attempt.cancelled) return false;
           if (!fetched) {
             throw new Error('The embedding model download was interrupted');
           }
+          attempt.stage = 'loading';
           set({ progress: 1 });
           await loadModel(() => vectorStore.load());
           set({ status: 'ready', progress: 1 });
           return true;
         } catch (error) {
-          if (cancelRequested) {
-            set({ status: 'not_downloaded', progress: 0 });
-            return false;
-          }
+          if (attempt.cancelled) return false;
           console.error('Failed to download/load embedding model', error);
           set({ status: 'error', progress: 0 });
           return false;
         } finally {
-          inFlightLoad = null;
+          if (attempt.stage === 'fetching') attempt.stage = 'settled';
+          if (currentAttempt === attempt) currentAttempt = null;
         }
-      })();
+      };
 
-      return inFlightLoad;
+      attempt.result = previous ? previous.result.then(run) : run();
+      return attempt.result;
     },
 
     cancelDownload: async () => {
-      if (!inFlightLoad) return;
-      cancelRequested = true;
-      await cancelEmbeddingModelFetch();
+      const attempt = currentAttempt;
+      if (!attempt || attempt.cancelled || attempt.stage === 'loading') return;
+      attempt.cancelled = true;
+      set({ status: 'not_downloaded', progress: 0 });
+      await cancelEmbeddingModelFetch(() => attempt.stage === 'fetching');
     },
   })
 );

@@ -30,9 +30,15 @@ export interface STTStore {
   claimAudioSession: () => number;
 }
 
+interface FilesFetch {
+  cancelled: boolean;
+  fetching: boolean;
+  result: Promise<boolean>;
+}
+
 export const useSTTStore = create<STTStore>((set, get) => {
   let modelLoadPromise: null | Promise<void> = null;
-  let filesFetchPromise: null | Promise<boolean> = null;
+  let filesFetch: FilesFetch | null = null;
 
   return {
     module: null,
@@ -90,8 +96,8 @@ export const useSTTStore = create<STTStore>((set, get) => {
           }
         );
 
-      const whisperOnDisk = filesFetchPromise
-        ? filesFetchPromise.then(() => isWhisperDownloaded())
+      const whisperOnDisk = filesFetch
+        ? filesFetch.result.then(() => isWhisperDownloaded())
         : isWhisperDownloaded();
 
       return (modelLoadPromise = whisperOnDisk
@@ -124,30 +130,53 @@ export const useSTTStore = create<STTStore>((set, get) => {
     },
 
     fetchFiles: () => {
-      if (filesFetchPromise) return filesFetchPromise;
+      const previous = filesFetch;
+      if (previous && !previous.cancelled) return previous.result;
 
+      const attempt: FilesFetch = {
+        cancelled: false,
+        fetching: false,
+        result: Promise.resolve(false),
+      };
+      filesFetch = attempt;
       set({ isFetchingFiles: true, filesProgress: 0 });
+
       let lastPublishedAt = 0;
       const publishProgress = (progress: number) => {
+        if (attempt.cancelled) return;
         const now = Date.now();
         if (now - lastPublishedAt < FILES_PROGRESS_INTERVAL_MS) return;
         lastPublishedAt = now;
         set({ filesProgress: progress });
       };
 
-      return (filesFetchPromise = fetchWhisperFiles(publishProgress)
-        .catch(() => false)
-        .then((fetched) => {
-          set({ isFetchingFiles: false, filesProgress: fetched ? 1 : 0 });
-          return fetched;
-        })
-        .finally(() => {
-          filesFetchPromise = null;
-        }));
+      const run = async () => {
+        if (attempt.cancelled) return false;
+        attempt.fetching = true;
+        const fetched = await fetchWhisperFiles(publishProgress)
+          .catch(() => false)
+          .finally(() => {
+            attempt.fetching = false;
+          });
+        if (attempt.cancelled) return false;
+        set({ isFetchingFiles: false, filesProgress: fetched ? 1 : 0 });
+        return fetched;
+      };
+
+      attempt.result = (previous ? previous.result.then(run) : run()).finally(
+        () => {
+          if (filesFetch === attempt) filesFetch = null;
+        }
+      );
+      return attempt.result;
     },
 
     cancelFetchFiles: async () => {
-      if (filesFetchPromise) await cancelWhisperFetch();
+      const attempt = filesFetch;
+      if (!attempt || attempt.cancelled) return;
+      attempt.cancelled = true;
+      set({ isFetchingFiles: false, filesProgress: 0 });
+      await cancelWhisperFetch(() => attempt.fetching);
     },
   };
 });

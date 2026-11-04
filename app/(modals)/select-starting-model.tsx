@@ -91,6 +91,7 @@ function SelectStartingModelScreen() {
     cancel: cancelFeature,
   } = useStartingFeatures();
   const isContinuingRef = useRef(false);
+  const cancelledFeaturesRef = useRef(new Set<StartingFeatureKey>());
   const { initPhantomChat } = useChatStore();
   const { setActiveChatId } = useLLMStore();
   const downloadModel = useModelStore((state) => state.downloadModel);
@@ -139,8 +140,10 @@ function SelectStartingModelScreen() {
   const deselect = (modelId: number) =>
     setSelectedIds((ids) => ids.filter((id) => id !== modelId));
 
-  const deselectFeature = (key: StartingFeatureKey) =>
+  const dropFeature = (key: StartingFeatureKey) => {
     setSelectedFeatureKeys((keys) => keys.filter((k) => k !== key));
+    setStartedFeatureKeys((keys) => keys.filter((k) => k !== key));
+  };
 
   const toggleFeature = (key: StartingFeatureKey) => {
     if (phase !== 'select') return;
@@ -150,8 +153,10 @@ function SelectStartingModelScreen() {
   };
 
   const stopFeature = async (key: StartingFeatureKey) => {
+    Feedback.cancelDownload();
+    cancelledFeaturesRef.current.add(key);
+    dropFeature(key);
     await cancelFeature(key);
-    deselectFeature(key);
   };
 
   const toggleModel = (model: Model) => {
@@ -185,7 +190,9 @@ function SelectStartingModelScreen() {
           if (!isModelDownloaded(model.id)) deselect(model.id);
         }),
       ...featuresToDownload.map(async (feature) => {
-        if (!(await downloadFeature(feature.key))) deselectFeature(feature.key);
+        const finished = await downloadFeature(feature.key);
+        if (cancelledFeaturesRef.current.delete(feature.key)) return;
+        if (!finished) dropFeature(feature.key);
       }),
     ]);
   };
