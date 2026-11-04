@@ -50,11 +50,12 @@ const CARD_BORDER_ROOM = stroke.strong;
 
 const downloadLabel = (models: Model[], features: StartingFeature[]) => {
   if (models.length === 0) return 'Select a model';
-  const noun = models.length === 1 ? 'model' : 'models';
+  const count = models.length + features.length;
+  const noun = count === 1 ? 'model' : 'models';
   const totalGb =
     models.reduce((sum, model) => sum + (model.modelSize ?? 0), 0) +
     features.reduce((sum, feature) => sum + feature.sizeGb, 0);
-  return `Download ${models.length} ${noun} · ${totalGb.toFixed(2)} GB`;
+  return `Download ${count} ${noun} · ${totalGb.toFixed(2)} GB`;
 };
 
 type Phase = 'select' | 'downloading' | 'ready';

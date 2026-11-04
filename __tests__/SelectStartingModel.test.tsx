@@ -237,21 +237,21 @@ describe('select starting model', () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('card-Qwen'));
-    expect(screen.getByText('Download 2 models · 5.72 GB')).toBeTruthy();
+    expect(screen.getByText('Download 4 models · 5.72 GB')).toBeTruthy();
   });
 
   it('downloads every selected model at the same time', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('card-Qwen'));
-    await startDownload('Download 2 models · 5.72 GB', 2);
+    await startDownload('Download 4 models · 5.72 GB', 2);
     expect(screen.getByText('Starting download…')).toBeTruthy();
   });
 
   it('goes back to selecting multiple models after cancelling a download', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
-    await startDownload('Download 1 model · 3.56 GB', 1);
+    await startDownload('Download 3 models · 3.56 GB', 1);
 
     fireEvent.press(screen.getByTestId('cancel-Gemma'));
     await waitFor(() =>
@@ -269,14 +269,14 @@ describe('select starting model', () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('starting-feature-documents'));
-    expect(screen.getByText('Download 1 model · 2.98 GB')).toBeTruthy();
+    expect(screen.getByText('Download 2 models · 2.98 GB')).toBeTruthy();
   });
 
   it('downloads the ticked features at the same time as the model', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('starting-feature-dictation'));
-    await startDownload('Download 1 model · 3.48 GB', 1);
+    await startDownload('Download 2 models · 3.48 GB', 1);
 
     expect(startingFeatures.download).toHaveBeenCalledWith('documents');
     expect(startingFeatures.download).not.toHaveBeenCalledWith('dictation');
@@ -285,7 +285,7 @@ describe('select starting model', () => {
   it('lets the user start chatting while features keep downloading', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
-    await startDownload('Download 1 model · 3.56 GB', 1);
+    await startDownload('Download 3 models · 3.56 GB', 1);
 
     act(() =>
       useModelStore.setState({
@@ -300,7 +300,7 @@ describe('select starting model', () => {
   it('shows a downloading feature with the same progress details as a model', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
-    await startDownload('Download 1 model · 3.56 GB', 1);
+    await startDownload('Download 3 models · 3.56 GB', 1);
 
     expect(
       screen.getByLabelText('Documents & web search download progress')
@@ -314,7 +314,7 @@ describe('select starting model', () => {
   it('drops a feature from the selection when its download is cancelled', async () => {
     await renderScreen();
     fireEvent.press(screen.getByTestId('card-Gemma'));
-    await startDownload('Download 1 model · 3.56 GB', 1);
+    await startDownload('Download 3 models · 3.56 GB', 1);
 
     fireEvent.press(screen.getByTestId('starting-feature-dictation-cancel'));
 
