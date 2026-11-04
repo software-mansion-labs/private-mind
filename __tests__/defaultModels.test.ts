@@ -14,6 +14,7 @@ import {
   getStartingModels,
   runsOnMlxDelegate,
 } from '../constants/default-models';
+import { RNE_0_11_SOURCES } from '../constants/model-sources';
 import { isModelCompatibleWithRam } from '../utils/modelCompatibility';
 
 describe('getGenerationConfigForModel', () => {
@@ -144,16 +145,23 @@ describe('getStartingModels', () => {
 });
 
 describe('DEFAULT_MODELS paths', () => {
-  it('sources Bielik paths from the react-native-executorch constant', () => {
+  it('downloads Bielik from the v0.11 export the RNE 0.11 runner can read', () => {
     const bielik = DEFAULT_MODELS.find((m) => m.modelName === 'Bielik - v3.0');
-    expect(bielik).toBeDefined();
-    expect(bielik!.modelPath).toBe(BIELIK_V3_0_1_5B_QUANTIZED.modelSource);
-    expect(bielik!.tokenizerPath).toBe(
-      BIELIK_V3_0_1_5B_QUANTIZED.tokenizerSource
-    );
-    expect(bielik!.tokenizerConfigPath).toBe(
-      BIELIK_V3_0_1_5B_QUANTIZED.tokenizerConfigSource
-    );
+    const export011 = RNE_0_11_SOURCES[BIELIK_V3_0_1_5B_QUANTIZED.modelName];
+    expect(bielik).toMatchObject({
+      modelPath: export011!.modelSource,
+      tokenizerPath: export011!.tokenizerSource,
+      tokenizerConfigPath: export011!.tokenizerConfigSource,
+    });
+  });
+
+  it('keeps the Qwen 3 generation config after moving to the v0.11 export', () => {
+    const qwen = DEFAULT_MODELS.find((m) => m.modelName === 'Qwen 3 - 1.7B')!;
+    expect(qwen.modelPath).toContain('/resolve/v0.11.0/');
+    expect(getGenerationConfigForModel(qwen)).toMatchObject({
+      temperature: 0.6,
+      topP: 0.95,
+    });
   });
 
   it('never points a default model at the mutable HF main branch', () => {

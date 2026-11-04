@@ -52,7 +52,7 @@ jobs:
       - name: Check if the manifest changed
         id: catalog-changed
         run: |
-          if git diff --quiet HEAD^ HEAD -- catalog/model-catalog.json; then
+          if git diff --quiet HEAD^ HEAD -- catalog/model-catalog.json catalog/model-catalog-v3.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -63,6 +63,7 @@ jobs:
         run: |
           mkdir -p catalog-publish
           cp catalog/model-catalog.json catalog-publish/model-catalog.json
+          cp catalog/model-catalog-v3.json catalog-publish/model-catalog-v3.json
 
       - name: Publish to gh-pages
         if: steps.catalog-changed.outputs.changed == 'true'
