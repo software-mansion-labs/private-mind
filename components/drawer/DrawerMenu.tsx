@@ -5,6 +5,7 @@ import {
   View,
   TextInput,
   Platform,
+  LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
@@ -20,8 +21,9 @@ import { DrawerTopBar } from './DrawerTopBar';
 import { DrawerNavSection } from './DrawerNavSection';
 import { DrawerEmptyState } from './DrawerEmptyState';
 import { DrawerFooter } from './DrawerFooter';
+import { GlassScrollEdge } from '../chat-screen/GlassScrollEdge';
 import { buildChatSections, sortChatsByRecency } from './chatSections';
-import { useDrawerChatMenu } from './useDrawerChatMenu';
+import { useChatMenu } from '../chat-menu/useChatMenu';
 import {
   DRAWER_HORIZONTAL_PADDING,
   SECTION_GAP,
@@ -29,6 +31,7 @@ import {
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
+import { space } from '../../constants/design-system';
 
 interface Props {
   searching: boolean;
@@ -75,8 +78,8 @@ const DrawerMenu = ({
   const chats = useChatStore((state) => state.chats);
   const interrupt = useLLMStore((state) => state.interrupt);
 
-  const { openMenuFor, MenuElements } = useDrawerChatMenu({
-    onMenuActiveChange,
+  const { openMenu, openChatId, MenuElements } = useChatMenu({
+    onActiveChange: onMenuActiveChange,
   });
 
   const query = search.trim().toLowerCase();
@@ -89,6 +92,10 @@ const DrawerMenu = ({
   );
 
   const hasNoResults = isFiltering && sections.length === 0;
+
+  const [footerHeight, setFooterHeight] = useState(0);
+  const handleFooterLayout = (event: LayoutChangeEvent) =>
+    setFooterHeight(event.nativeEvent.layout.height);
 
   const internalScrollRef = useRef<ScrollView>(null);
   const scrollRef = externalScrollRef ?? internalScrollRef;
@@ -160,14 +167,16 @@ const DrawerMenu = ({
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          searching && styles.contentSearching,
+          searching
+            ? styles.contentSearching
+            : { paddingBottom: footerHeight + space.four },
         ]}
         contentOffset={initialContentOffset}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps={hasNoResults ? 'always' : 'handled'}
-        {...scrollIndicatorProps()}
+        {...scrollIndicatorProps(0, searching ? 0 : footerHeight)}
       >
         <DrawerNavSection
           collapsed={isFiltering}
@@ -187,8 +196,11 @@ const DrawerMenu = ({
                   testID={`drawer-chat-${chat.id}`}
                   label={chatLabel(chat)}
                   active={pathname === `/chat/${chat.id}`}
+                  highlighted={openChatId === chat.id}
                   onPress={() => openChat(chat.id)}
-                  onLongPress={() => openMenuFor(chat)}
+                  onLongPress={(rect) =>
+                    openMenu(chat, { ...rect, align: 'start' })
+                  }
                 />
               ))}
             </View>
@@ -200,7 +212,14 @@ const DrawerMenu = ({
         )}
       </ScrollView>
 
-      {!searching && <DrawerFooter onNavigate={onNavigate} />}
+      {!searching && (
+        <>
+          <GlassScrollEdge edge="bottom" anchor={footerHeight} />
+          <View style={styles.footer} onLayout={handleFooterLayout}>
+            <DrawerFooter onNavigate={onNavigate} />
+          </View>
+        </>
+      )}
 
       {MenuElements}
     </View>
@@ -221,21 +240,27 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     content: {
-      paddingTop: 12,
-      paddingBottom: 16,
+      paddingTop: space.three,
+      paddingBottom: space.four,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
+    },
+    footer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     contentSearching: {
       paddingBottom: theme.insets.bottom + 16,
     },
     section: {
-      gap: 2,
+      gap: space.half,
       marginBottom: SECTION_GAP,
     },
     sectionTitle: {
       alignSelf: 'flex-start',
-      paddingHorizontal: 12,
-      paddingBottom: 4,
+      paddingHorizontal: space.three,
+      paddingBottom: space.one,
       fontFamily: fontFamily.bold,
       fontSize: fontSizes.xs,
       lineHeight: lineHeights.xs,

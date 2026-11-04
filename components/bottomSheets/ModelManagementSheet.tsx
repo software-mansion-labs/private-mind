@@ -1,36 +1,34 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space, stroke } from '../../constants/design-system';
-import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
-  THINKING_LABEL,
-  VISION_LABEL,
-  isCapabilityLabel,
-} from '../../constants/model-labels';
+  radius,
+  space,
+  stroke,
+  rowChevron,
+  textStyles,
+} from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
-import ModelBadge from '../model-hub/ModelBadge';
+import ModelCapabilityBadges from '../model-hub/ModelCapabilityBadges';
+import ModelRow from '../model-hub/ModelRow';
+import ModelRowText from '../model-hub/ModelRowText';
+import DownloadedBadge from '../model-hub/DownloadedBadge';
 import ChatIcon from '../../assets/icons/chat.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import EditIcon from '../../assets/icons/edit.svg';
 import CrossCircleIcon from '../../assets/icons/cross-circle.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import CheckIcon from '../../assets/icons/check.svg';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 import { FAMILY_PROVIDERS } from '../../constants/family-descriptions';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import { getModelFamily } from '../../utils/modelFamily';
+import { modelSpecParts } from '../../utils/modelMeta';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { useModelStore } from '../../store/modelStore';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
@@ -49,13 +47,7 @@ const ACTION_ROW_MIN_HEIGHT = 52;
 const ACTION_WELL_SIZE = 32;
 const ACTION_WELL_RADIUS = 10;
 const ACTION_ICON_SIZE = 16;
-const CHEVRON_WIDTH = 7;
-const CHEVRON_HEIGHT = 12;
 const CHEVRON_OPACITY = 0.5;
-const DOWNLOADED_BADGE_SIZE = 32;
-const HANDLE_WIDTH = 36;
-const HANDLE_HEIGHT = 5;
-const SHEET_RADIUS = 24;
 
 type ActionTone = 'accent' | 'neutral' | 'destructive';
 
@@ -74,8 +66,7 @@ const modelMeta = (model: Model) =>
       : null,
     model.source === 'remote' ? 'From a link' : null,
     model.source === 'local' ? 'From device' : null,
-    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
-    model.parameters ? `${model.parameters.toFixed(2)} B params` : null,
+    ...modelSpecParts(model, 'B params'),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -115,8 +106,8 @@ const ActionRow = ({ action }: { action: Action }) => {
       </Text>
       {!destructive && (
         <ChevronRightIcon
-          width={CHEVRON_WIDTH}
-          height={CHEVRON_HEIGHT}
+          width={rowChevron.width}
+          height={rowChevron.height}
           style={styles.chevron}
         />
       )}
@@ -125,25 +116,13 @@ const ActionRow = ({ action }: { action: Action }) => {
 };
 
 const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
   const db = useSQLiteContext();
 
   const { removeModel } = useModelStore();
   const { deleteModelFiles, ConfirmElement: DeleteFilesConfirm } =
     useDeleteModelFiles();
   const { confirm, ConfirmElement: RemoveModelConfirm } = useConfirm();
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
 
   const leaveSheetFor = (navigate: () => void) => {
     bottomSheetModalRef.current?.dismiss();
@@ -235,47 +214,21 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
 
   const renderHeader = (model: Model) => {
     const meta = modelMeta(model);
-    const labels = (model.labels ?? []).filter(
-      (label) => !isCapabilityLabel(label)
-    );
-    const isCompatible = isModelCompatible(model);
 
     return (
       <>
-        <View style={styles.header}>
+        <ModelRow>
           <ModelFamilyTile family={getModelFamily(model)} size="card" />
-          <View style={styles.headerText}>
-            <Text style={styles.name} testID="model-sheet-name">
-              {model.modelName}
-            </Text>
-            {meta.length > 0 && <Text style={styles.meta}>{meta}</Text>}
-          </View>
-          {model.isDownloaded && (
-            <View
-              style={styles.downloadedBadge}
-              accessible
-              accessibilityRole="image"
-              accessibilityLabel="Downloaded"
-            >
-              <CheckIcon
-                width={ACTION_ICON_SIZE}
-                height={ACTION_ICON_SIZE}
-                color={theme.text.onSuccess}
-              />
-            </View>
-          )}
-        </View>
-        <View style={styles.badges}>
-          {!isCompatible && <ModelBadge label="Incompatible" color="error" />}
-          {model.source !== 'built-in' && (
-            <ModelBadge label="Custom" color="neutral" />
-          )}
-          {model.thinking && <ModelBadge label={THINKING_LABEL} />}
-          {model.vision && <ModelBadge label={VISION_LABEL} />}
-          {labels.map((label) => (
-            <ModelBadge key={label} label={label} />
-          ))}
-        </View>
+          <ModelRowText
+            title={model.modelName}
+            titleLines={0}
+            titleStyle={styles.name}
+            titleTestID="model-sheet-name"
+            subtitle={meta}
+          />
+          {model.isDownloaded && <DownloadedBadge size="large" />}
+        </ModelRow>
+        <ModelCapabilityBadges model={model} showCustom />
       </>
     );
   };
@@ -303,14 +256,10 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     <>
       <BackDismissibleSheetModal
         ref={bottomSheetModalRef}
-        backdropComponent={renderBackdrop}
         enableDynamicSizing
         onChange={(index) => {
           if (index >= 0) Feedback.sheetOpen();
         }}
-        handleStyle={styles.handle}
-        handleIndicatorStyle={styles.handleIndicator}
-        backgroundStyle={styles.background}
       >
         {(props) =>
           props.data ? (
@@ -336,39 +285,9 @@ const createStyles = (theme: Theme) =>
       paddingBottom: theme.insets.bottom + space.four,
       gap: space.three,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.three,
-    },
-    headerText: {
-      flex: 1,
-      minWidth: 0,
-    },
     name: {
-      fontFamily: fontFamily.bold,
-      fontSize: fontSizes.lg,
-      lineHeight: lineHeights.lg,
+      ...textStyles.titleSheet,
       color: theme.text.primary,
-    },
-    meta: {
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      color: theme.text.defaultSecondary,
-    },
-    downloadedBadge: {
-      width: DOWNLOADED_BADGE_SIZE,
-      height: DOWNLOADED_BADGE_SIZE,
-      borderRadius: radius.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bg.success,
-    },
-    badges: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: space.one,
     },
     actionGroup: {
       marginTop: space.one,
@@ -398,9 +317,7 @@ const createStyles = (theme: Theme) =>
     },
     actionLabel: {
       flex: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.md,
-      lineHeight: lineHeights.md,
+      ...textStyles.bodyPrimaryMedium,
       color: theme.text.primary,
     },
     chevron: {
@@ -409,23 +326,5 @@ const createStyles = (theme: Theme) =>
     },
     textError: {
       color: theme.text.error,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handle: {
-      borderTopLeftRadius: SHEET_RADIUS,
-      borderTopRightRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    handleIndicator: {
-      width: HANDLE_WIDTH,
-      height: HANDLE_HEIGHT,
-      borderRadius: radius.full,
-      backgroundColor: theme.border.soft,
-    },
-    background: {
-      borderRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
     },
   });

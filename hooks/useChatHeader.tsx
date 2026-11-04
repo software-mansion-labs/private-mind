@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useChatStore } from '../store/chatStore';
@@ -6,7 +6,8 @@ import NewChatHeaderButton from '../components/NewChatHeaderButton';
 import ChatTitle from '../components/chat-screen/ChatTitle';
 import DrawerToggleButton from '../components/drawer/DrawerToggleButton';
 import { useNavigation } from 'expo-router';
-import { useChatTitleMenu } from '../components/chat-screen/ChatTitleMenu';
+import { useChatMenu } from '../components/chat-menu/useChatMenu';
+import { chatLabel } from '../utils/chatLabel';
 import { headerTitleMaxWidth } from '../constants/chat-screen';
 
 interface Props {
@@ -29,11 +30,18 @@ export default function useChatHeader({
   const insets = useSafeAreaInsets();
   const titleMaxWidth = headerTitleMaxWidth(width, insets);
 
-  const { openMenu, isOpen, menuTitle, MenuElements } = useChatTitleMenu({
-    chatId,
-    chatTitle,
-    anchorTop: titleBottom,
-  });
+  const { openMenu, openChatId, MenuElements } = useChatMenu();
+  const isOpen = openChatId === chatId;
+  const menuTitle = chatLabel({ id: chatId, title: chatTitle });
+
+  const openTitleMenu = useCallback(
+    () =>
+      openMenu(
+        { id: chatId, title: chatTitle },
+        { x: 0, y: titleBottom ?? 0, width, height: 0, align: 'center' }
+      ),
+    [openMenu, chatId, chatTitle, titleBottom, width]
+  );
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -46,7 +54,7 @@ export default function useChatHeader({
             <ChatTitle
               title={chat ? menuTitle : ''}
               open={isOpen}
-              onPress={chat ? openMenu : undefined}
+              onPress={chat ? openTitleMenu : undefined}
               onBottomMeasured={setTitleBottom}
               maxWidth={titleMaxWidth}
             />
@@ -58,7 +66,7 @@ export default function useChatHeader({
     chatTitle,
     menuTitle,
     isOpen,
-    openMenu,
+    openTitleMenu,
     chat,
     isEmpty,
     hideTitle,

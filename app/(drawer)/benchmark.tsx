@@ -98,7 +98,7 @@ const BenchmarkScreen = () => {
       <BenchmarkModal
         isVisible={isRunning}
         timer={timer}
-        selectedModel={selectedModel!}
+        selectedModel={selectedModel}
         showSuccess={isSuccess}
         handleCancel={cancelBenchmark}
       />

@@ -39,9 +39,9 @@ import {
   KEYBOARD_HIDE_PRESENT_FALLBACK_MS,
   MAX_SHEET_HEIGHT_RATIO,
   ROW_EXPAND_SCROLL_DELAY,
-  SHEET_HANDLE_HEIGHT,
   SHEET_SPRING_CONFIG,
 } from '../../constants/sources-sheet';
+import { SHEET_HANDLE_HEIGHT } from '../../constants/bottom-sheet';
 import SheetBackdrop from '../bottomSheets/SheetBackdrop';
 import SourceRow from './SourceRow';
 import { type SourceDocument } from '../../database/chatRepository';
@@ -212,8 +212,6 @@ const SourcesSheet = forwardRef<SourcesSheetHandle>((_props, ref) => {
       snapPoints={snapPoints}
       animationConfigs={animationConfigs}
       backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sourcesSheetBackground}
-      handleIndicatorStyle={styles.sourcesSheetHandle}
       onChange={(index) => {
         isOpenRef.current = index >= 0;
       }}
@@ -269,12 +267,6 @@ export default memo(SourcesSheet);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    sourcesSheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
-    },
-    sourcesSheetHandle: {
-      backgroundColor: theme.border.soft,
-    },
     sourcesSheet: {
       paddingHorizontal: space.four,
       paddingTop: space.two,
@@ -311,7 +303,7 @@ const createStyles = (theme: Theme) =>
     },
     webRowText: {
       flex: 1,
-      gap: 2,
+      gap: space.half,
     },
     webRowTitle: {
       ...textStyles.bodySecondaryMedium,

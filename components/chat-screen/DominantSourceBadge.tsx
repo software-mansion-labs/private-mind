@@ -7,6 +7,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { type SourceDocument } from '../../database/chatRepository';
 import WebFavicon from './WebFavicon';
 import { pressedOpacity } from '../../styles/pressable';
+import { radius, space, stroke } from '../../constants/design-system';
 
 interface Props {
   source?: SourceDocument;
@@ -52,11 +53,11 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
       gap: 6,
       marginTop: 6,
-      paddingVertical: 4,
-      paddingHorizontal: 10,
-      borderRadius: 9999,
+      paddingVertical: space.one,
+      paddingHorizontal: space.twoHalf,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.softSecondary,
-      borderWidth: 1,
+      borderWidth: stroke.soft,
       borderColor: theme.border.soft,
     },
     dot: {

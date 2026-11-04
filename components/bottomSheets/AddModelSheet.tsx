@@ -1,9 +1,5 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -13,6 +9,7 @@ import { router } from 'expo-router';
 import EntryButton from '../EntryButton';
 import LinkAltIcon from '../../assets/icons/link-alt.svg';
 import FolderIcon from '../../assets/icons/folder.svg';
+import { space } from '../../constants/design-system';
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -21,28 +18,8 @@ interface Props {
 const AddModelSheet = ({ bottomSheetModalRef }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={1}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   return (
-    <BackDismissibleSheetModal
-      ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
-      enableDynamicSizing
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicatorStyle}
-      backgroundStyle={styles.sheetBackground}
-    >
+    <BackDismissibleSheetModal ref={bottomSheetModalRef} enableDynamicSizing>
       <BottomSheetView style={styles.sheetContent}>
         <Text style={styles.title}>Add model</Text>
         <View style={styles.buttonGroup}>
@@ -73,10 +50,10 @@ export default AddModelSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sheetContent: {
-      paddingVertical: 24,
-      paddingHorizontal: 16,
+      paddingVertical: space.six,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
-      gap: 24,
+      gap: space.six,
       backgroundColor: theme.bg.softPrimary,
     },
     title: {
@@ -85,25 +62,9 @@ const createStyles = (theme: Theme) =>
       color: theme.text.primary,
     },
     buttonGroup: {
-      gap: 8,
+      gap: space.two,
     },
     icon: {
       color: theme.text.primary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicatorStyle: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    sheetBackground: {
-      backgroundColor: theme.bg.softPrimary,
     },
   });

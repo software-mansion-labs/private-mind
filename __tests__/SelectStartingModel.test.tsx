@@ -92,7 +92,7 @@ jest.mock('../store/modelStore', () => {
   return { ModelState, useModelStore };
 });
 
-jest.mock('../components/model-hub/ModelCard', () => {
+jest.mock('../components/onboarding/StartingModelCard', () => {
   const { Text, Pressable } = require('react-native');
   return ({
     model,

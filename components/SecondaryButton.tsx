@@ -11,6 +11,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 import { DIMMED_OPACITY, pressedOpacity } from '../styles/pressable';
+import { radius, space, stroke } from '../constants/design-system';
 
 interface Props {
   text: string;
@@ -49,15 +50,15 @@ const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     button: {
       height: 48,
-      paddingHorizontal: 10,
+      paddingHorizontal: space.twoHalf,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderRadius: 12,
+      borderWidth: stroke.soft,
+      borderRadius: radius.twelve,
       borderColor: theme.bg.strongPrimary,
       opacity: disabled ? DIMMED_OPACITY : 1,
       flexDirection: 'row',
-      gap: 2,
+      gap: space.half,
     },
     text: {
       fontFamily: fontFamily.medium,

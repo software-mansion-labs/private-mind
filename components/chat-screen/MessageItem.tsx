@@ -48,6 +48,7 @@ import { retrievalStatsLines } from '../../utils/retrievalStatsLine';
 import { parseThinkingContent, stripThinkMarkers } from '../../utils/thinking';
 import { stripSpecialTokens } from '../../utils/specialTokens';
 import { pressedOpacity } from '../../styles/pressable';
+import { radius, space } from '../../constants/design-system';
 
 interface MessageItemProps {
   message: Message;
@@ -94,6 +95,7 @@ const useRefinedSwap = (isRefining: boolean): number => {
 };
 
 const USER_BUBBLE_WIDTH_SHARE = 0.65;
+const IMAGE_PRESSED_OPACITY = 0.9;
 
 const bubbleWidthOnPixelGrid = (rowWidth: number) => {
   const pixelsPerPoint = PixelRatio.get();
@@ -427,27 +429,27 @@ const createStyles = (theme: Theme) =>
     aiMessage: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      marginBottom: 24,
+      marginBottom: space.six,
       width: '90%',
       alignSelf: 'flex-start',
     },
     userMessageGroup: {
       alignItems: 'flex-end',
-      marginBottom: 24,
-      gap: 4,
+      marginBottom: space.six,
+      gap: space.one,
     },
     userBubble: {
       flexDirection: 'column',
       alignItems: 'flex-start',
       justifyContent: 'center',
       maxWidth: `${USER_BUBBLE_WIDTH_SHARE * 100}%`,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
       backgroundColor: theme.bg.chatBar,
       overflow: 'hidden',
     },
     userMessageContent: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: space.three,
+      paddingVertical: space.two,
       width: '100%',
     },
     messageImage: {
@@ -457,10 +459,10 @@ const createStyles = (theme: Theme) =>
     documentCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: space.twoHalf,
       maxWidth: '75%',
-      paddingVertical: 10,
-      paddingHorizontal: 12,
+      paddingVertical: space.twoHalf,
+      paddingHorizontal: space.three,
       borderRadius: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.soft,
@@ -471,7 +473,7 @@ const createStyles = (theme: Theme) =>
     },
     documentMeta: {
       flexShrink: 1,
-      paddingRight: 4,
+      paddingRight: space.one,
     },
     documentName: {
       fontFamily: fontFamily.medium,
@@ -487,10 +489,10 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultTertiary,
     },
     eventMessage: {
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 24,
+      marginBottom: space.six,
       flexDirection: 'row',
     },
     eventMessageFileName: {
@@ -507,7 +509,7 @@ const createStyles = (theme: Theme) =>
     },
     bubbleContent: {
       width: '100%',
-      gap: 4,
+      gap: space.one,
     },
     userText: {
       fontFamily: fontFamily.regular,
@@ -529,8 +531,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingLeft: 4,
-      paddingVertical: 4,
+      paddingLeft: space.one,
+      paddingVertical: space.one,
     },
     sourcesButtonIcon: {
       color: theme.text.primary,
@@ -546,10 +548,10 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      marginTop: 4,
+      marginTop: space.one,
       minHeight: MESSAGE_ACTION_ROW_HEIGHT,
     },
     imagePressed: {
-      opacity: 0.9,
+      opacity: IMAGE_PRESSED_OPACITY,
     },
   });

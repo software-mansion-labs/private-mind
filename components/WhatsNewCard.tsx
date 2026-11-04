@@ -5,7 +5,7 @@ import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
-import { radius } from '../constants/design-system';
+import { radius, space } from '../constants/design-system';
 import { LATEST_RELEASE } from '../constants/latest-release';
 import { useSettingsStore } from '../store/settingsStore';
 import { Feedback } from '../utils/Feedback';
@@ -93,8 +93,8 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       backgroundColor: theme.bg.softTertiary,
       borderRadius: radius.eighteen,
-      padding: 16,
-      gap: 12,
+      padding: space.four,
+      gap: space.three,
     },
     header: {
       flexDirection: 'row',
@@ -111,7 +111,7 @@ const createStyles = (theme: Theme) =>
     headerTrailing: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
     },
     closeButton: {
       width: CLOSE_BUTTON_SIZE,
@@ -148,7 +148,7 @@ const createStyles = (theme: Theme) =>
     },
     row: {
       flexDirection: 'row',
-      gap: 8,
+      gap: space.two,
       alignItems: 'flex-start',
     },
     bullet: {

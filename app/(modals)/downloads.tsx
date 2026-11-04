@@ -7,33 +7,32 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
 import { useActiveDownloads } from '../../hooks/useActiveDownloads';
 import { Theme } from '../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useModelStore } from '../../store/modelStore';
 import { Model } from '../../database/modelRepository';
-import { Feedback } from '../../utils/Feedback';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
 } from '../../components/GlassScreenHeader';
 import RowGroup from '../../components/model-hub/RowGroup';
 import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
-import DownloadedModelRow from '../../components/model-hub/DownloadedModelRow';
-import DownloadingModelRow from '../../components/model-hub/DownloadingModelRow';
+import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
 import SectionHeader from '../../components/model-hub/SectionHeader';
 import { scrollIndicatorProps } from '../../constants/scroll-indicator';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 
 const DownloadsScreen = () => {
   const router = useRouter();
   const headerHeight = useGlassScreenHeaderHeight(true);
   const { styles } = useThemedStyles(createStyles, headerHeight);
-  const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
   const modelManagementSheetRef = useRef<BottomSheetModal<Model> | null>(null);
 
   const models = useModelStore((state) => state.models);
-  const cancelDownload = useModelStore((state) => state.cancelDownload);
   const downloading = useActiveDownloads();
   const onDevice = useMemo(
     () => models.filter((m) => m.isDownloaded && m.source !== 'local'),
@@ -41,10 +40,8 @@ const DownloadsScreen = () => {
   );
   const usedGB = onDevice.reduce((sum, m) => sum + (m.modelSize ?? 0), 0);
 
-  const handleCancel = async (model: Model) => {
-    Feedback.cancelDownload();
-    await cancelDownload(model);
-  };
+  const openModel = (model: Model) =>
+    modelManagementSheetRef.current?.present(model);
 
   return (
     <BottomSheetModalProvider>
@@ -58,13 +55,12 @@ const DownloadsScreen = () => {
             <View style={styles.section}>
               <SectionHeader title={`Downloading · ${downloading.length}`} />
               <RowGroup separatorInset={0}>
-                {downloading.map(({ model, progress, rate }) => (
-                  <DownloadingModelRow
+                {downloading.map(({ model }) => (
+                  <ModelDownloadRow
                     key={model.id}
                     model={model}
-                    progress={progress}
-                    rate={rate}
-                    onCancel={handleCancel}
+                    onPress={openModel}
+                    showFamilyTile
                   />
                 ))}
               </RowGroup>
@@ -78,11 +74,11 @@ const DownloadsScreen = () => {
             {onDevice.length > 0 ? (
               <RowGroup separatorInset={0}>
                 {onDevice.map((model) => (
-                  <DownloadedModelRow
+                  <ModelDownloadRow
                     key={model.id}
                     model={model}
-                    onDelete={deleteModelFiles}
-                    onPress={(m) => modelManagementSheetRef.current?.present(m)}
+                    onPress={openModel}
+                    showFamilyTile
                   />
                 ))}
               </RowGroup>
@@ -96,7 +92,6 @@ const DownloadsScreen = () => {
           onBack={() => router.back()}
           sheet
         />
-        {ConfirmElement}
         <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
       </View>
     </BottomSheetModalProvider>
@@ -129,9 +124,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       borderWidth: stroke.soft,
       borderStyle: 'dashed',
       borderColor: theme.border.soft,
-      fontFamily: fontFamily.regular,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryRegular,
       textAlign: 'center',
       color: theme.text.defaultTertiary,
     },

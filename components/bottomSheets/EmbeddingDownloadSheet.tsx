@@ -1,10 +1,5 @@
 import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -17,6 +12,7 @@ import {
   type EmbeddingModelStatus,
 } from '../../store/embeddingModelStore';
 import { embeddingModelDownloadSizeLabel } from '../../utils/embeddingModel';
+import { radius, space } from '../../constants/design-system';
 
 type DownloadContext = 'document' | 'web';
 
@@ -88,19 +84,6 @@ const EmbeddingDownloadSheet = ({
   const isDownloading = status === 'downloading';
   const isError = status === 'error';
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        pressBehavior="close"
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   const handleCancel = useCallback(
     () => bottomSheetModalRef.current?.dismiss(),
     [bottomSheetModalRef]
@@ -109,13 +92,9 @@ const EmbeddingDownloadSheet = ({
   return (
     <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
       enableDynamicSizing
       enablePanDownToClose
       onDismiss={onDismiss}
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
     >
       <BottomSheetView style={styles.sheet}>
         <Text style={styles.title}>{TITLES[context]}</Text>
@@ -153,26 +132,10 @@ export default EmbeddingDownloadSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sheet: {
-      paddingVertical: 24,
-      paddingHorizontal: 16,
+      paddingVertical: space.six,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
-      gap: 24,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 18,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 9999,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
+      gap: space.six,
       backgroundColor: theme.bg.softPrimary,
     },
     title: {
@@ -186,23 +149,23 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     buttonGroup: {
-      gap: 8,
+      gap: space.two,
     },
     progressRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: space.three,
     },
     progressBarContainer: {
       flex: 1,
       height: 8,
-      borderRadius: 9999,
+      borderRadius: radius.full,
       overflow: 'hidden',
       backgroundColor: theme.bg.softSecondary,
     },
     progressBar: {
       height: '100%',
-      borderRadius: 9999,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.strongPrimary,
     },
     progressText: {

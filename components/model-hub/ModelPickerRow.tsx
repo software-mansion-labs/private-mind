@@ -6,6 +6,8 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import PopoverRow from '../menu/PopoverRow';
 import { getModelFamily } from '../../utils/modelFamily';
+import { formatGB, joinMeta } from '../../utils/modelMeta';
+import { THINKING_LABEL, VISION_LABEL } from '../../constants/model-labels';
 import ModelFamilyTile from './ModelFamilyTile';
 import CheckIcon from '../../assets/icons/check.svg';
 
@@ -31,12 +33,10 @@ const ROW_SIZE = {
 export type ModelPickerRowSize = keyof typeof ROW_SIZE;
 
 const modelNote = (model: Model) =>
-  [
-    model.thinking ? 'Thinking' : model.vision ? 'Vision' : null,
-    model.modelSize ? `${model.modelSize.toFixed(2)} GB` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  joinMeta([
+    model.thinking ? THINKING_LABEL : model.vision ? VISION_LABEL : null,
+    model.modelSize ? formatGB(model.modelSize) : null,
+  ]);
 
 interface Props {
   model: Model;

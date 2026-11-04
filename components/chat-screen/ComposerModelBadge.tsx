@@ -8,9 +8,8 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Model } from '../../database/modelRepository';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, textStyles } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
 import { getModelFamily } from '../../utils/modelFamily';
@@ -24,6 +23,7 @@ const CHEVRON_WIDTH = 10;
 const CHEVRON_HEIGHT = 6;
 const ACCESSORY_SIZE = 14;
 const LOADER_SCALE = 0.65;
+const CHEVRON_OPACITY = 0.7;
 
 interface Props {
   model: Model;
@@ -107,9 +107,7 @@ const createStyles = (theme: Theme) =>
     },
     name: {
       flexShrink: 1,
-      fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
+      ...textStyles.bodySecondaryMedium,
       color: theme.text.onChatBar,
     },
     accessory: {
@@ -123,6 +121,6 @@ const createStyles = (theme: Theme) =>
     },
     chevron: {
       color: theme.text.onChatBar,
-      opacity: 0.7,
+      opacity: CHEVRON_OPACITY,
     },
   });

@@ -32,7 +32,7 @@ import ModelHubTabs, {
 } from '../../components/model-hub/ModelHubTabs';
 import FamilyCard from '../../components/model-hub/FamilyCard';
 import RowGroup from '../../components/model-hub/RowGroup';
-import ModelCard from '../../components/model-hub/ModelCard';
+import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
 import {
   groupModelsByFamily,
   orderFamiliesForDevice,
@@ -40,7 +40,7 @@ import {
   ModelFamily,
 } from '../../utils/modelFamily';
 import { isModelCompatible } from '../../utils/modelCompatibility';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, stroke } from '../../constants/design-system';
 import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -216,17 +216,15 @@ const ModelHubScreen = () => {
                 ? mineModels.length > 0 && (
                     <RowGroup separatorInset={0}>
                       {mineModels.map((model) => (
-                        <ModelCard
+                        <ModelDownloadRow
                           key={model.id}
                           model={model}
-                          compactView={false}
-                          variant="row"
-                          showFamilyIcon
+                          showFamilyTile
+                          matchFamilyCards
                           onPress={() =>
                             modelManagementSheetRef.current?.present(model)
                           }
                           wifiWarningSheetRef={wifiWarningSheetRef}
-                          showDeleteButton
                         />
                       ))}
                     </RowGroup>
@@ -315,8 +313,8 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 24,
-      padding: 16,
+      gap: space.six,
+      padding: space.four,
     },
     emptyIconWrapper: {
       backgroundColor: theme.bg.softSecondary,
@@ -324,11 +322,11 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       height: 64,
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: 9999,
+      borderRadius: radius.full,
     },
     emptyTextContainer: {
       alignItems: 'center',
-      gap: 8,
+      gap: space.two,
     },
     emptyTitle: {
       fontFamily: fontFamily.medium,
@@ -343,18 +341,18 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     storageFooter: {
       marginTop: space.two,
-      padding: 16,
-      borderWidth: 1,
+      padding: space.four,
+      borderWidth: stroke.soft,
       borderRadius: radius.eighteen,
       borderColor: theme.border.soft,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: space.three,
     },
     storageInfo: {
       flex: 1,
-      gap: 2,
+      gap: space.half,
     },
     storageTitle: {
       fontFamily: fontFamily.medium,

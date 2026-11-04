@@ -1,9 +1,5 @@
-import React, { RefObject, useCallback } from 'react';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
+import React, { RefObject } from 'react';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
 import { StyleSheet, Text, View } from 'react-native';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -11,6 +7,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
+import { space } from '../../constants/design-system';
 
 export interface WarningSheetData {
   title: string;
@@ -27,27 +24,11 @@ interface Props {
 const WarningSheet = ({ bottomSheetModalRef, onDismiss }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        style={styles.backdrop}
-      />
-    ),
-    [styles.backdrop]
-  );
-
   return (
     <BackDismissibleSheetModal
       ref={bottomSheetModalRef}
-      backdropComponent={renderBackdrop}
       enableDynamicSizing
       onDismiss={onDismiss}
-      handleStyle={styles.handleStyle}
-      handleIndicatorStyle={styles.handleIndicator}
-      backgroundStyle={styles.background}
     >
       {(props) => (
         <BottomSheetView style={styles.sheet}>
@@ -82,26 +63,10 @@ export default WarningSheet;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     sheet: {
-      paddingVertical: 24,
-      paddingHorizontal: 16,
+      paddingVertical: space.six,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
-      gap: 24,
-      backgroundColor: theme.bg.softPrimary,
-    },
-    backdrop: {
-      backgroundColor: theme.bg.overlay,
-    },
-    handleStyle: {
-      backgroundColor: theme.bg.softPrimary,
-      borderRadius: 16,
-    },
-    handleIndicator: {
-      width: 64,
-      height: 4,
-      borderRadius: 20,
-      backgroundColor: theme.text.primary,
-    },
-    background: {
+      gap: space.six,
       backgroundColor: theme.bg.softPrimary,
     },
     title: {
@@ -115,7 +80,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     buttonGroup: {
-      gap: 8,
+      gap: space.two,
     },
     downloadButton: {
       backgroundColor: theme.bg.errorPrimary,

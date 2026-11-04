@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -6,14 +6,23 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { DRAWER_ITEM_INSET } from '../../constants/drawer-layout';
 import { dimmedOpacity } from '../../styles/pressable';
+import { radius, space } from '../../constants/design-system';
 
 const CHAT_LABEL_FONT_SIZE = 15;
+
+export interface WindowRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 interface Props {
   label: string;
   active: boolean;
   onPress: () => void;
-  onLongPress?: () => void;
+  onLongPress?: (rect: WindowRect) => void;
+  highlighted?: boolean;
   icon?: React.ReactNode;
   testID?: string;
   hugContent?: boolean;
@@ -27,6 +36,7 @@ export const DrawerItem = memo(
     active,
     onPress,
     onLongPress,
+    highlighted,
     icon,
     testID,
     hugContent,
@@ -34,32 +44,42 @@ export const DrawerItem = memo(
     variant = 'nav',
   }: Props) => {
     const { styles } = useThemedStyles(createStyles);
+    const rowRef = useRef<View>(null);
+
+    const handleLongPress = onLongPress
+      ? () =>
+          rowRef.current?.measureInWindow((x, y, width, height) =>
+            onLongPress({ x, y, width, height })
+          )
+      : undefined;
 
     return (
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        testID={testID}
-        style={({ pressed }) => [
-          styles.item,
-          (active || pressed) && styles.activeBackground,
-        ]}
-      >
-        <View style={[styles.content, dimmed && dimmedOpacity]}>
-          {icon}
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.label,
-              variant === 'chat' && styles.chatLabel,
-              variant === 'chat' && active && styles.chatLabelActive,
-              hugContent && styles.labelHug,
-            ]}
-          >
-            {label}
-          </Text>
-        </View>
-      </Pressable>
+      <View ref={rowRef} collapsable={false}>
+        <Pressable
+          onPress={onPress}
+          onLongPress={handleLongPress}
+          testID={testID}
+          style={({ pressed }) => [
+            styles.item,
+            (active || highlighted || pressed) && styles.activeBackground,
+          ]}
+        >
+          <View style={[styles.content, dimmed && dimmedOpacity]}>
+            {icon}
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.label,
+                variant === 'chat' && styles.chatLabel,
+                variant === 'chat' && active && styles.chatLabelActive,
+                hugContent && styles.labelHug,
+              ]}
+            >
+              {label}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
     );
   }
 );
@@ -69,9 +89,9 @@ const createStyles = (theme: Theme) =>
     item: {
       minHeight: 44,
       justifyContent: 'center',
-      paddingVertical: 8,
+      paddingVertical: space.two,
       paddingHorizontal: DRAWER_ITEM_INSET,
-      borderRadius: 12,
+      borderRadius: radius.twelve,
     },
     activeBackground: {
       backgroundColor: theme.bg.softTertiary,
@@ -79,7 +99,7 @@ const createStyles = (theme: Theme) =>
     content: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: space.three,
     },
     label: {
       fontSize: fontSizes.md,

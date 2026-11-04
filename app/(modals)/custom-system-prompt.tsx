@@ -15,6 +15,7 @@ import { Theme } from '../../styles/colors';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Feedback } from '../../utils/Feedback';
 import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../../constants/settings';
+import { space } from '../../constants/design-system';
 
 export default function CustomSystemPromptScreen() {
   const router = useRouter();
@@ -109,22 +110,22 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     container: {
       flex: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
     },
     scrollView: {
       flex: 1,
     },
     scrollViewContent: {
-      gap: 24,
+      gap: space.six,
       paddingTop: headerHeight + 24,
-      paddingBottom: 24,
+      paddingBottom: space.six,
     },
     section: {
-      gap: 16,
+      gap: space.four,
     },
     labelGroup: {
-      gap: 4,
+      gap: space.one,
     },
     label: {
       fontSize: fontSizes.md,
