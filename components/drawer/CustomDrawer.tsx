@@ -5,6 +5,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import DrawerMenu from './DrawerMenu';
 import { DrawerSearchOverlay } from './DrawerSearchOverlay';
+import { useNewChatCollapse } from './useNewChatCollapse';
 import { Feedback } from '../../utils/Feedback';
 import {
   DrawerContentComponentProps,
@@ -25,6 +26,7 @@ const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
   const inputRef = useRef<TextInput | null>(null);
   const scrollOffsetRef = useRef(0);
   const collapsedScrollRef = useRef<ScrollView | null>(null);
+  const { newChatCollapse, trackScroll } = useNewChatCollapse();
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -99,6 +101,8 @@ const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
           scrollRef={collapsedScrollRef}
           scrollOffsetRef={scrollOffsetRef}
           resetScrollPosition={status === 'closed'}
+          newChatCollapse={newChatCollapse}
+          onListScroll={trackScroll}
         />
       </View>
 
@@ -110,6 +114,7 @@ const CustomDrawer = ({ navigation }: DrawerContentComponentProps) => {
         navHeight={navHeight}
         onNavMeasured={setNavHeight}
         scrollOffsetRef={scrollOffsetRef}
+        newChatCollapse={newChatCollapse}
         onChangeSearch={setSearch}
         onRequestClose={closeSearch}
         onSearchBlur={handleSearchBlur}

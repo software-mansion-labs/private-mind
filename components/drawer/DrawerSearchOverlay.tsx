@@ -10,6 +10,7 @@ import {
 import Animated, {
   Extrapolation,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import {
@@ -42,6 +43,7 @@ interface Props {
   onNavigate: () => void;
   inputRef: RefObject<TextInput | null>;
   scrollOffsetRef: RefObject<number>;
+  newChatCollapse?: SharedValue<number>;
 }
 
 export const DrawerSearchOverlay = ({
@@ -58,6 +60,7 @@ export const DrawerSearchOverlay = ({
   onNavigate,
   inputRef,
   scrollOffsetRef,
+  newChatCollapse,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const { width: screenWidth } = useWindowDimensions();
@@ -159,7 +162,7 @@ export const DrawerSearchOverlay = ({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
-              <DrawerFooter />
+              <DrawerFooter newChatCollapse={newChatCollapse} />
             </Animated.View>
           </Animated.View>
         </BottomSheetModalProvider>

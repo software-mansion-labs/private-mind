@@ -28,6 +28,8 @@ export const ANDROID_KEYBOARD_RETRY_DELAY = 400;
 
 export const SECTION_GAP = 20;
 
+export const NEW_CHAT_COLLAPSE_DURATION = 220;
+
 export const getDrawerWidth = (screenWidth: number) =>
   Math.max(screenWidth - DRAWER_EDGE_INSET, 0);
 

@@ -52,6 +52,8 @@ interface Props {
   scrollOffsetRef?: RefObject<number>;
   searchProgress?: SharedValue<number>;
   resetScrollPosition?: boolean;
+  newChatCollapse?: SharedValue<number>;
+  onListScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 }
 
 const DrawerMenu = ({
@@ -71,6 +73,8 @@ const DrawerMenu = ({
   scrollOffsetRef,
   searchProgress,
   resetScrollPosition,
+  newChatCollapse,
+  onListScroll,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = getDrawerHeaderHeight(theme.insets.top);
@@ -131,6 +135,7 @@ const DrawerMenu = ({
   }, [resetScrollPosition, scrollRef, scrollOffsetRef]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    onListScroll?.(event);
     if (!scrollOffsetRef || isFiltering) return;
     scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
   };
@@ -220,7 +225,10 @@ const DrawerMenu = ({
         <>
           <GlassScrollEdge edge="bottom" anchor={footerHeight} />
           <View style={styles.footer} onLayout={handleFooterLayout}>
-            <DrawerFooter onNavigate={onNavigate} />
+            <DrawerFooter
+              onNavigate={onNavigate}
+              newChatCollapse={newChatCollapse}
+            />
           </View>
         </>
       )}
