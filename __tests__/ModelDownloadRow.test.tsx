@@ -36,6 +36,7 @@ jest.mock('../store/modelStore', () => ({
 
 jest.mock('../utils/modelCompatibility', () => ({
   isModelCompatible: jest.fn(() => true),
+  incompatibilityLabel: jest.fn(() => 'Needs 8 GB RAM'),
 }));
 
 jest.mock('../utils/Feedback', () => ({
@@ -184,10 +185,10 @@ describe('display', () => {
     expect(screen.queryByTestId('model-family-tile')).toBeNull();
   });
 
-  it('shows Incompatible badge when model is not compatible', () => {
+  it('says how much RAM an incompatible model needs', () => {
     mockIsModelCompatible.mockReturnValue(false);
     renderRow();
-    expect(screen.getByTestId('model-badge-Incompatible')).toBeTruthy();
+    expect(screen.getByTestId('model-badge-Needs 8 GB RAM')).toBeTruthy();
   });
 
   it('shows Vision badge when model supports vision', () => {

@@ -7,6 +7,7 @@ import { ModelFamily, familyLabels } from '../../utils/modelFamily';
 import { FAMILY_SUMMARIES } from '../../constants/family-descriptions';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelBadge from './ModelBadge';
+import { incompatibilityLabel } from '../../utils/modelCompatibility';
 import DownloadedBadge from './DownloadedBadge';
 import ModelRow from './ModelRow';
 import ModelRowText from './ModelRowText';
@@ -77,7 +78,12 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
       <ModelRowText title={family.name} subtitle={summary} subtitleLines={1}>
         {(!runnable || labels.length > 0) && (
           <View style={styles.labels}>
-            {!runnable && <ModelBadge label="Incompatible" color="error" />}
+            {!runnable && (
+              <ModelBadge
+                label={incompatibilityLabel(family.models)}
+                color="error"
+              />
+            )}
             {labels.slice(0, MAX_LABELS).map((label) => (
               <ModelBadge key={label} label={label} />
             ))}

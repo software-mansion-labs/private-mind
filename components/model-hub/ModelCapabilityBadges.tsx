@@ -1,7 +1,10 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Model } from '../../database/modelRepository';
-import { isModelCompatible } from '../../utils/modelCompatibility';
+import {
+  incompatibilityLabel,
+  isModelCompatible,
+} from '../../utils/modelCompatibility';
 import {
   THINKING_LABEL,
   VISION_LABEL,
@@ -41,7 +44,9 @@ const ModelCapabilityBadges = ({
 
   return (
     <View style={[styles.badges, style]}>
-      {!isCompatible && <ModelBadge label="Incompatible" color="error" />}
+      {!isCompatible && (
+        <ModelBadge label={incompatibilityLabel([model])} color="error" />
+      )}
       {isCustom && <ModelBadge label="Custom" color="neutral" />}
       {model.thinking && <ModelBadge label={THINKING_LABEL} />}
       {model.vision && <ModelBadge label={VISION_LABEL} />}
