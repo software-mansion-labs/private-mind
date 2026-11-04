@@ -26,6 +26,8 @@ import {
 import { useConfirm } from '../../hooks/useConfirm';
 import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
+import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
+import { needsUpdate } from '../../utils/modelUpdate';
 import {
   THINKING_LABEL,
   VISION_LABEL,
@@ -171,6 +173,7 @@ const ModelCard = ({
     : isDownloading;
 
   const isCompatible = isModelCompatible(model);
+  const isOutdated = needsUpdate(model);
   const disabled = checkable
     ? !isCompatible
     : modelState !== ModelState.Downloaded && model.source === 'built-in';
@@ -182,7 +185,11 @@ const ModelCard = ({
     ? []
     : (model.labels ?? []).filter((label) => !isCapabilityLabel(label));
   const hasBadges =
-    !isCompatible || model.thinking || model.vision || labels.length > 0;
+    !isCompatible ||
+    isOutdated ||
+    model.thinking ||
+    model.vision ||
+    labels.length > 0;
 
   const isPickedDownloadRunning = downloadStatus === 'downloading';
   const canDownload =
@@ -284,6 +291,9 @@ const ModelCard = ({
               <View style={styles.badges}>
                 {!isCompatible && (
                   <ModelBadge label="Incompatible" color="error" />
+                )}
+                {isOutdated && (
+                  <ModelBadge label={MODEL_UPDATE_TEXT.badge} color="error" />
                 )}
                 {model.thinking && <ModelBadge label={THINKING_LABEL} />}
                 {model.vision && <ModelBadge label={VISION_LABEL} />}

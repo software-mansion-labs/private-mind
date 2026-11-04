@@ -74,6 +74,7 @@ jest.mock('../components/CircleButton', () => {
   );
 });
 
+import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import ModelCard from '../components/model-hub/ModelCard';
 import {
   useModelStore,
@@ -124,6 +125,7 @@ const baseModel: {
   thinking: boolean;
   vision?: boolean;
   labels: string[];
+  outdatedSources?: string[];
 } = {
   id: 1,
   modelName: 'Llama-3B',
@@ -206,6 +208,27 @@ describe('display', () => {
     mockIsModelCompatible.mockReturnValue(false);
     renderCard();
     expect(screen.getByTestId('model-badge-Incompatible')).toBeTruthy();
+  });
+
+  it('marks a downloaded model whose files predate the current engine', () => {
+    renderCard({
+      isDownloaded: true,
+      modelPath: 'https://hf.example/v0.11.0/model.pte',
+      outdatedSources: ['https://hf.example/v0.9.0/model.pte'],
+    });
+    expect(
+      screen.getByTestId(`model-badge-${MODEL_UPDATE_TEXT.badge}`)
+    ).toBeTruthy();
+  });
+
+  it('leaves a model on the current files without the update badge', () => {
+    renderCard({
+      isDownloaded: true,
+      modelPath: 'https://hf.example/v0.11.0/model.pte',
+    });
+    expect(
+      screen.queryByTestId(`model-badge-${MODEL_UPDATE_TEXT.badge}`)
+    ).toBeNull();
   });
 
   it('shows Vision badge when model supports vision', () => {
