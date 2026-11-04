@@ -9,12 +9,16 @@ import {
 } from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
+import DrawerEntrance from '../../components/drawer/DrawerEntrance';
 import { getDrawerWidth } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import WebScrapeSheet from '../../components/bottomSheets/WebScrapeSheet';
 import { WEB_SEARCH_ENABLED } from '../../constants/web';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+
+const DRAWER_BELOW_SCREEN = -1;
+const DRAWER_ABOVE_SCREEN = 3;
 
 const renderHeaderTitle = (props: ComponentProps<typeof HeaderTitle>) => (
   <HeaderTitle {...props} maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE} />
@@ -32,15 +36,19 @@ const DrawerLayout = () => {
     width: Math.round(
       interpolate(searchExpansion.get(), [0, 1], [drawerWidth, width])
     ),
+    zIndex:
+      searchExpansion.get() > 0 ? DRAWER_ABOVE_SCREEN : DRAWER_BELOW_SCREEN,
   }));
 
   const renderDrawerContent = useCallback(
     (props: DrawerContentComponentProps) => (
-      <CustomDrawer
-        {...props}
-        searchExpansion={searchExpansion}
-        onSearchingChange={setSearching}
-      />
+      <DrawerEntrance>
+        <CustomDrawer
+          {...props}
+          searchExpansion={searchExpansion}
+          onSearchingChange={setSearching}
+        />
+      </DrawerEntrance>
     ),
     [searchExpansion]
   );
@@ -54,10 +62,14 @@ const DrawerLayout = () => {
           swipeEnabled: !turnInFlight && !searching,
           swipeEdgeWidth: width,
           drawerStyle: [
-            { width: drawerWidth, overflow: 'hidden' },
+            {
+              width: drawerWidth,
+              overflow: 'hidden',
+              backgroundColor: theme.bg.softPrimary,
+            },
             expandingDrawerStyle as ViewStyle,
           ],
-          drawerType: 'slide',
+          drawerType: 'back',
           headerShadowVisible: false,
           headerShown: true,
           headerStyle: {
