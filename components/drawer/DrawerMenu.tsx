@@ -1,31 +1,46 @@
-import React, { RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Text,
   StyleSheet,
   View,
   TextInput,
   Platform,
-  LayoutChangeEvent,
+  useWindowDimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
-import { SharedValue } from 'react-native-reanimated';
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useChatStore } from '../../store/chatStore';
 import { useLLMStore } from '../../store/llmStore';
-import { chatLabel } from '../../utils/chatLabel';
-import { DrawerItem } from './DrawerItem';
+import { Chat } from '../../database/chatRepository';
+import { DrawerChatRow } from './DrawerChatRow';
+import { WindowRect } from './DrawerItem';
 import { DrawerTopBar } from './DrawerTopBar';
 import { DrawerNavSection } from './DrawerNavSection';
 import { DrawerEmptyState } from './DrawerEmptyState';
-import { DrawerFooter } from './DrawerFooter';
+import { DrawerFooterDock } from './DrawerFooterDock';
 import { GlassScrollEdge } from '../chat-screen/GlassScrollEdge';
 import { buildChatSections, sortChatsByRecency } from './chatSections';
 import { useChatMenu } from '../chat-menu/useChatMenu';
 import {
   DRAWER_HORIZONTAL_PADDING,
+  getDrawerFooterHeight,
+  getDrawerWidth,
   getDrawerHeaderHeight,
   getDrawerTopPadding,
   SECTION_GAP,
@@ -51,6 +66,8 @@ interface Props {
   scrollRef?: RefObject<ScrollView | null>;
   scrollOffsetRef?: RefObject<number>;
   searchProgress?: SharedValue<number>;
+  searchExpansion?: SharedValue<number>;
+  footerOpacity?: SharedValue<number>;
   resetScrollPosition?: boolean;
   newChatCollapse?: SharedValue<number>;
   onListScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -72,12 +89,23 @@ const DrawerMenu = ({
   scrollRef: externalScrollRef,
   scrollOffsetRef,
   searchProgress,
+  searchExpansion,
+  footerOpacity,
   resetScrollPosition,
   newChatCollapse,
   onListScroll,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const headerHeight = getDrawerHeaderHeight(theme.insets.top);
+  const footerHeight = getDrawerFooterHeight(theme.insets.bottom);
+  const { width: screenWidth } = useWindowDimensions();
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const collapsedExpansion = useSharedValue(0);
+  const expansion = searchExpansion ?? collapsedExpansion;
+
+  const listAreaStyle = useAnimatedStyle(() => ({
+    paddingBottom: expansion.get() > 0 ? -keyboardHeight.get() : 0,
+  }));
 
   const router = useRouter();
   const pathname = usePathname();
@@ -99,10 +127,6 @@ const DrawerMenu = ({
   );
 
   const hasNoResults = isFiltering && sections.length === 0;
-
-  const [footerHeight, setFooterHeight] = useState(0);
-  const handleFooterLayout = (event: LayoutChangeEvent) =>
-    setFooterHeight(event.nativeEvent.layout.height);
 
   const internalScrollRef = useRef<ScrollView>(null);
   const scrollRef = externalScrollRef ?? internalScrollRef;
@@ -148,64 +172,72 @@ const DrawerMenu = ({
     }
   };
 
-  const openChat = (chatId: number) => {
-    interrupt();
-    router.replace(`/chat/${chatId}`);
-    onNavigate?.();
-  };
+  const openChat = useCallback(
+    (chatId: number) => {
+      interrupt();
+      router.replace(`/chat/${chatId}`);
+      onNavigate?.();
+    },
+    [interrupt, router, onNavigate]
+  );
+
+  const openChatMenu = useCallback(
+    (chat: Chat, rect: WindowRect) =>
+      openMenu(chat, { ...rect, align: 'start' }),
+    [openMenu]
+  );
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        testID="drawer-scroll"
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.content,
-          searching
-            ? styles.contentSearching
-            : { paddingBottom: footerHeight + space.four },
-        ]}
-        contentOffset={initialContentOffset}
-        onScroll={handleScroll}
-        onContentSizeChange={handleContentSizeChange}
-        scrollEventThrottle={16}
-        keyboardShouldPersistTaps={hasNoResults ? 'always' : 'handled'}
-        {...scrollIndicatorProps(headerHeight, searching ? 0 : footerHeight)}
+      <Animated.View
+        testID="drawer-list-area"
+        style={[styles.listArea, listAreaStyle]}
       >
-        <DrawerNavSection
-          collapsed={isFiltering}
-          height={navHeight}
-          onMeasured={onNavMeasured}
-          onNavigate={onNavigate}
-        />
+        <ScrollView
+          ref={scrollRef}
+          testID="drawer-scroll"
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: footerHeight + space.four },
+          ]}
+          contentOffset={initialContentOffset}
+          onScroll={handleScroll}
+          onContentSizeChange={handleContentSizeChange}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps={hasNoResults ? 'always' : 'handled'}
+          {...scrollIndicatorProps(headerHeight, searching ? 0 : footerHeight)}
+        >
+          <DrawerNavSection
+            collapsed={isFiltering}
+            height={navHeight}
+            onMeasured={onNavMeasured}
+            onNavigate={onNavigate}
+          />
 
-        {sections.map(([sectionTitle, sectionChats]) => (
-          <View key={sectionTitle} style={styles.section}>
-            <Text style={styles.sectionTitle}>{sectionTitle}</Text>
-            <View>
-              {sectionChats.map((chat) => (
-                <DrawerItem
-                  key={chat.id}
-                  variant="chat"
-                  testID={`drawer-chat-${chat.id}`}
-                  label={chatLabel(chat)}
-                  active={pathname === `/chat/${chat.id}`}
-                  highlighted={openChatId === chat.id}
-                  onPress={() => openChat(chat.id)}
-                  onLongPress={(rect) =>
-                    openMenu(chat, { ...rect, align: 'start' })
-                  }
-                />
-              ))}
+          {sections.map(([sectionTitle, sectionChats]) => (
+            <View key={sectionTitle} style={styles.section}>
+              <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+              <View>
+                {sectionChats.map((chat) => (
+                  <DrawerChatRow
+                    key={chat.id}
+                    chat={chat}
+                    active={pathname === `/chat/${chat.id}`}
+                    highlighted={openChatId === chat.id}
+                    onOpen={openChat}
+                    onOpenMenu={openChatMenu}
+                  />
+                ))}
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
-        {hasNoResults && (
-          <DrawerEmptyState query={search.trim()} onNavigate={onNavigate} />
-        )}
-      </ScrollView>
+          {hasNoResults && (
+            <DrawerEmptyState query={search.trim()} onNavigate={onNavigate} />
+          )}
+        </ScrollView>
+      </Animated.View>
 
       <GlassScrollEdge anchor={headerHeight} />
       <View style={styles.topBar}>
@@ -218,27 +250,24 @@ const DrawerMenu = ({
           onBlur={onSearchBlur}
           inputRef={inputRef}
           progress={searchProgress}
+          expansion={searchExpansion}
         />
       </View>
 
-      {!searching && (
-        <>
-          <GlassScrollEdge edge="bottom" anchor={footerHeight} />
-          <View style={styles.footer} onLayout={handleFooterLayout}>
-            <DrawerFooter
-              onNavigate={onNavigate}
-              newChatCollapse={newChatCollapse}
-            />
-          </View>
-        </>
-      )}
+      <DrawerFooterDock
+        onNavigate={onNavigate}
+        newChatCollapse={newChatCollapse}
+        width={getDrawerWidth(screenWidth)}
+        opacity={footerOpacity}
+        hidden={searching}
+      />
 
       {MenuElements}
     </View>
   );
 };
 
-export default DrawerMenu;
+export default React.memo(DrawerMenu);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -253,6 +282,9 @@ const createStyles = (theme: Theme) =>
       paddingTop: getDrawerTopPadding(theme.insets.top),
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
     },
+    listArea: {
+      flex: 1,
+    },
     scrollView: {
       flex: 1,
     },
@@ -260,15 +292,6 @@ const createStyles = (theme: Theme) =>
       paddingTop: getDrawerHeaderHeight(theme.insets.top) + space.three,
       paddingBottom: space.four,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
-    },
-    footer: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    contentSearching: {
-      paddingBottom: theme.insets.bottom + 16,
     },
     section: {
       gap: space.half,

@@ -1,7 +1,12 @@
-import React, { ComponentProps } from 'react';
-import Drawer from 'expo-router/drawer';
-import { useWindowDimensions } from 'react-native';
+import React, { ComponentProps, useCallback, useState } from 'react';
+import Drawer, { DrawerContentComponentProps } from 'expo-router/drawer';
+import { useWindowDimensions, ViewStyle } from 'react-native';
 import { HeaderTitle } from 'expo-router/react-navigation';
+import {
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
 import { getDrawerWidth } from '../../constants/drawer-layout';
@@ -19,16 +24,39 @@ const DrawerLayout = () => {
   const { width } = useWindowDimensions();
   const { theme } = useTheme();
   const turnInFlight = useTurnInFlight();
+  const [searching, setSearching] = useState(false);
+  const searchExpansion = useSharedValue(0);
+  const drawerWidth = getDrawerWidth(width);
+
+  const expandingDrawerStyle = useAnimatedStyle(() => ({
+    width: Math.round(
+      interpolate(searchExpansion.get(), [0, 1], [drawerWidth, width])
+    ),
+  }));
+
+  const renderDrawerContent = useCallback(
+    (props: DrawerContentComponentProps) => (
+      <CustomDrawer
+        {...props}
+        searchExpansion={searchExpansion}
+        onSearchingChange={setSearching}
+      />
+    ),
+    [searchExpansion]
+  );
 
   return (
     <>
       <Drawer
-        drawerContent={(props) => <CustomDrawer {...props} />}
+        drawerContent={renderDrawerContent}
         screenOptions={{
           overlayColor: theme.bg.overlay,
-          swipeEnabled: !turnInFlight,
+          swipeEnabled: !turnInFlight && !searching,
           swipeEdgeWidth: width,
-          drawerStyle: { width: getDrawerWidth(width) },
+          drawerStyle: [
+            { width: drawerWidth, overflow: 'hidden' },
+            expandingDrawerStyle as ViewStyle,
+          ],
           drawerType: 'slide',
           headerShadowVisible: false,
           headerShown: true,

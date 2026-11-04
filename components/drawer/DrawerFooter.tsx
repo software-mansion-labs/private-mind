@@ -15,8 +15,11 @@ import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
 import SettingsIcon from '../../assets/icons/settings.svg';
 import {
-  DRAWER_HORIZONTAL_PADDING,
+  DRAWER_FOOTER_BUTTON_HEIGHT,
+  DRAWER_FOOTER_EDGE_GAP,
+  DRAWER_FOOTER_TOP_PADDING,
   DRAWER_ITEM_INSET,
+  getDrawerFooterBottomPadding,
 } from '../../constants/drawer-layout';
 import { radius, space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
@@ -24,13 +27,11 @@ import { useStartNewChat } from './useStartNewChat';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
 
-const FOOTER_BUTTON_HEIGHT = 44;
-const FOOTER_EDGE_GAP = DRAWER_HORIZONTAL_PADDING + DRAWER_ITEM_INSET;
 const NEW_CHAT_ICON_SIZE = 18;
 const NEW_CHAT_PADDING_LEFT = 14;
 const NEW_CHAT_PADDING_RIGHT = 18;
 const NEW_CHAT_COLLAPSED_PADDING =
-  (FOOTER_BUTTON_HEIGHT - NEW_CHAT_ICON_SIZE) / 2;
+  (DRAWER_FOOTER_BUTTON_HEIGHT - NEW_CHAT_ICON_SIZE) / 2;
 const NEW_CHAT_LABEL_GAP = space.two;
 const ESTIMATED_LABEL_WIDTH = 71;
 const LABEL_MEASURING_ROOM = 400;
@@ -142,13 +143,13 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: space.three,
-      paddingTop: space.three,
-      paddingBottom: Math.max(theme.insets.bottom, FOOTER_EDGE_GAP),
+      paddingTop: DRAWER_FOOTER_TOP_PADDING,
+      paddingBottom: getDrawerFooterBottomPadding(theme.insets.bottom),
       paddingLeft: DRAWER_ITEM_INSET,
-      paddingRight: FOOTER_EDGE_GAP,
+      paddingRight: DRAWER_FOOTER_EDGE_GAP,
     },
     newChat: {
-      height: FOOTER_BUTTON_HEIGHT,
+      height: DRAWER_FOOTER_BUTTON_HEIGHT,
       borderRadius: radius.full,
       backgroundColor: theme.bg.main,
     },
