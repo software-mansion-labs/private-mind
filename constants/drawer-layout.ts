@@ -2,6 +2,8 @@ export const DRAWER_EDGE_INSET = 56;
 
 export const DRAWER_TOP_SPACING = 12;
 
+export const DRAWER_SEARCH_BAR_HEIGHT = 44;
+
 export const DRAWER_HORIZONTAL_PADDING = 16;
 
 export const DRAWER_ITEM_INSET = 12;
@@ -31,3 +33,6 @@ export const getDrawerWidth = (screenWidth: number) =>
 
 export const getDrawerTopPadding = (topInset: number) =>
   topInset + DRAWER_TOP_SPACING;
+
+export const getDrawerHeaderHeight = (topInset: number) =>
+  getDrawerTopPadding(topInset) + DRAWER_SEARCH_BAR_HEIGHT;

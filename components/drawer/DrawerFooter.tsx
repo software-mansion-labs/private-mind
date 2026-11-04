@@ -16,8 +16,10 @@ import { radius, space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { useStartNewChat } from './useStartNewChat';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
+import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
 
 const FOOTER_BUTTON_HEIGHT = 44;
+const FOOTER_EDGE_GAP = DRAWER_HORIZONTAL_PADDING + DRAWER_ITEM_INSET;
 
 interface Props {
   onNavigate?: () => void;
@@ -40,18 +42,22 @@ export const DrawerFooter = ({ onNavigate }: Props) => {
 
   return (
     <View style={styles.footer}>
-      <Pressable
-        onPress={goToSettings}
-        testID="drawer-settings"
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        style={({ pressed }) => [
-          styles.settings,
-          (pressed || pathname === '/settings') && styles.settingsActive,
-        ]}
-      >
-        <SettingsIcon width={20} height={20} style={styles.settingsIcon} />
-      </Pressable>
+      <HeaderGlassButton edge="leading">
+        <Pressable
+          onPress={goToSettings}
+          testID="drawer-settings"
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          hitSlop={15}
+          style={({ pressed }) => [
+            headerGlassButtonFill,
+            pathname === '/settings' && styles.settingsActive,
+            pressed && pressedOpacity,
+          ]}
+        >
+          <SettingsIcon width={20} height={20} style={styles.settingsIcon} />
+        </Pressable>
+      </HeaderGlassButton>
 
       <Pressable
         onPress={startNewChat}
@@ -84,9 +90,9 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       gap: space.three,
       paddingTop: space.three,
-      paddingBottom: Math.max(theme.insets.bottom, 12),
-      paddingLeft: DRAWER_HORIZONTAL_PADDING,
-      paddingRight: DRAWER_HORIZONTAL_PADDING + DRAWER_ITEM_INSET,
+      paddingBottom: Math.max(theme.insets.bottom, FOOTER_EDGE_GAP),
+      paddingLeft: DRAWER_ITEM_INSET,
+      paddingRight: FOOTER_EDGE_GAP,
     },
     newChat: {
       flexShrink: 1,
@@ -107,13 +113,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.onBrand,
-    },
-    settings: {
-      width: FOOTER_BUTTON_HEIGHT,
-      height: FOOTER_BUTTON_HEIGHT,
-      borderRadius: radius.full,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     settingsActive: {
       backgroundColor: theme.bg.softTertiary,

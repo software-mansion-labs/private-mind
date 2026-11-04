@@ -12,6 +12,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
+import GlassSurface from '../GlassSurface';
 import SearchField, {
   SEARCH_ICON_SIZE,
   SearchFieldIcon,
@@ -19,6 +20,8 @@ import SearchField, {
 } from '../SearchField';
 import ArrowLeftIcon from '../../assets/icons/arrow-left.svg';
 import { space } from '../../constants/design-system';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+import { DRAWER_SEARCH_BAR_HEIGHT } from '../../constants/drawer-layout';
 
 const BACK_ICON_SIZE = 20;
 const ICON_FADE_OUT_END = 0.6;
@@ -100,26 +103,36 @@ export const DrawerTopBar = ({
   if (!searching) {
     return (
       <View style={styles.bar}>
-        <Pressable
-          onPress={onOpenSearch}
-          testID="drawer-search-open"
-          accessibilityRole="button"
-          accessibilityLabel="Search chats"
-          style={({ pressed }) => [styles.grow, pressed && pressedOpacity]}
-        >
-          <SearchFieldSurface>
-            <SearchFieldIcon />
-            <Text style={styles.placeholder}>{PLACEHOLDER}</Text>
-          </SearchFieldSurface>
-        </Pressable>
+        <GlassSurface interactive style={styles.glass}>
+          <Pressable
+            onPress={onOpenSearch}
+            testID="drawer-search-open"
+            accessibilityRole="button"
+            accessibilityLabel="Search chats"
+            style={({ pressed }) => [styles.grow, pressed && pressedOpacity]}
+          >
+            <SearchFieldSurface style={styles.clearSurface}>
+              <SearchFieldIcon />
+              <Text
+                style={styles.placeholder}
+                numberOfLines={1}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              >
+                {PLACEHOLDER}
+              </Text>
+            </SearchFieldSurface>
+          </Pressable>
+        </GlassSurface>
       </View>
     );
   }
 
   return (
     <View style={styles.bar}>
-      <View style={styles.grow}>
+      <GlassSurface interactive style={styles.glass}>
         <SearchField
+          surfaceStyle={styles.clearSurface}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
           inputRef={inputRef}
           value={search}
           onChangeText={onChangeSearch}
@@ -153,7 +166,7 @@ export const DrawerTopBar = ({
             </Pressable>
           }
         />
-      </View>
+      </GlassSurface>
     </View>
   );
 };
@@ -164,7 +177,15 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.two,
-      minHeight: 44,
+      height: DRAWER_SEARCH_BAR_HEIGHT,
+    },
+    glass: {
+      flex: 1,
+      height: DRAWER_SEARCH_BAR_HEIGHT,
+      borderRadius: DRAWER_SEARCH_BAR_HEIGHT / 2,
+    },
+    clearSurface: {
+      backgroundColor: 'transparent',
     },
     iconSlot: {
       width: SEARCH_ICON_SIZE,

@@ -6,7 +6,6 @@ import { Theme } from '../../styles/colors';
 import DrawerMenu from './DrawerMenu';
 import { DrawerSearchOverlay } from './DrawerSearchOverlay';
 import { Feedback } from '../../utils/Feedback';
-import { getDrawerTopPadding } from '../../constants/drawer-layout';
 import {
   DrawerContentComponentProps,
   useDrawerStatus,
@@ -129,7 +128,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.bg.softPrimary,
-      paddingTop: getDrawerTopPadding(theme.insets.top),
     },
     menu: {
       flex: 1,

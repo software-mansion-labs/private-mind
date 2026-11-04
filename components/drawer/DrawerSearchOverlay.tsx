@@ -24,10 +24,7 @@ import DrawerMenu from './DrawerMenu';
 import { DrawerFooter } from './DrawerFooter';
 import { useSearchOverlayAnimation } from './useSearchOverlayAnimation';
 import { useSearchInputFocus } from './useSearchInputFocus';
-import {
-  getDrawerTopPadding,
-  getDrawerWidth,
-} from '../../constants/drawer-layout';
+import { getDrawerWidth } from '../../constants/drawer-layout';
 
 const FOOTER_FADE_END = 0.4;
 
@@ -190,7 +187,6 @@ const createStyles = (theme: Theme) =>
       left: 0,
       overflow: 'hidden',
       backgroundColor: theme.bg.softPrimary,
-      paddingTop: getDrawerTopPadding(theme.insets.top),
     },
     panelContent: {
       flex: 1,

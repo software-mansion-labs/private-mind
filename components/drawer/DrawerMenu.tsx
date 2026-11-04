@@ -26,6 +26,8 @@ import { buildChatSections, sortChatsByRecency } from './chatSections';
 import { useChatMenu } from '../chat-menu/useChatMenu';
 import {
   DRAWER_HORIZONTAL_PADDING,
+  getDrawerHeaderHeight,
+  getDrawerTopPadding,
   SECTION_GAP,
 } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -70,7 +72,8 @@ const DrawerMenu = ({
   searchProgress,
   resetScrollPosition,
 }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
+  const headerHeight = getDrawerHeaderHeight(theme.insets.top);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -148,19 +151,6 @@ const DrawerMenu = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <DrawerTopBar
-          searching={searching}
-          search={search}
-          onChangeSearch={onChangeSearch}
-          onOpenSearch={onOpenSearch}
-          onCloseSearch={onCloseSearch}
-          onBlur={onSearchBlur}
-          inputRef={inputRef}
-          progress={searchProgress}
-        />
-      </View>
-
       <ScrollView
         ref={scrollRef}
         testID="drawer-scroll"
@@ -176,7 +166,7 @@ const DrawerMenu = ({
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps={hasNoResults ? 'always' : 'handled'}
-        {...scrollIndicatorProps(0, searching ? 0 : footerHeight)}
+        {...scrollIndicatorProps(headerHeight, searching ? 0 : footerHeight)}
       >
         <DrawerNavSection
           collapsed={isFiltering}
@@ -212,6 +202,20 @@ const DrawerMenu = ({
         )}
       </ScrollView>
 
+      <GlassScrollEdge anchor={headerHeight} />
+      <View style={styles.topBar}>
+        <DrawerTopBar
+          searching={searching}
+          search={search}
+          onChangeSearch={onChangeSearch}
+          onOpenSearch={onOpenSearch}
+          onCloseSearch={onCloseSearch}
+          onBlur={onSearchBlur}
+          inputRef={inputRef}
+          progress={searchProgress}
+        />
+      </View>
+
       {!searching && (
         <>
           <GlassScrollEdge edge="bottom" anchor={footerHeight} />
@@ -234,13 +238,18 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     topBar: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      paddingTop: getDrawerTopPadding(theme.insets.top),
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
     },
     scrollView: {
       flex: 1,
     },
     content: {
-      paddingTop: space.three,
+      paddingTop: getDrawerHeaderHeight(theme.insets.top) + space.three,
       paddingBottom: space.four,
       paddingHorizontal: DRAWER_HORIZONTAL_PADDING,
     },
