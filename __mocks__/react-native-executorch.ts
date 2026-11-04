@@ -1,4 +1,5 @@
 const makeModelConstants = (name: string) => ({
+  modelName: name,
   modelSource: `https://huggingface.co/mock/${name}/model.pte`,
   tokenizerSource: `https://huggingface.co/mock/${name}/tokenizer.json`,
   tokenizerConfigSource: `https://huggingface.co/mock/${name}/tokenizer_config.json`,
@@ -7,18 +8,21 @@ const makeModelConstants = (name: string) => ({
 export const QWEN3_0_6B_QUANTIZED = makeModelConstants('qwen3-0.6b-quantized');
 export const QWEN3_0_6B = makeModelConstants('qwen3-0.6b');
 export const QWEN3_1_7B = makeModelConstants('qwen3-1.7b');
-export const QWEN3_1_7B_QUANTIZED = makeModelConstants('qwen3-1.7b-quantized');
+export const QWEN3_1_7B_QUANTIZED = {
+  ...makeModelConstants('qwen3-1.7b-quantized'),
+  generationConfig: { temperature: 0.6, topP: 0.95 },
+};
 export const QWEN3_4B = makeModelConstants('qwen3-4b');
 export const QWEN3_4B_QUANTIZED = makeModelConstants('qwen3-4b-quantized');
 export const LLAMA3_2_1B = makeModelConstants('llama3.2-1b');
 export const LLAMA3_2_1B_QLORA = makeModelConstants('llama3.2-1b-qlora');
 export const LLAMA3_2_1B_SPINQUANT = makeModelConstants(
-  'llama3.2-1b-spinquant'
+  'llama-3.2-1b-spinquant'
 );
 export const LLAMA3_2_3B = makeModelConstants('llama3.2-3b');
 export const LLAMA3_2_3B_QLORA = makeModelConstants('llama3.2-3b-qlora');
 export const LLAMA3_2_3B_SPINQUANT = makeModelConstants(
-  'llama3.2-3b-spinquant'
+  'llama-3.2-3b-spinquant'
 );
 export const HAMMER2_1_0_5B = makeModelConstants('hammer2.1-0.5b');
 export const HAMMER2_1_0_5B_QUANTIZED = makeModelConstants(
