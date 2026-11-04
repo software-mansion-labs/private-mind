@@ -18,6 +18,7 @@ export type Model = {
   parameters?: number;
   modelSize?: number;
   systemPrompt?: string | null;
+  outdatedSources?: string[];
 };
 
 export const addModel = async (
@@ -137,14 +138,34 @@ const parseLabels = (raw: string | null): string[] | undefined => {
   }
 };
 
+const sourcesTheCatalogReplaced = (
+  model: RawModel,
+  defaults: Pick<
+    Model,
+    'modelPath' | 'tokenizerPath' | 'tokenizerConfigPath'
+  > | null
+): string[] => {
+  if (!defaults || model.isDownloaded !== 1) return [];
+  const pairs: [string, string][] = [
+    [model.modelPath, defaults.modelPath],
+    [model.tokenizerPath, defaults.tokenizerPath],
+    [model.tokenizerConfigPath, defaults.tokenizerConfigPath],
+  ];
+  return pairs
+    .filter(([stored, current]) => stored !== current)
+    .map(([stored]) => stored);
+};
+
 const hydrateModel = (model: RawModel): Model => {
   const defaults =
     model.source === 'built-in'
       ? getActiveCatalog().find((m) => m.modelName === model.modelName)
       : undefined;
+  const outdatedSources = sourcesTheCatalogReplaced(model, defaults ?? null);
 
   return {
     ...model,
+    ...(outdatedSources.length > 0 && { outdatedSources }),
     modelPath: defaults?.modelPath ?? model.modelPath,
     tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:

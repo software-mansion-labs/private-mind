@@ -19,6 +19,7 @@ import {
   type DownloadPhase,
 } from '../utils/downloadDiagnostics';
 import { RateSample, nextProgressRate } from '../utils/downloadEta';
+import { modelsNeedingUpdate, needsUpdate } from '../utils/modelUpdate';
 import {
   CANCEL_DEADLINE_MS,
   CANCEL_POLL_MS,
@@ -183,6 +184,8 @@ interface ModelStore {
   cancelDownload: (model: Model) => Promise<void>;
   removeModel: (modelId: number) => Promise<void>;
   removeModelFiles: (modelId: number) => Promise<void>;
+  updateOutdatedModel: (model: Model) => Promise<void>;
+  updateOutdatedModels: () => Promise<void>;
   editModel: (
     modelId: number,
     localTokenizerPath: string,
@@ -313,6 +316,21 @@ const sourcesNoOtherModelNeeds = (
   );
   return sources.filter((source) => !needed.has(source));
 };
+
+const outdatedSourcesNoOtherModelNeeds = (model: Model): string[] => {
+  const needed = new Set(
+    useModelStore
+      .getState()
+      .models.filter((other) => other.id !== model.id)
+      .flatMap((other) => [
+        ...(other.isDownloaded ? sourcesOf(other) : []),
+        ...(other.outdatedSources ?? []),
+      ])
+  );
+  return (model.outdatedSources ?? []).filter((source) => !needed.has(source));
+};
+
+let updatingOutdatedModels: Promise<void> | null = null;
 
 const runDownload = async (model: Model, attempt: DownloadAttempt) => {
   const isCurrent = () =>
@@ -562,6 +580,36 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     } catch (err) {
       console.error('Failed to remove model files:', err);
     }
+  },
+
+  updateOutdatedModel: async (model: Model) => {
+    if (!needsUpdate(model)) return;
+
+    await get().downloadModel(model);
+    const db = get().db;
+    if (!db) return;
+    if (get().downloadStates[model.id]?.status !== ModelState.Downloaded)
+      return;
+
+    const replaced = outdatedSourcesNoOtherModelNeeds(model);
+    await syncBuiltInModelPaths(db, model.id, model.modelName);
+    await get().loadModels();
+    await deleteRemoteResources(...replaced);
+  },
+
+  updateOutdatedModels: () => {
+    if (updatingOutdatedModels) return updatingOutdatedModels;
+    updatingOutdatedModels = (async () => {
+      try {
+        for (const { id } of modelsNeedingUpdate(get().models)) {
+          const model = get().getModelById(id);
+          if (model) await get().updateOutdatedModel(model);
+        }
+      } finally {
+        updatingOutdatedModels = null;
+      }
+    })();
+    return updatingOutdatedModels;
   },
 
   removeModel: async (modelId: number) => {
