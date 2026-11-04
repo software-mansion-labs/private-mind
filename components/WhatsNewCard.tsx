@@ -5,6 +5,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { LATEST_RELEASE } from '../constants/latest-release';
+import ModelUpdateNotice from './ModelUpdateNotice';
 
 const SCROLL_INDICATOR_GUTTER = 12;
 
@@ -35,6 +36,7 @@ const WhatsNewCard = () => {
           </View>
         ))}
       </ScrollView>
+      <ModelUpdateNotice />
     </View>
   );
 };
