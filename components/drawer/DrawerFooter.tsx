@@ -41,6 +41,19 @@ export const DrawerFooter = ({ onNavigate }: Props) => {
   return (
     <View style={styles.footer}>
       <Pressable
+        onPress={goToSettings}
+        testID="drawer-settings"
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        style={({ pressed }) => [
+          styles.settings,
+          (pressed || pathname === '/settings') && styles.settingsActive,
+        ]}
+      >
+        <SettingsIcon width={20} height={20} style={styles.settingsIcon} />
+      </Pressable>
+
+      <Pressable
         onPress={startNewChat}
         testID="drawer-new-chat"
         accessibilityRole="button"
@@ -59,19 +72,6 @@ export const DrawerFooter = ({ onNavigate }: Props) => {
           New chat
         </Text>
       </Pressable>
-
-      <Pressable
-        onPress={goToSettings}
-        testID="drawer-settings"
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        style={({ pressed }) => [
-          styles.settings,
-          (pressed || pathname === '/settings') && styles.settingsActive,
-        ]}
-      >
-        <SettingsIcon width={20} height={20} style={styles.settingsIcon} />
-      </Pressable>
     </View>
   );
 };
@@ -85,8 +85,8 @@ const createStyles = (theme: Theme) =>
       gap: space.three,
       paddingTop: space.three,
       paddingBottom: Math.max(theme.insets.bottom, 12),
-      paddingLeft: DRAWER_HORIZONTAL_PADDING + DRAWER_ITEM_INSET,
-      paddingRight: DRAWER_HORIZONTAL_PADDING,
+      paddingLeft: DRAWER_HORIZONTAL_PADDING,
+      paddingRight: DRAWER_HORIZONTAL_PADDING + DRAWER_ITEM_INSET,
     },
     newChat: {
       flexShrink: 1,
