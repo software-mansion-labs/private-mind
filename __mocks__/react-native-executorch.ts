@@ -121,3 +121,8 @@ export const ResourceFetcherUtils = {
   getFilenameFromUri: (uri: string): string =>
     actualResourceFetcherUtils().getFilenameFromUri(uri),
 };
+
+export const wrapAsync =
+  <Args extends unknown[], R>(fn: (...args: Args) => R) =>
+  async (...args: Args): Promise<R> =>
+    fn(...args);
