@@ -11,14 +11,23 @@ import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { space, textStyles } from '../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import ModelPickerRow from '../model-hub/ModelPickerRow';
 import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
 import { Feedback } from '../../utils/Feedback';
+import { DrawerItem } from '../drawer/DrawerItem';
+import CubeIcon from '../../assets/icons/cube.svg';
+import SearchOffIcon from '../../assets/icons/search-off.svg';
 
 const LIST_SNAP_POINTS = ['50%', '90%'];
+const ICON_CIRCLE_SIZE = 56;
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -45,6 +54,11 @@ const ModelSelectSheet = ({
       model.modelName.toLowerCase().includes(needle)
     );
   }, [downloadedModels, search]);
+
+  const goToModelHub = () => {
+    bottomSheetModalRef.current?.dismiss();
+    router.replace('/model-hub');
+  };
 
   return (
     <BackDismissibleSheetModal
@@ -81,13 +95,43 @@ const ModelSelectSheet = ({
             data={filteredModels}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ paddingBottom: theme.insets.bottom + 16 }}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={
+              <View style={styles.searchEmpty}>
+                <View style={styles.iconCircle}>
+                  <SearchOffIcon
+                    width={24}
+                    height={24}
+                    style={styles.iconCircleIcon}
+                  />
+                </View>
+                <Text style={styles.searchEmptyTitle}>
+                  No models match "{search}"
+                </Text>
+                <View style={styles.searchEmptyAction}>
+                  <DrawerItem
+                    icon={
+                      <CubeIcon
+                        width={18}
+                        height={18}
+                        style={styles.actionIcon}
+                      />
+                    }
+                    label="Manage models"
+                    testID="model-select-empty-manage-models"
+                    active={false}
+                    hugContent
+                    onPress={goToModelHub}
+                  />
+                </View>
+              </View>
+            }
             renderItem={({ item }) => (
               <ModelPickerRow
                 model={item}
                 current={item.id === currentModelId}
                 accessibilityRole="button"
                 testIDPrefix="model-select"
-                size="regular"
                 onPress={() => {
                   onModelPicked(item);
                   bottomSheetModalRef.current?.dismiss();
@@ -102,13 +146,7 @@ const ModelSelectSheet = ({
           <Text style={styles.subText}>
             To use Private Mind you need to have at least one model downloaded
           </Text>
-          <PrimaryButton
-            text="Download a Model"
-            onPress={() => {
-              bottomSheetModalRef.current?.dismiss();
-              router.replace('/model-hub');
-            }}
-          />
+          <PrimaryButton text="Download a Model" onPress={goToModelHub} />
         </BottomSheetView>
       )}
     </BackDismissibleSheetModal>
@@ -136,6 +174,40 @@ const createStyles = (theme: Theme) =>
     },
     title: {
       ...textStyles.titleSheet,
+      color: theme.text.primary,
+    },
+    searchEmpty: {
+      paddingHorizontal: space.six,
+      paddingVertical: space.ten,
+      alignItems: 'center',
+      gap: space.four,
+    },
+    iconCircle: {
+      width: ICON_CIRCLE_SIZE,
+      height: ICON_CIRCLE_SIZE,
+      borderRadius: radius.full,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.bg.tile,
+    },
+    iconCircleIcon: {
+      color: theme.text.defaultSecondary,
+    },
+    searchEmptyTitle: {
+      textAlign: 'center',
+      fontFamily: fontFamily.bold,
+      fontSize: fontSizes.md,
+      lineHeight: 22,
+      color: theme.text.primary,
+    },
+    searchEmptyAction: {
+      alignSelf: 'center',
+      overflow: 'hidden',
+      borderRadius: radius.twelve,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.soft,
+    },
+    actionIcon: {
       color: theme.text.primary,
     },
     subText: {

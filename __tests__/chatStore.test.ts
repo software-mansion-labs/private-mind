@@ -188,6 +188,24 @@ describe('setChatModel', () => {
     const other = useChatStore.getState().chats.find((c) => c.id === 2);
     expect(other?.modelId).toBe(1); // original modelId from mockChat
   });
+
+  it('switches the phantom chat to the picked model', async () => {
+    (chatRepository.setChatModel as jest.Mock).mockResolvedValue(undefined);
+    useChatStore.setState({
+      chats: [],
+      phantomChat: {
+        id: 99,
+        title: '',
+        modelId: 1,
+        lastUsed: 0,
+        enabledSources: [],
+      },
+    });
+
+    await useChatStore.getState().setChatModel(99, 7);
+
+    expect(useChatStore.getState().phantomChat?.modelId).toBe(7);
+  });
 });
 
 describe('forkChat', () => {
@@ -299,6 +317,16 @@ describe('initPhantomChat with model system prompt', () => {
 
     const phantom = useChatStore.getState().phantomChat;
     expect(phantom?.settings?.systemPrompt).toBe(modelPrompt);
+  });
+
+  it('starts on the model it was opened with', async () => {
+    (chatRepository.getChatSettings as jest.Mock).mockResolvedValue({});
+
+    await useChatStore
+      .getState()
+      .initPhantomChat(99, { id: 7 } as Partial<Model> as Model);
+
+    expect(useChatStore.getState().phantomChat?.modelId).toBe(7);
   });
 
   it('falls back to global default when model systemPrompt is null', async () => {
