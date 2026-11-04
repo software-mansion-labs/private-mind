@@ -202,3 +202,55 @@ describe('syncBuiltInModelPaths', () => {
     expect(runAsync).not.toHaveBeenCalled();
   });
 });
+
+describe('sources the catalog replaced after a download', () => {
+  const qwen = DEFAULT_MODELS.find((m) => m.modelName === 'Qwen 3 - 0.6B')!;
+  const rowFor = (overrides: Record<string, unknown>) => ({
+    id: 1,
+    modelName: qwen.modelName,
+    source: 'built-in',
+    isDownloaded: 1,
+    modelPath: qwen.modelPath,
+    tokenizerPath: qwen.tokenizerPath,
+    tokenizerConfigPath: qwen.tokenizerConfigPath,
+    featured: 0,
+    thinking: 0,
+    vision: 0,
+    labels: null,
+    parameters: null,
+    modelSize: null,
+    systemPrompt: null,
+    ...overrides,
+  });
+  const read = async (row: Record<string, unknown>) => {
+    const db: ModelReader = {
+      getAllAsync: jest.fn().mockResolvedValue([row]),
+    };
+    return (await getAllModels(db))[0]!;
+  };
+  const v09 = {
+    modelPath: 'https://hf.example/resolve/v0.9.0/qwen.pte',
+    tokenizerPath: 'https://hf.example/resolve/v0.9.0/tokenizer.json',
+  };
+
+  it('lists the files still on disk from the export a model was downloaded with', async () => {
+    const model = await read(rowFor(v09));
+
+    expect(model.modelPath).toBe(qwen.modelPath);
+    expect(model.outdatedSources).toEqual([v09.modelPath, v09.tokenizerPath]);
+  });
+
+  it('lists nothing when the download already matches the catalog', async () => {
+    expect((await read(rowFor({}))).outdatedSources).toBeUndefined();
+  });
+
+  it('lists nothing for a model that was never downloaded', async () => {
+    const model = await read(rowFor({ ...v09, isDownloaded: 0 }));
+    expect(model.outdatedSources).toBeUndefined();
+  });
+
+  it('lists nothing for a model the user added from their own link', async () => {
+    const model = await read(rowFor({ ...v09, source: 'remote' }));
+    expect(model.outdatedSources).toBeUndefined();
+  });
+});

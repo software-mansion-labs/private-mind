@@ -425,3 +425,86 @@ describe('a second download for the same model must not start while one is in fl
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('updating a model the catalog moved to a newer export', () => {
+  const mockSyncPaths = modelRepository.syncBuiltInModelPaths as jest.Mock;
+  const outdated = (
+    id: number,
+    outdatedSources: string[]
+  ): modelRepository.Model => ({
+    ...baseModel,
+    id,
+    modelName: `Model ${id}`,
+    source: 'built-in',
+    isDownloaded: true,
+    modelPath: `https://hf.example/v0.11.0/${id}/model.pte`,
+    tokenizerPath: `https://hf.example/v0.11.0/${id}/tokenizer.json`,
+    tokenizerConfigPath: `https://hf.example/v0.11.0/${id}/tokenizer_config.json`,
+    outdatedSources,
+  });
+
+  it('downloads the new export, records its paths and deletes the old files', async () => {
+    const model = outdated(1, ['old/model.pte', 'old/tokenizer.json']);
+    mockFetch.mockResolvedValue(['/local/file']);
+
+    await useModelStore.getState().updateOutdatedModel(model);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(Function),
+      model.modelPath
+    );
+    expect(mockSyncPaths).toHaveBeenCalledWith(mockDb, 1, 'Model 1');
+    expect(mockDeleteResources).toHaveBeenCalledWith(
+      'old/model.pte',
+      'old/tokenizer.json'
+    );
+  });
+
+  it('keeps the old files when the new export fails to download', async () => {
+    mockFetch.mockRejectedValue(new Error('network error'));
+
+    await useModelStore
+      .getState()
+      .updateOutdatedModel(outdated(1, ['old/model.pte']));
+
+    expect(mockSyncPaths).not.toHaveBeenCalled();
+    expect(mockDeleteResources).not.toHaveBeenCalled();
+  });
+
+  it('keeps an old file that a model still waiting for its update shares', async () => {
+    const waiting = outdated(2, ['old/shared-tokenizer.json']);
+    mockGetAllModels.mockResolvedValue([waiting]);
+    useModelStore.setState({ models: [waiting] });
+    mockFetch.mockResolvedValue(['/local/file']);
+
+    await useModelStore
+      .getState()
+      .updateOutdatedModel(
+        outdated(1, ['old/model.pte', 'old/shared-tokenizer.json'])
+      );
+
+    expect(mockDeleteResources).toHaveBeenCalledWith('old/model.pte');
+  });
+
+  it('updates every outdated model one after another', async () => {
+    const first = outdated(1, ['old/1.pte']);
+    const second = outdated(2, ['old/2.pte']);
+    const upToDate = { ...outdated(3, []), outdatedSources: undefined };
+    const models = [first, second, upToDate];
+    mockGetAllModels.mockResolvedValue(models);
+    useModelStore.setState({ models });
+    const started: string[] = [];
+    mockFetch.mockImplementation(async (_onProgress, source: string) => {
+      started.push(source);
+      return ['/local/file'];
+    });
+
+    await useModelStore.getState().updateOutdatedModels();
+
+    expect(started.filter((s) => s.endsWith('model.pte'))).toEqual([
+      first.modelPath,
+      second.modelPath,
+    ]);
+    expect(mockSyncPaths.mock.calls.map(([, id]) => id)).toEqual([1, 2]);
+  });
+});
