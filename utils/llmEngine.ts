@@ -207,7 +207,7 @@ export class LLMEngine {
     private readonly runner: LLMRunner,
     private readonly preprocessor: ChatPreprocessor,
     private readonly stopTokens: readonly string[],
-    private readonly imageSide: number,
+    private readonly imageSide: number | null,
     private readonly onToken: (token: string) => void
   ) {}
 
@@ -240,7 +240,7 @@ export class LLMEngine {
       runner,
       preprocessor,
       stopTokens,
-      imageSideFor(preprocessorConfig),
+      preprocessorConfig ? imageSideFor(preprocessorConfig) : null,
       onToken
     );
   }
@@ -327,7 +327,7 @@ export class LLMEngine {
     message: ExecutorchMessage
   ): Promise<ChatMessage> {
     const text = textOf(message.content);
-    if (!message.mediaPath) {
+    if (!message.mediaPath || this.imageSide === null) {
       return { role: message.role, content: text } as ChatMessage;
     }
     const decoded = await decodeImageRgba(message.mediaPath, this.imageSide);
