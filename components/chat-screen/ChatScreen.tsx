@@ -1,5 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, View } from 'react-native';
+import {
+  Keyboard,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from 'expo-router/react-navigation';
@@ -20,6 +25,7 @@ import { Chat, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
+import NewChatHero from './NewChatHero';
 import { TopFade, topFadeHeight } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
@@ -130,6 +136,15 @@ export default function ChatScreen({
       chatId,
       messageHistoryLength: messageHistory.length,
     });
+  const [speechInputOpen, setSpeechInputOpen] = useState(false);
+  const barHeight = useSharedValue(0);
+  const handleBarLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      barHeight.set(event.nativeEvent.layout.height);
+    },
+    [barHeight]
+  );
+
   const handleBarGrow = useCallback(() => {
     setTimeout(() => {
       messagesRef.current?.scrollToEndIfAtBottom();
@@ -322,7 +337,19 @@ export default function ChatScreen({
         />
       </View>
 
+      {isEmpty &&
+        model?.isDownloaded &&
+        !speechInputOpen &&
+        rootFrame.height > 0 && (
+          <NewChatHero
+            screenHeight={rootFrame.height}
+            barHeight={barHeight}
+            keyboardLift={keyboardLift}
+          />
+        )}
+
       <Animated.View
+        onLayout={handleBarLayout}
         style={[
           styles.chatBarSticky,
           rootFrame.height > 0 && {
@@ -354,6 +381,7 @@ export default function ChatScreen({
           onAttachmentSheetStateChange={setAttachmentSheetOpen}
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
+          onSpeechInputChange={setSpeechInputOpen}
         />
       </Animated.View>
 

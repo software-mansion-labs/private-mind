@@ -12,14 +12,15 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 import PromptSuggestions from '../components/chat-screen/PromptSuggestions';
+import { NEW_CHAT_HEADING } from '../constants/chat-screen';
 import {
   DEFAULT_PROMPT_SUGGESTIONS,
-  PROMPT_SUGGESTIONS_TEXT,
+  PROMPT_SUGGESTION_ROWS,
 } from '../constants/default-prompts';
 
 const firstPrompt = DEFAULT_PROMPT_SUGGESTIONS[0];
 
-describe('the suggested message cards', () => {
+describe('the suggested prompt rows', () => {
   it('hands the whole prompt to the composer when one is tapped', () => {
     const onSelectPrompt = jest.fn();
     render(<PromptSuggestions onSelectPrompt={onSelectPrompt} />);
@@ -29,53 +30,37 @@ describe('the suggested message cards', () => {
     expect(onSelectPrompt).toHaveBeenCalledWith(firstPrompt.prompt);
   });
 
-  it('reserves no line the prompt does not use', () => {
+  it('splits every prompt across two rows', () => {
+    expect(PROMPT_SUGGESTION_ROWS).toHaveLength(2);
+    expect(PROMPT_SUGGESTION_ROWS.flat()).toEqual(DEFAULT_PROMPT_SUGGESTIONS);
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
-    const flattened = StyleSheet.flatten(
-      screen.getByText(firstPrompt.prompt).props.style
-    ) as { height?: number };
-
-    expect(flattened.height).toBeUndefined();
+    expect(
+      screen.UNSAFE_getAllByType(require('react-native').ScrollView)
+    ).toHaveLength(2);
   });
 
-  it('keeps every card the height of the tallest one', () => {
+  it('shows titles only, but still reads the full prompt aloud', () => {
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
-    const row = screen.UNSAFE_getByType(
-      require('react-native').ScrollView
-    ).props;
-    const content = StyleSheet.flatten(row.contentContainerStyle) as {
-      alignItems?: string;
-    };
-
-    expect(content.alignItems).toBe('stretch');
+    expect(screen.queryByText(firstPrompt.prompt)).toBeNull();
+    expect(
+      screen.getByLabelText(`${firstPrompt.title}: ${firstPrompt.prompt}`)
+    ).toBeTruthy();
   });
-  it('heads the row with a centered question rather than a label', () => {
+
+  it('leaves the heading to the hero above the rows', () => {
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
-    const heading = screen.getByText(PROMPT_SUGGESTIONS_TEXT.title);
-    expect(PROMPT_SUGGESTIONS_TEXT.title).toBe('How can I help?');
-    expect(StyleSheet.flatten(heading.props.style)).toEqual(
-      expect.objectContaining({ textAlign: 'center' })
-    );
-    expect(screen.queryByText('Suggested messages')).toBeNull();
+    expect(screen.queryByText(NEW_CHAT_HEADING)).toBeNull();
   });
 
-  it('shows each prompt on a single line under its title', () => {
-    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
-
-    for (const suggestion of DEFAULT_PROMPT_SUGGESTIONS) {
-      expect(screen.getByText(suggestion.prompt).props.numberOfLines).toBe(1);
-    }
-  });
-
-  it('tints each card icon with its own label color', () => {
+  it('tints each pill icon with its own label color', () => {
     const { testTheme } = require('./helpers/renderWithTheme');
     const view = render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
-    const cards = screen.getAllByTestId('prompt-suggestion-card');
-    expect(cards).toHaveLength(DEFAULT_PROMPT_SUGGESTIONS.length);
+    const pills = screen.getAllByTestId('prompt-suggestion-pill');
+    expect(pills).toHaveLength(DEFAULT_PROMPT_SUGGESTIONS.length);
     const tiles = view.UNSAFE_root.findAll(
       (node) =>
         node.props.accessibilityElementsHidden === true &&
@@ -90,11 +75,11 @@ describe('the suggested message cards', () => {
     });
   });
 
-  it('holds every card title to one line, so no card outgrows the row', () => {
+  it('holds every title to one line, so no pill outgrows its row', () => {
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
-    const titles = screen.getAllByTestId('suggestion-title');
-    expect(titles.length).toBeGreaterThan(0);
-    titles.forEach((title) => expect(title.props.numberOfLines).toBe(1));
+    for (const suggestion of DEFAULT_PROMPT_SUGGESTIONS) {
+      expect(screen.getByText(suggestion.title).props.numberOfLines).toBe(1);
+    }
   });
 });

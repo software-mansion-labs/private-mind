@@ -101,6 +101,7 @@ interface Props {
   extraContentPadding: SharedValue<number>;
   onHeightChange?: (height: number) => void;
   onBarGrow?: () => void;
+  onSpeechInputChange?: (open: boolean) => void;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
@@ -124,6 +125,7 @@ const ChatBar = ({
   extraContentPadding,
   onHeightChange,
   onBarGrow,
+  onSpeechInputChange,
   thinkingEnabled,
   onThinkingToggle,
   webSearchEnabled,
@@ -552,6 +554,10 @@ const ChatBar = ({
 
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
+  useEffect(() => {
+    onSpeechInputChange?.(showSpeechInput);
+  }, [onSpeechInputChange, showSpeechInput]);
+
   const openSpeechInput = async () => {
     if (hasLoadingAttachment) {
       Toast.show({
@@ -785,7 +791,7 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: space.five,
+      marginBottom: space.four,
       gap: space.six,
     },
     content: {
