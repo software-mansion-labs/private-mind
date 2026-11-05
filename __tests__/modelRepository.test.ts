@@ -254,4 +254,8 @@ describe('sources the catalog replaced after a download', () => {
     expect(model.outdatedSources).toBeUndefined();
   });
 
+  it('reports the size of the files the catalog would download, not the stored one', async () => {
+    const model = await read(rowFor({ ...v09, modelSize: 0.94 }));
+    expect(model.modelSize).toBe(qwen.modelSize);
+  });
 });

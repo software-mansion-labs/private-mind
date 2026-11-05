@@ -170,6 +170,7 @@ const hydrateModel = (model: RawModel): Model => {
     tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:
       defaults?.tokenizerConfigPath ?? model.tokenizerConfigPath,
+    modelSize: defaults?.modelSize ?? model.modelSize,
     family: defaults?.family ?? model.family ?? undefined,
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,
