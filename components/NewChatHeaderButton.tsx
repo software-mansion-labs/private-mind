@@ -5,6 +5,7 @@ import ChatIcon from '../assets/icons/chat.svg';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
 import { pressedOpacity } from '../styles/pressable';
 import { useTurnInFlight } from '../hooks/useTurnInFlight';
 import { useSteadyFlag } from '../hooks/useSteadyFlag';
@@ -28,6 +29,7 @@ const NewChatHeaderButton = ({ noOp = false }: Props) => {
       showTurnInFlightNotice();
       return;
     }
+    useModelUpdateSheetStore.getState().enterNewChat();
     if (noOp) {
       useChatStore.getState().startBlankChat();
       return;

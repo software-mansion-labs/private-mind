@@ -4,7 +4,6 @@ import type { Model } from '../database/modelRepository';
 import { useChatStore } from '../store/chatStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';
-import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
 import { getNextChatId } from '../database/chatRepository';
 import { getLastUsedModelId, setLastUsedModelId } from './lastUsedModel';
 import type { ChatEntryAction } from '../constants/chat-route-params';
@@ -53,7 +52,6 @@ export const startPhantomChat = async (
   explicitModel?: Model,
   entryAction?: ChatEntryAction
 ) => {
-  useModelUpdateSheetStore.getState().enterNewChat();
   const { downloadedModels } = useModelStore.getState();
   if (!explicitModel && downloadedModels.length === 0) {
     router.replace('/');

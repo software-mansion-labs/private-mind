@@ -24,6 +24,7 @@ import { useChatStore } from '../../store/chatStore';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
+import { useModelUpdateSheetStore } from '../../store/modelUpdateSheetStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import WhatsNewCard from '../../components/WhatsNewCard';
@@ -89,6 +90,7 @@ export default function App() {
       hasAutoRedirectedRef.current = true;
       (async () => {
         try {
+          useModelUpdateSheetStore.getState().enterNewChat();
           await startPhantomChat(db, 'replace');
         } catch (error) {
           console.error(

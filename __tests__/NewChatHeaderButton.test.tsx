@@ -18,6 +18,7 @@ jest.mock('../utils/startPhantomChat', () => ({
 
 import NewChatHeaderButton from '../components/NewChatHeaderButton';
 import { useChatStore } from '../store/chatStore';
+import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
 
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
@@ -45,5 +46,14 @@ describe('NewChatHeaderButton', () => {
     const { getByTestId } = render(<NewChatHeaderButton noOp={true} />);
     fireEvent.press(getByTestId('new-chat-header-button'));
     expect(useChatStore.getState().phantomChatStarts).toBe(before + 1);
+  });
+
+  it('counts as entering a new chat for the update sheet, even on a chat that is already new', () => {
+    const before = useModelUpdateSheetStore.getState().newChatEntries;
+    const { getByTestId, rerender } = render(<NewChatHeaderButton />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    rerender(<NewChatHeaderButton noOp={true} />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    expect(useModelUpdateSheetStore.getState().newChatEntries).toBe(before + 2);
   });
 });
