@@ -52,6 +52,8 @@ import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import WhatsNewCard from '../WhatsNewCard';
+import ModelUpdateBanner from './ModelUpdateBanner';
+import { needsUpdate } from '../../utils/modelUpdate';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -600,6 +602,7 @@ const ChatBar = ({
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
+          {needsUpdate(model) && <ModelUpdateBanner model={model} />}
           <View style={styles.inputContainer}>
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}

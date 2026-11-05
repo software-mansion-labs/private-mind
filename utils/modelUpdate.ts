@@ -23,3 +23,11 @@ export const replacementsToDownload = (
 
 export const updateSizeGB = (models: Model[]): number =>
   models.reduce((total, model) => total + (model.modelSize ?? 0), 0);
+
+export const modelsToUpdate = (
+  models: Model[],
+  retired: RetiredModelNotice[]
+): Model[] => [
+  ...modelsNeedingUpdate(models),
+  ...replacementsToDownload(retired, models),
+];
