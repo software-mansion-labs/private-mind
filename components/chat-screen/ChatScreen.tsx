@@ -137,6 +137,7 @@ export default function ChatScreen({
       messageHistoryLength: messageHistory.length,
     });
   const [speechInputOpen, setSpeechInputOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const barHeight = useSharedValue(0);
   const handleBarLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -345,6 +346,7 @@ export default function ChatScreen({
             screenHeight={rootFrame.height}
             barHeight={barHeight}
             keyboardLift={keyboardLift}
+            onWhatsNewOpenChange={setWhatsNewOpen}
           />
         )}
 
@@ -382,6 +384,7 @@ export default function ChatScreen({
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
           onSpeechInputChange={setSpeechInputOpen}
+          promptsPaused={overlayOpen || whatsNewOpen}
         />
       </Animated.View>
 

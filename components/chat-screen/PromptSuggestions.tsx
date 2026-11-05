@@ -1,128 +1,87 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { ScrollView, Pressable } from 'react-native-gesture-handler';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AccessibilityInfo, AppState, StyleSheet, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { Theme } from '../../styles/colors';
-import { radius, space } from '../../constants/design-system';
-import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
-import {
-  PROMPT_SUGGESTION_ROWS,
-  type PromptSuggestion,
-} from '../../constants/default-prompts';
-import { pressedOpacity } from '../../styles/pressable';
-import { GUTTER } from './attachments/constants';
+import { space } from '../../constants/design-system';
+import { PROMPT_SUGGESTION_ROWS } from '../../constants/default-prompts';
+import DriftingPromptRow from './DriftingPromptRow';
+import type { DriftDirection } from './promptRowMotion';
 
-const PILL_HEIGHT = 44;
-const ICON_TILE_SIZE = 24;
-const ICON_SIZE = 14;
+const ROW_DIRECTIONS: readonly DriftDirection[] = [-1, 1];
+
+const useRowsRunning = (paused: boolean): boolean => {
+  const [focused, setFocused] = useState(true);
+  const [appActive, setAppActive] = useState(
+    AppState.currentState !== 'background'
+  );
+
+  const [screenReaderOn, setScreenReaderOn] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, [])
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      setAppActive(state === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isScreenReaderEnabled()
+      .then((enabled) => {
+        if (mounted) setScreenReaderOn(enabled);
+      })
+      .catch((error) => {
+        console.error('Failed to read the screen reader state:', error);
+      });
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setScreenReaderOn
+    );
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  return !paused && focused && appActive && !screenReaderOn;
+};
 
 interface Props {
   onSelectPrompt: (prompt: string) => void;
+  paused?: boolean;
 }
 
-const PromptSuggestions = ({ onSelectPrompt }: Props) => {
+const PromptSuggestions = ({ onSelectPrompt, paused = false }: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  const running = useRowsRunning(paused);
 
   return (
     <View style={styles.container}>
-      {PROMPT_SUGGESTION_ROWS.map((row) => (
-        <ScrollView
+      {PROMPT_SUGGESTION_ROWS.map((row, index) => (
+        <DriftingPromptRow
           key={row[0]!.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.row}
-          contentContainerStyle={styles.rowContent}
-        >
-          {row.map((suggestion) => (
-            <SuggestionPill
-              key={suggestion.id}
-              suggestion={suggestion}
-              onPress={() => onSelectPrompt(suggestion.prompt)}
-            />
-          ))}
-        </ScrollView>
+          suggestions={row}
+          direction={ROW_DIRECTIONS[index]!}
+          running={running}
+          onSelectPrompt={onSelectPrompt}
+        />
       ))}
     </View>
   );
 };
 
-interface PillProps {
-  suggestion: PromptSuggestion;
-  onPress: () => void;
-}
-
-const SuggestionPill = ({ suggestion, onPress }: PillProps) => {
-  const { styles, theme } = useThemedStyles(createStyles);
-  const { icon: Icon, tone } = suggestion;
-  const toneColors = theme.label[tone];
-
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${suggestion.title}: ${suggestion.prompt}`}
-      testID="prompt-suggestion-pill"
-    >
-      <View
-        style={[styles.iconTile, { backgroundColor: toneColors.background }]}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <Icon
-          width={ICON_SIZE}
-          height={ICON_SIZE}
-          style={{ color: toneColors.foreground }}
-        />
-      </View>
-      <Text
-        style={styles.title}
-        numberOfLines={1}
-        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-      >
-        {suggestion.title}
-      </Text>
-    </Pressable>
-  );
-};
-
 export default PromptSuggestions;
 
-const createStyles = (theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
       gap: space.two,
-    },
-    row: {
-      flexGrow: 0,
-      marginHorizontal: -GUTTER,
-    },
-    rowContent: {
-      gap: space.two,
-      paddingHorizontal: GUTTER,
-    },
-    pill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      minHeight: PILL_HEIGHT,
-      gap: space.two,
-      paddingLeft: space.twoHalf,
-      paddingRight: space.four,
-      borderRadius: radius.full,
-      backgroundColor: theme.bg.chatBar,
-    },
-    iconTile: {
-      width: ICON_TILE_SIZE,
-      height: ICON_TILE_SIZE,
-      borderRadius: radius.full,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    title: {
-      fontSize: fontSizes.sm,
-      lineHeight: lineHeights.sm,
-      fontFamily: fontFamily.medium,
-      color: theme.text.primary,
     },
   });

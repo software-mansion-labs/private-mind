@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
 import Animated, {
+  FadeOut,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -11,6 +12,7 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { NEW_CHAT_HEADING } from '../../constants/chat-screen';
 import WhatsNewBadge from '../WhatsNewBadge';
 import { GUTTER } from './attachments/constants';
+import { GRADIENT_EXIT_MS } from './gradientHandoff';
 
 const REST_BOTTOM_FRACTION = 0.405;
 const GAP_ABOVE_BAR = space.four;
@@ -24,9 +26,15 @@ interface Props {
   screenHeight: number;
   barHeight: SharedValue<number>;
   keyboardLift: SharedValue<number>;
+  onWhatsNewOpenChange?: (open: boolean) => void;
 }
 
-const NewChatHero = ({ screenHeight, barHeight, keyboardLift }: Props) => {
+const NewChatHero = ({
+  screenHeight,
+  barHeight,
+  keyboardLift,
+  onWhatsNewOpenChange,
+}: Props) => {
   const restBottom = screenHeight * REST_BOTTOM_FRACTION;
   const { styles } = useThemedStyles(createStyles, screenHeight - restBottom);
 
@@ -44,10 +52,11 @@ const NewChatHero = ({ screenHeight, barHeight, keyboardLift }: Props) => {
   return (
     <Animated.View
       style={[styles.container, pushStyle]}
+      exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
       pointerEvents="box-none"
       testID="new-chat-hero"
     >
-      <WhatsNewBadge />
+      <WhatsNewBadge onSheetOpenChange={onWhatsNewOpenChange} />
       <Text
         style={styles.heading}
         accessibilityRole="header"

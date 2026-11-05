@@ -12,9 +12,10 @@ import { LATEST_RELEASE } from '../../constants/latest-release';
 interface Props {
   ref?: Ref<BottomSheetModal | null>;
   version: string;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const WhatsNewSheet = ({ ref, version }: Props) => {
+const WhatsNewSheet = ({ ref, version, onOpenChange }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const ownRef = useRef<BottomSheetModal | null>(null);
 
@@ -26,6 +27,8 @@ const WhatsNewSheet = ({ ref, version }: Props) => {
         else if (ref) ref.current = sheet;
       }}
       enableDynamicSizing
+      onAnimate={(_fromIndex, toIndex) => onOpenChange?.(toIndex >= 0)}
+      onDismiss={() => onOpenChange?.(false)}
     >
       <BottomSheetScrollView
         contentContainerStyle={styles.content}

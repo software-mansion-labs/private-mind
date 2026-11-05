@@ -31,7 +31,11 @@ export const shouldOpenOnLaunch = (
   release.version === installedVersion &&
   seenVersion !== installedVersion;
 
-const WhatsNewBadge = () => {
+interface Props {
+  onSheetOpenChange?: (open: boolean) => void;
+}
+
+const WhatsNewBadge = ({ onSheetOpenChange }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const sheetRef = useRef<BottomSheetModal>(null);
   const seenVersion = useSettingsStore(
@@ -101,7 +105,11 @@ const WhatsNewBadge = () => {
           />
         </Pressable>
       )}
-      <WhatsNewSheet ref={sheetRef} version={installedVersion} />
+      <WhatsNewSheet
+        ref={sheetRef}
+        version={installedVersion}
+        onOpenChange={onSheetOpenChange}
+      />
     </>
   );
 };

@@ -1,14 +1,33 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
+import { AccessibilityInfo, AppState, StyleSheet } from 'react-native';
+import * as Reanimated from 'react-native-reanimated';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
 }));
 
+jest.mock('expo-router', () => ({
+  useFocusEffect: (effect: () => void) => {
+    require('react').useEffect(effect, [effect]);
+  },
+}));
+
 jest.mock('react-native-gesture-handler', () => {
-  const RN = require('react-native');
-  return { ScrollView: RN.ScrollView, Pressable: RN.Pressable };
+  const pan = new Proxy(
+    {},
+    { get: (_target, _name, receiver) => () => receiver }
+  );
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
+    Gesture: { Pan: () => pan },
+  };
 });
 
 import PromptSuggestions from '../components/chat-screen/PromptSuggestions';
@@ -19,6 +38,18 @@ import {
 } from '../constants/default-prompts';
 
 const firstPrompt = DEFAULT_PROMPT_SUGGESTIONS[0];
+
+const setActive = jest.fn();
+
+beforeEach(() => {
+  setActive.mockClear();
+  jest
+    .spyOn(Reanimated, 'useFrameCallback')
+    .mockReturnValue({ setActive, isActive: false, callbackId: 0 });
+  jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(false);
+});
+
+afterEach(() => jest.restoreAllMocks());
 
 describe('the suggested prompt rows', () => {
   it('hands the whole prompt to the composer when one is tapped', () => {
@@ -33,11 +64,6 @@ describe('the suggested prompt rows', () => {
   it('splits every prompt across two rows', () => {
     expect(PROMPT_SUGGESTION_ROWS).toHaveLength(2);
     expect(PROMPT_SUGGESTION_ROWS.flat()).toEqual(DEFAULT_PROMPT_SUGGESTIONS);
-    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
-
-    expect(
-      screen.UNSAFE_getAllByType(require('react-native').ScrollView)
-    ).toHaveLength(2);
   });
 
   it('shows titles only, but still reads the full prompt aloud', () => {
@@ -49,6 +75,19 @@ describe('the suggested prompt rows', () => {
     ).toBeTruthy();
   });
 
+  it('reads each prompt once, hiding the copies that make the loop', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    expect(screen.getAllByTestId('prompt-suggestion-pill')).toHaveLength(
+      DEFAULT_PROMPT_SUGGESTIONS.length
+    );
+    expect(
+      screen.getAllByTestId('prompt-suggestion-pill', {
+        includeHiddenElements: true,
+      })
+    ).toHaveLength(DEFAULT_PROMPT_SUGGESTIONS.length * 2);
+  });
+
   it('leaves the heading to the hero above the rows', () => {
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
@@ -57,16 +96,16 @@ describe('the suggested prompt rows', () => {
 
   it('tints each pill icon with its own label color', () => {
     const { testTheme } = require('./helpers/renderWithTheme');
-    const view = render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
-    const pills = screen.getAllByTestId('prompt-suggestion-pill');
-    expect(pills).toHaveLength(DEFAULT_PROMPT_SUGGESTIONS.length);
-    const tiles = view.UNSAFE_root.findAll(
-      (node) =>
-        node.props.accessibilityElementsHidden === true &&
-        typeof node.type === 'string'
-    );
-    DEFAULT_PROMPT_SUGGESTIONS.forEach((suggestion, i) => {
+    const tiles = screen.getAllByTestId('prompt-suggestion-tile', {
+      includeHiddenElements: true,
+    });
+    const eachPillInRowOrder = PROMPT_SUGGESTION_ROWS.flatMap((row) => [
+      ...row,
+      ...row,
+    ]);
+    eachPillInRowOrder.forEach((suggestion, i) => {
       expect(StyleSheet.flatten(tiles[i]!.props.style)).toEqual(
         expect.objectContaining({
           backgroundColor: testTheme.label[suggestion.tone].background,
@@ -81,5 +120,53 @@ describe('the suggested prompt rows', () => {
     for (const suggestion of DEFAULT_PROMPT_SUGGESTIONS) {
       expect(screen.getByText(suggestion.title).props.numberOfLines).toBe(1);
     }
+  });
+});
+
+describe('when the rows drift', () => {
+  it('drifts on an open chat', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    expect(setActive).toHaveBeenLastCalledWith(true);
+  });
+
+  it('stops while a sheet covers the rows', () => {
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} paused />);
+
+    expect(setActive).toHaveBeenLastCalledWith(false);
+  });
+
+  it('stays still with Reduce Motion on', () => {
+    jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(true);
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    expect(setActive).toHaveBeenLastCalledWith(false);
+  });
+
+  it('stays still for a screen reader, so its focus does not chase a pill', async () => {
+    jest
+      .spyOn(AccessibilityInfo, 'isScreenReaderEnabled')
+      .mockResolvedValue(true);
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    await waitFor(() => expect(setActive).toHaveBeenLastCalledWith(false));
+  });
+
+  it('stops in the background and resumes in the foreground', () => {
+    let notify: (state: string) => void = () => {};
+    jest.spyOn(AppState, 'addEventListener').mockImplementation(((
+      _type: string,
+      listener: (state: string) => void
+    ) => {
+      notify = listener;
+      return { remove: jest.fn() };
+    }) as never);
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    act(() => notify('background'));
+    expect(setActive).toHaveBeenLastCalledWith(false);
+
+    act(() => notify('active'));
+    expect(setActive).toHaveBeenLastCalledWith(true);
   });
 });

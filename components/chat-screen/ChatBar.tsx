@@ -54,6 +54,7 @@ import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
+import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -101,6 +102,7 @@ interface Props {
   onHeightChange?: (height: number) => void;
   onBarGrow?: () => void;
   onSpeechInputChange?: (open: boolean) => void;
+  promptsPaused?: boolean;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
@@ -125,6 +127,7 @@ const ChatBar = ({
   onHeightChange,
   onBarGrow,
   onSpeechInputChange,
+  promptsPaused = false,
   thinkingEnabled,
   onThinkingToggle,
   webSearchEnabled,
@@ -641,9 +644,15 @@ const ChatBar = ({
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
-            <View style={styles.suggestionsContainer}>
-              <PromptSuggestions onSelectPrompt={onSelectPrompt} />
-            </View>
+            <Animated.View
+              style={styles.suggestionsContainer}
+              exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
+            >
+              <PromptSuggestions
+                onSelectPrompt={onSelectPrompt}
+                paused={promptsPaused}
+              />
+            </Animated.View>
           )}
           <View style={styles.inputContainer}>
             <Animated.View
