@@ -27,6 +27,10 @@ import {
   replacementsToDownload,
   type RetiredModelNotice,
 } from '../utils/modelUpdate';
+import {
+  getRetiredModelNotices,
+  setRetiredModelNotices,
+} from '../utils/retiredModelNotices';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -549,14 +553,24 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   },
 
   discardRetiredModels: async (retired: RetiredModel[]) => {
-    if (retired.length === 0) return;
+    const remembered = await getRetiredModelNotices();
+    if (retired.length === 0) {
+      set({ retiredModels: remembered });
+      return;
+    }
     await deleteRemoteResources(...retired.flatMap((model) => model.sources));
-    set({
-      retiredModels: retired.map(({ modelName, replacement }) => ({
-        modelName,
-        replacement,
-      })),
-    });
+    const fresh = retired.map(({ modelName, replacement }) => ({
+      modelName,
+      replacement,
+    }));
+    const notices = [
+      ...remembered.filter(
+        (notice) => !fresh.some((f) => f.modelName === notice.modelName)
+      ),
+      ...fresh,
+    ];
+    await setRetiredModelNotices(notices);
+    set({ retiredModels: notices });
   },
 
   updateOutdatedModel: async (model: Model) => {

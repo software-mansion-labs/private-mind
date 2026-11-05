@@ -8,6 +8,7 @@ import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import { ModelState, useModelStore } from '../store/modelStore';
 import {
   modelsNeedingUpdate,
+  pendingRetiredNotices,
   replacementsToDownload,
   updateSizeGB,
 } from '../utils/modelUpdate';
@@ -26,7 +27,8 @@ const ModelUpdateNotice = () => {
     ...modelsNeedingUpdate(models),
     ...replacementsToDownload(retiredModels, models),
   ];
-  if (toDownload.length === 0 && retiredModels.length === 0) return null;
+  const notices = pendingRetiredNotices(retiredModels, models);
+  if (toDownload.length === 0) return null;
 
   const updating = toDownload.some(
     (model) => downloadStates[model.id]?.status === ModelState.Downloading
@@ -37,7 +39,7 @@ const ModelUpdateNotice = () => {
       {toDownload.length > 0 && (
         <Text style={styles.title}>{MODEL_UPDATE_TEXT.title}</Text>
       )}
-      {retiredModels.map(({ modelName, replacement }) => (
+      {notices.map(({ modelName, replacement }) => (
         <Text key={modelName} style={styles.body}>
           {MODEL_UPDATE_TEXT.retired(modelName, replacement)}
         </Text>
