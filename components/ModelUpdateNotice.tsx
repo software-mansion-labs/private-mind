@@ -6,42 +6,61 @@ import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { space } from '../constants/design-system';
 import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import { ModelState, useModelStore } from '../store/modelStore';
-import { modelsNeedingUpdate, updateSizeGB } from '../utils/modelUpdate';
+import {
+  modelsNeedingUpdate,
+  replacementsToDownload,
+  updateSizeGB,
+} from '../utils/modelUpdate';
 import PrimaryButton from './PrimaryButton';
 
 const ModelUpdateNotice = () => {
   const { styles } = useThemedStyles(createStyles);
   const models = useModelStore((state) => state.models);
+  const retiredModels = useModelStore((state) => state.retiredModels);
   const downloadStates = useModelStore((state) => state.downloadStates);
   const updateOutdatedModels = useModelStore(
     (state) => state.updateOutdatedModels
   );
 
-  const outdated = modelsNeedingUpdate(models);
-  if (outdated.length === 0) return null;
+  const toDownload = [
+    ...modelsNeedingUpdate(models),
+    ...replacementsToDownload(retiredModels, models),
+  ];
+  if (toDownload.length === 0 && retiredModels.length === 0) return null;
 
-  const updating = outdated.some(
+  const updating = toDownload.some(
     (model) => downloadStates[model.id]?.status === ModelState.Downloading
   );
 
   return (
     <View style={styles.container} testID="model-update-notice">
-      <Text style={styles.title}>{MODEL_UPDATE_TEXT.title}</Text>
-      <Text style={styles.body}>
-        {MODEL_UPDATE_TEXT.body(
-          outdated.length,
-          updateSizeGB(outdated, models)
-        )}
-      </Text>
-      <PrimaryButton
-        text={
-          updating
-            ? MODEL_UPDATE_TEXT.inProgress(outdated.length)
-            : MODEL_UPDATE_TEXT.action(outdated.length)
-        }
-        onPress={updateOutdatedModels}
-        disabled={updating}
-      />
+      {toDownload.length > 0 && (
+        <Text style={styles.title}>{MODEL_UPDATE_TEXT.title}</Text>
+      )}
+      {retiredModels.map(({ modelName, replacement }) => (
+        <Text key={modelName} style={styles.body}>
+          {MODEL_UPDATE_TEXT.retired(modelName, replacement)}
+        </Text>
+      ))}
+      {toDownload.length > 0 && (
+        <>
+          <Text style={styles.body}>
+            {MODEL_UPDATE_TEXT.body(
+              toDownload.length,
+              updateSizeGB(toDownload)
+            )}
+          </Text>
+          <PrimaryButton
+            text={
+              updating
+                ? MODEL_UPDATE_TEXT.inProgress(toDownload.length)
+                : MODEL_UPDATE_TEXT.action(toDownload.length)
+            }
+            onPress={updateOutdatedModels}
+            disabled={updating}
+          />
+        </>
+      )}
     </View>
   );
 };

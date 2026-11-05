@@ -1,5 +1,9 @@
 import { type Model } from '../database/modelRepository';
-import { updateSizeGB } from '../utils/modelUpdate';
+import {
+  needsUpdate,
+  replacementsToDownload,
+  updateSizeGB,
+} from '../utils/modelUpdate';
 
 const model = (id: number, overrides: Partial<Model>): Model => ({
   id,
@@ -12,22 +16,50 @@ const model = (id: number, overrides: Partial<Model>): Model => ({
   ...overrides,
 });
 
-describe('the size of an update', () => {
+describe('a model that needs its update', () => {
+  it('is a download whose files the catalog moved past', () => {
+    expect(needsUpdate(model(1, { outdatedSources: ['old.pte'] }))).toBe(true);
+  });
+
+  it('is not a model that was never downloaded', () => {
+    expect(
+      needsUpdate(
+        model(1, { isDownloaded: false, outdatedSources: ['old.pte'] })
+      )
+    ).toBe(false);
+  });
+});
+
+describe('the replacement of a removed model', () => {
   const spinQuant = model(8, {
-    modelName: 'SpinQuant',
-    modelSize: 1.09,
-    outdatedSources: ['old.pte'],
+    modelName: 'LLaMA 3.2 - 1B - SpinQuant',
+    isDownloaded: false,
   });
-  const qlora = model(7, { modelSize: 1.19, replacedBy: 'SpinQuant' });
+  const retired = [
+    {
+      modelName: 'LLaMA 3.2 - 1B - QLoRa',
+      replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+    },
+  ];
 
-  it('counts a replacement once when its retired model points to it too', () => {
-    expect(updateSizeGB([spinQuant, qlora], [spinQuant, qlora])).toBeCloseTo(
-      1.09
-    );
+  it('is offered for download while it is not on the phone', () => {
+    expect(replacementsToDownload(retired, [spinQuant])).toEqual([spinQuant]);
   });
 
-  it('counts nothing for a retired model whose replacement is already current', () => {
-    const current = { ...spinQuant, outdatedSources: undefined };
-    expect(updateSizeGB([qlora], [current, qlora])).toBe(0);
+  it('is not offered once it is downloaded', () => {
+    expect(
+      replacementsToDownload(retired, [{ ...spinQuant, isDownloaded: true }])
+    ).toEqual([]);
+  });
+});
+
+describe('the size of an update', () => {
+  it('adds up the files every listed model downloads', () => {
+    expect(
+      updateSizeGB([
+        model(1, { modelSize: 0.53 }),
+        model(2, { modelSize: 1.09 }),
+      ])
+    ).toBeCloseTo(1.62);
   });
 });

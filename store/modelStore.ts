@@ -9,7 +9,7 @@ import {
   updateModel,
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
-import { moveChatsToModel } from '../database/chatRepository';
+import { type RetiredModel } from '../database/db';
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
@@ -20,7 +20,12 @@ import {
   type DownloadPhase,
 } from '../utils/downloadDiagnostics';
 import { RateSample, nextProgressRate } from '../utils/downloadEta';
-import { modelsNeedingUpdate, needsUpdate } from '../utils/modelUpdate';
+import {
+  modelsNeedingUpdate,
+  needsUpdate,
+  replacementsToDownload,
+  type RetiredModelNotice,
+} from '../utils/modelUpdate';
 import {
   CANCEL_DEADLINE_MS,
   CANCEL_POLL_MS,
@@ -185,6 +190,8 @@ interface ModelStore {
   cancelDownload: (model: Model) => Promise<void>;
   removeModel: (modelId: number) => Promise<void>;
   removeModelFiles: (modelId: number) => Promise<void>;
+  retiredModels: RetiredModelNotice[];
+  discardRetiredModels: (retired: RetiredModel[]) => Promise<void>;
   updateOutdatedModel: (model: Model) => Promise<void>;
   updateOutdatedModels: () => Promise<void>;
   editModel: (
@@ -333,26 +340,6 @@ const outdatedSourcesNoOtherModelNeeds = (model: Model): string[] => {
 
 let updatingOutdatedModels: Promise<void> | null = null;
 
-const replaceRetiredModel = async (retired: Model, replacementName: string) => {
-  const store = useModelStore.getState();
-  const replacement = store.models.find((m) => m.modelName === replacementName);
-  if (!replacement || !store.db) return;
-
-  if (!replacement.isDownloaded) await store.downloadModel(replacement);
-  else if (needsUpdate(replacement))
-    await store.updateOutdatedModel(replacement);
-
-  const current = useModelStore.getState().getModelById(replacement.id);
-  if (!current?.isDownloaded || needsUpdate(current)) return;
-
-  await moveChatsToModel(store.db, retired.id, replacement.id);
-  await useModelStore.getState().removeModel(retired.id);
-  Toast.show({
-    type: 'defaultToast',
-    text1: `${retired.modelName} is no longer supported. Your chats now use ${replacement.modelName}.`,
-  });
-};
-
 const runDownload = async (model: Model, attempt: DownloadAttempt) => {
   const isCurrent = () =>
     attempts.get(model.id) === attempt && !attempt.cancelled;
@@ -487,6 +474,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   models: [],
   downloadedModels: [],
   downloadStates: {},
+  retiredModels: [],
 
   setDB: (db) => set({ db }),
 
@@ -603,12 +591,19 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     }
   },
 
+  discardRetiredModels: async (retired: RetiredModel[]) => {
+    if (retired.length === 0) return;
+    await deleteRemoteResources(...retired.flatMap((model) => model.sources));
+    set({
+      retiredModels: retired.map(({ modelName, replacement }) => ({
+        modelName,
+        replacement,
+      })),
+    });
+  },
+
   updateOutdatedModel: async (model: Model) => {
     if (!needsUpdate(model)) return;
-    if (model.replacedBy) {
-      await replaceRetiredModel(model, model.replacedBy);
-      return;
-    }
 
     await get().downloadModel(model);
     const db = get().db;
@@ -629,6 +624,13 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         for (const { id } of modelsNeedingUpdate(get().models)) {
           const model = get().getModelById(id);
           if (model) await get().updateOutdatedModel(model);
+        }
+        for (const { id } of replacementsToDownload(
+          get().retiredModels,
+          get().models
+        )) {
+          const model = get().getModelById(id);
+          if (model && !model.isDownloaded) await get().downloadModel(model);
         }
       } finally {
         updatingOutdatedModels = null;

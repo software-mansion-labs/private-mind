@@ -29,6 +29,7 @@ beforeEach(() => {
   useModelStore.setState({
     models: [],
     downloadStates: {},
+    retiredModels: [],
     updateOutdatedModels,
   });
 });
@@ -77,5 +78,63 @@ describe('the model update notice in What’s new', () => {
     fireEvent.press(screen.getByText(MODEL_UPDATE_TEXT.inProgress(2)));
 
     expect(updateOutdatedModels).not.toHaveBeenCalled();
+  });
+
+  describe('after a model the catalog retired was removed', () => {
+    const retiredModels = [
+      {
+        modelName: 'LLaMA 3.2 - 1B - QLoRa',
+        replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+      },
+    ];
+    const spinQuant = model(8, {
+      modelName: 'LLaMA 3.2 - 1B - SpinQuant',
+      isDownloaded: false,
+      outdatedSources: undefined,
+      modelSize: 1.09,
+    });
+
+    it('says the model was removed and offers its replacement', () => {
+      useModelStore.setState({ models: [spinQuant], retiredModels });
+
+      render(<ModelUpdateNotice />);
+
+      expect(
+        screen.getByText(
+          MODEL_UPDATE_TEXT.retired(
+            'LLaMA 3.2 - 1B - QLoRa',
+            'LLaMA 3.2 - 1B - SpinQuant'
+          )
+        )
+      ).toBeTruthy();
+      expect(screen.getByText(MODEL_UPDATE_TEXT.body(1, 1.09))).toBeTruthy();
+      expect(screen.getByText('Update 1 model')).toBeTruthy();
+    });
+
+    it('shows the update as running while the replacement downloads', () => {
+      useModelStore.setState({
+        models: [spinQuant],
+        retiredModels,
+        downloadStates: {
+          8: { status: ModelState.Downloading, progress: 0.3 },
+        },
+      });
+
+      render(<ModelUpdateNotice />);
+
+      expect(screen.getByText(MODEL_UPDATE_TEXT.inProgress(1))).toBeTruthy();
+    });
+
+    it('offers no download once the replacement is on the phone', () => {
+      useModelStore.setState({
+        models: [{ ...spinQuant, isDownloaded: true }],
+        retiredModels,
+      });
+
+      render(<ModelUpdateNotice />);
+
+      expect(screen.queryByText(MODEL_UPDATE_TEXT.title)).toBeNull();
+      expect(screen.queryByText('Update 1 model')).toBeNull();
+    });
   });
 });
