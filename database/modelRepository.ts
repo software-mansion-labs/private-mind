@@ -1,5 +1,6 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
 import { getActiveCatalog } from '../utils/modelCatalogState';
+import { runnerCanLoad } from '../constants/model-exports';
 
 export type Model = {
   id: number;
@@ -19,7 +20,14 @@ export type Model = {
   modelSize?: number;
   systemPrompt?: string | null;
   outdatedSources?: string[];
+  updateRequired?: boolean;
+  latestSources?: ModelSources;
 };
+
+export type ModelSources = Pick<
+  Model,
+  'modelPath' | 'tokenizerPath' | 'tokenizerConfigPath'
+>;
 
 export const addModel = async (
   db: SQLiteDatabase,
@@ -162,14 +170,30 @@ const hydrateModel = (model: RawModel): Model => {
       ? getActiveCatalog().find((m) => m.modelName === model.modelName)
       : undefined;
   const outdatedSources = sourcesTheCatalogReplaced(model, defaults ?? null);
-
-  return {
-    ...model,
-    ...(outdatedSources.length > 0 && { outdatedSources }),
+  const updateRequired = outdatedSources.some(
+    (source) => !runnerCanLoad(source)
+  );
+  const stored: ModelSources = {
+    modelPath: model.modelPath,
+    tokenizerPath: model.tokenizerPath,
+    tokenizerConfigPath: model.tokenizerConfigPath,
+  };
+  const latest: ModelSources = {
     modelPath: defaults?.modelPath ?? model.modelPath,
     tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:
       defaults?.tokenizerConfigPath ?? model.tokenizerConfigPath,
+  };
+  const keepsStoredFiles = outdatedSources.length > 0 && !updateRequired;
+
+  return {
+    ...model,
+    ...(outdatedSources.length > 0 && {
+      outdatedSources,
+      updateRequired,
+      latestSources: latest,
+    }),
+    ...(keepsStoredFiles ? stored : latest),
     modelSize: defaults?.modelSize ?? model.modelSize,
     family: defaults?.family ?? model.family ?? undefined,
     isDownloaded: model.isDownloaded === 1,

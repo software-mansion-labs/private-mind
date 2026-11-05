@@ -31,12 +31,12 @@ describe('checking the network before a model update', () => {
     const toast = jest.spyOn(Toast, 'show');
     const { result } = renderHook(() => useUpdateNetworkCheck());
 
-    let allowed = true;
+    let network: string | null = 'wifi';
     await act(async () => {
-      allowed = await result.current.canDownload(1.5);
+      network = await result.current.canDownload(1.5);
     });
 
-    expect(allowed).toBe(false);
+    expect(network).toBeNull();
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ text1: MODEL_UPDATE_TEXT.offline })
     );
@@ -47,12 +47,12 @@ describe('checking the network before a model update', () => {
     const alert = jest.spyOn(Alert, 'alert');
     const { result } = renderHook(() => useUpdateNetworkCheck());
 
-    let allowed = false;
+    let network: string | null = null;
     await act(async () => {
-      allowed = await result.current.canDownload(1.5);
+      network = await result.current.canDownload(1.5);
     });
 
-    expect(allowed).toBe(true);
+    expect(network).toBe('wifi');
     expect(alert).not.toHaveBeenCalled();
   });
 
@@ -61,12 +61,12 @@ describe('checking the network before a model update', () => {
     const alert = answerAlert(true);
     const { result } = renderHook(() => useUpdateNetworkCheck());
 
-    let allowed = false;
+    let network: string | null = null;
     await act(async () => {
-      allowed = await result.current.canDownload(5.4);
+      network = await result.current.canDownload(5.4);
     });
 
-    expect(allowed).toBe(true);
+    expect(network).toBe('mobile-data');
     expect(alert).toHaveBeenCalledWith(
       MODEL_UPDATE_TEXT.mobileDataTitle,
       MODEL_UPDATE_TEXT.mobileDataMessage(5.4),
@@ -79,11 +79,11 @@ describe('checking the network before a model update', () => {
     answerAlert(false);
     const { result } = renderHook(() => useUpdateNetworkCheck());
 
-    let allowed = true;
+    let network: string | null = 'wifi';
     await act(async () => {
-      allowed = await result.current.canDownload(5.4);
+      network = await result.current.canDownload(5.4);
     });
 
-    expect(allowed).toBe(false);
+    expect(network).toBeNull();
   });
 });

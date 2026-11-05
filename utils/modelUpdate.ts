@@ -11,6 +11,9 @@ export const needsUpdate = (model: Model): boolean =>
   (model.outdatedSources?.length ?? 0) > 0 &&
   isModelCompatible(model);
 
+export const requiresUpdate = (model: Model): boolean =>
+  needsUpdate(model) && model.updateRequired === true;
+
 export const modelsNeedingUpdate = (models: Model[]): Model[] =>
   models.filter(needsUpdate);
 
@@ -37,10 +40,16 @@ export const pendingRetiredNotices = (
 export const updateSizeGB = (models: Model[]): number =>
   models.reduce((total, model) => total + (model.modelSize ?? 0), 0);
 
-export const modelsToUpdate = (
+export const requiredUpdates = (
   models: Model[],
   retired: RetiredModelNotice[]
 ): Model[] => [
-  ...modelsNeedingUpdate(models),
+  ...models.filter(requiresUpdate),
   ...replacementsToDownload(retired, models),
 ];
+
+export const notYetConsented = (
+  updates: Model[],
+  consentedNames: string[]
+): Model[] =>
+  updates.filter((model) => !consentedNames.includes(model.modelName));

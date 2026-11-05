@@ -10,7 +10,6 @@ import { LATEST_RELEASE } from '../constants/latest-release';
 import { useSettingsStore } from '../store/settingsStore';
 import { Feedback } from '../utils/Feedback';
 import CloseIcon from '../assets/icons/cross-small.svg';
-import ModelUpdateNotice from './ModelUpdateNotice';
 
 const CLOSE_BUTTON_SIZE = 24;
 const CLOSE_ICON_SIZE = 16;
@@ -82,7 +81,6 @@ const WhatsNewCard = () => {
             </View>
           ))}
         </View>
-        <ModelUpdateNotice />
       </ScrollView>
     </Animated.View>
   );

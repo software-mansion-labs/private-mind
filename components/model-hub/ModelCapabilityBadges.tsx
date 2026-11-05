@@ -51,9 +51,12 @@ const ModelCapabilityBadges = ({
       {!isCompatible && (
         <ModelBadge label={incompatibilityLabel([model])} color="error" />
       )}
-      {isOutdated && (
-        <ModelBadge label={MODEL_UPDATE_TEXT.badge} color="error" />
-      )}
+      {isOutdated &&
+        (model.updateRequired ? (
+          <ModelBadge label={MODEL_UPDATE_TEXT.badge} color="error" />
+        ) : (
+          <ModelBadge label={MODEL_UPDATE_TEXT.optionalBadge} color="neutral" />
+        ))}
       {isCustom && <ModelBadge label="Custom" color="neutral" />}
       {model.thinking && <ModelBadge label={THINKING_LABEL} />}
       {model.vision && <ModelBadge label={VISION_LABEL} />}
