@@ -13,6 +13,7 @@ import {
   updateSizeGB,
 } from '../utils/modelUpdate';
 import PrimaryButton from './PrimaryButton';
+import { useUpdateNetworkCheck } from '../hooks/useUpdateNetworkCheck';
 
 const ModelUpdateNotice = () => {
   const { styles } = useThemedStyles(createStyles);
@@ -23,12 +24,18 @@ const ModelUpdateNotice = () => {
     (state) => state.updateOutdatedModels
   );
 
+  const { canDownload, ConfirmElement } = useUpdateNetworkCheck();
+
   const toDownload = [
     ...modelsNeedingUpdate(models),
     ...replacementsToDownload(retiredModels, models),
   ];
   const notices = pendingRetiredNotices(retiredModels, models);
   if (toDownload.length === 0) return null;
+
+  const handleUpdate = async () => {
+    if (await canDownload(updateSizeGB(toDownload))) updateOutdatedModels();
+  };
 
   const updating = toDownload.some(
     (model) => downloadStates[model.id]?.status === ModelState.Downloading
@@ -58,11 +65,12 @@ const ModelUpdateNotice = () => {
                 ? MODEL_UPDATE_TEXT.inProgress(toDownload.length)
                 : MODEL_UPDATE_TEXT.action(toDownload.length)
             }
-            onPress={updateOutdatedModels}
+            onPress={handleUpdate}
             disabled={updating}
           />
         </>
       )}
+      {ConfirmElement}
     </View>
   );
 };

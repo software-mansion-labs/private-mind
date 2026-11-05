@@ -8,6 +8,7 @@ import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { pressedOpacity } from '../../styles/pressable';
+import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
 
 interface Props {
   model: Model;
@@ -22,9 +23,13 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
   );
   const downloadModel = useModelStore((state) => state.downloadModel);
   const updating = download?.status === ModelState.Downloading;
+  const { canDownload, ConfirmElement } = useUpdateNetworkCheck();
 
-  const handleUpdate = () =>
-    replaces ? downloadModel(model) : updateOutdatedModel(model);
+  const handleUpdate = async () => {
+    if (!(await canDownload(model.modelSize ?? 0))) return;
+    if (replaces) downloadModel(model);
+    else updateOutdatedModel(model);
+  };
 
   return (
     <View style={styles.banner} testID="model-update-banner">
@@ -47,6 +52,7 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
               : MODEL_UPDATE_TEXT.chatBannerAction}
         </Text>
       </Pressable>
+      {ConfirmElement}
     </View>
   );
 };

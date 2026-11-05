@@ -6,6 +6,13 @@ import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import { type Model } from '../database/modelRepository';
 import { ModelState, useModelStore } from '../store/modelStore';
 
+jest.mock('../hooks/useUpdateNetworkCheck', () => ({
+  useUpdateNetworkCheck: () => ({
+    canDownload: () => Promise.resolve(true),
+    ConfirmElement: null,
+  }),
+}));
+
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
 }));
