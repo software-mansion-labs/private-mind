@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SQLiteProvider } from 'expo-sqlite';
 import { initDatabase } from '../database/db';
+import ModelUpdatePrompt from '../components/ModelUpdatePrompt';
 import {
   useFonts,
   DMSans_400Regular,
@@ -150,7 +151,9 @@ export default function Layout() {
             <VectorStoreProvider>
               <KeyboardProvider>
                 <BottomSheetModalProvider>
-                  <RootNavigator />
+                  <ModelUpdatePrompt>
+                    <RootNavigator />
+                  </ModelUpdatePrompt>
                   {Platform.OS === 'android' && <ThemedStatusBar />}
                 </BottomSheetModalProvider>
                 <AppToast />
