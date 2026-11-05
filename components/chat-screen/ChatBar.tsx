@@ -54,7 +54,6 @@ import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
-import WhatsNewCard from '../WhatsNewCard';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -643,7 +642,6 @@ const ChatBar = ({
         <>
           {!hasMessages && (
             <View style={styles.suggestionsContainer}>
-              <WhatsNewCard />
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
@@ -792,7 +790,6 @@ const createStyles = (theme: Theme) =>
     suggestionsContainer: {
       flexShrink: 1,
       marginBottom: space.four,
-      gap: space.six,
     },
     content: {
       flexDirection: 'row',

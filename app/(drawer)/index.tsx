@@ -25,7 +25,7 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
-import WhatsNewCard from '../../components/WhatsNewCard';
+import WhatsNewBadge from '../../components/WhatsNewBadge';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
 import { radius, space } from '../../constants/design-system';
@@ -111,7 +111,7 @@ export default function App() {
               source={require('../../assets/icons/icon.png')}
               style={styles.icon}
             />
-            <WhatsNewCard />
+            <WhatsNewBadge />
             <View style={styles.buttonGroup}>
               <PrimaryButton
                 text="Choose a model"

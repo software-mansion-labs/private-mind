@@ -9,6 +9,7 @@ import { Theme } from '../../styles/colors';
 import { space, textStyles } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { NEW_CHAT_HEADING } from '../../constants/chat-screen';
+import WhatsNewBadge from '../WhatsNewBadge';
 import { GUTTER } from './attachments/constants';
 
 const REST_BOTTOM_FRACTION = 0.405;
@@ -46,6 +47,7 @@ const NewChatHero = ({ screenHeight, barHeight, keyboardLift }: Props) => {
       pointerEvents="box-none"
       testID="new-chat-hero"
     >
+      <WhatsNewBadge />
       <Text
         style={styles.heading}
         accessibilityRole="header"

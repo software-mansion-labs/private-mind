@@ -15,6 +15,8 @@ import { Theme } from '../../styles/colors';
 import OnboardingIntroPanel from '../../components/onboarding/OnboardingIntroPanel';
 import OnboardingCarousel from '../../components/onboarding/OnboardingCarousel';
 import { markOnboardingComplete } from '../../utils/onboardingStatus';
+import { useSettingsStore } from '../../store/settingsStore';
+import { currentAppVersion } from '../../utils/appVersion';
 import { Feedback } from '../../utils/Feedback';
 import { EMPHASIZED_DECELERATE } from '../../constants/motion';
 import { INTRO_FADE_MS, INTRO_LIFT } from '../../constants/onboarding';
@@ -33,6 +35,7 @@ function OnboardingScreen() {
 
   const leaveOnboarding = useCallback(() => {
     markOnboardingComplete();
+    useSettingsStore.getState().dismissWhatsNew(currentAppVersion());
     router.replace('/(modals)/select-starting-model');
   }, [router]);
 
