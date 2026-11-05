@@ -35,6 +35,7 @@ import { type Message as ExecutorchMessage } from 'react-native-executorch/legac
 import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
+import { needsUpdate } from '../utils/modelUpdate';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
@@ -459,6 +460,9 @@ const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
 export const modelLoadFailedCopy = (modelName: string) =>
   `${modelName} could not be loaded. Try again or pick another model.`;
 
+export const modelNeedsUpdateCopy = (modelName: string) =>
+  `${modelName} needs a one-time update. Connect to the internet and tap Update in What's New.`;
+
 const loadModelInstance = async (
   model: Model,
   hardReload: boolean,
@@ -580,7 +584,9 @@ const loadModelInstance = async (
     set({ isLoading: false, model: null });
     Toast.show({
       type: 'defaultToast',
-      text1: modelLoadFailedCopy(model.modelName),
+      text1: needsUpdate(model)
+        ? modelNeedsUpdateCopy(model.modelName)
+        : modelLoadFailedCopy(model.modelName),
     });
   }
 };
