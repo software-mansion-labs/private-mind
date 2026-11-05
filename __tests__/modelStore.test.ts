@@ -538,6 +538,21 @@ describe('a downloaded model the catalog retired', () => {
     ]);
   });
 
+  it('is still remembered on the next start, after the migration that removed it', async () => {
+    useModelStore.setState({ retiredModels: [] });
+    await useModelStore.getState().discardRetiredModels([retired]);
+    useModelStore.setState({ retiredModels: [] });
+
+    await useModelStore.getState().discardRetiredModels([]);
+
+    expect(useModelStore.getState().retiredModels).toEqual([
+      {
+        modelName: 'LLaMA 3.2 - 1B - QLoRa',
+        replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+      },
+    ]);
+  });
+
   it('gets its replacement downloaded by the update', async () => {
     useModelStore.setState({
       models: [spinQuant],

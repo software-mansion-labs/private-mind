@@ -21,6 +21,16 @@ export const replacementsToDownload = (
   );
 };
 
+export const pendingRetiredNotices = (
+  retired: RetiredModelNotice[],
+  models: Model[]
+): RetiredModelNotice[] => {
+  const waiting = new Set(
+    replacementsToDownload(retired, models).map((model) => model.modelName)
+  );
+  return retired.filter((notice) => waiting.has(notice.replacement));
+};
+
 export const updateSizeGB = (models: Model[]): number =>
   models.reduce((total, model) => total + (model.modelSize ?? 0), 0);
 

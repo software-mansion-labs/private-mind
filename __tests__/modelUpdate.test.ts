@@ -1,6 +1,7 @@
 import { type Model } from '../database/modelRepository';
 import {
   needsUpdate,
+  pendingRetiredNotices,
   replacementsToDownload,
   updateSizeGB,
 } from '../utils/modelUpdate';
@@ -49,6 +50,13 @@ describe('the replacement of a removed model', () => {
   it('is not offered once it is downloaded', () => {
     expect(
       replacementsToDownload(retired, [{ ...spinQuant, isDownloaded: true }])
+    ).toEqual([]);
+  });
+
+  it('keeps the removal notice up until it is downloaded', () => {
+    expect(pendingRetiredNotices(retired, [spinQuant])).toEqual(retired);
+    expect(
+      pendingRetiredNotices(retired, [{ ...spinQuant, isDownloaded: true }])
     ).toEqual([]);
   });
 });

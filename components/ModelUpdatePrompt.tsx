@@ -12,7 +12,11 @@ import {
   ModelState,
   useModelStore,
 } from '../store/modelStore';
-import { modelsToUpdate, updateSizeGB } from '../utils/modelUpdate';
+import {
+  modelsToUpdate,
+  pendingRetiredNotices,
+  updateSizeGB,
+} from '../utils/modelUpdate';
 import PrimaryButton from './PrimaryButton';
 
 const progressLabel = (state?: DownloadState) =>
@@ -78,11 +82,13 @@ const ModelUpdatePrompt = ({ children }: { children: ReactNode }) => {
         <Text style={styles.body}>
           {MODEL_UPDATE_TEXT.body(toUpdate.length, updateSizeGB(toUpdate))}
         </Text>
-        {retiredModels.map(({ modelName, replacement }) => (
-          <Text key={modelName} style={styles.body}>
-            {MODEL_UPDATE_TEXT.retired(modelName, replacement)}
-          </Text>
-        ))}
+        {pendingRetiredNotices(retiredModels, models).map(
+          ({ modelName, replacement }) => (
+            <Text key={modelName} style={styles.body}>
+              {MODEL_UPDATE_TEXT.retired(modelName, replacement)}
+            </Text>
+          )
+        )}
         <View style={styles.list}>
           {toUpdate.map((model) => (
             <ModelUpdateRow
