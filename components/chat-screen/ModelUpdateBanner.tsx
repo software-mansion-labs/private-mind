@@ -9,20 +9,29 @@ import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { pressedOpacity } from '../../styles/pressable';
 
-const ModelUpdateBanner = ({ model }: { model: Model }) => {
+interface Props {
+  model: Model;
+  replaces?: string;
+}
+
+const ModelUpdateBanner = ({ model, replaces }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const download = useModelStore((state) => state.downloadStates[model.id]);
   const updateOutdatedModel = useModelStore(
     (state) => state.updateOutdatedModel
   );
+  const downloadModel = useModelStore((state) => state.downloadModel);
   const updating = download?.status === ModelState.Downloading;
 
-  const handleUpdate = () => updateOutdatedModel(model);
+  const handleUpdate = () =>
+    replaces ? downloadModel(model) : updateOutdatedModel(model);
 
   return (
     <View style={styles.banner} testID="model-update-banner">
       <Text style={styles.text}>
-        {MODEL_UPDATE_TEXT.chatBanner(model.modelName)}
+        {replaces
+          ? MODEL_UPDATE_TEXT.replacementBanner(replaces, model.modelName)
+          : MODEL_UPDATE_TEXT.chatBanner(model.modelName)}
       </Text>
       <Pressable
         onPress={handleUpdate}
@@ -33,7 +42,9 @@ const ModelUpdateBanner = ({ model }: { model: Model }) => {
         <Text style={styles.actionText}>
           {updating
             ? `${Math.round(download.progress * 100)}%`
-            : MODEL_UPDATE_TEXT.chatBannerAction}
+            : replaces
+              ? MODEL_UPDATE_TEXT.replacementBannerAction
+              : MODEL_UPDATE_TEXT.chatBannerAction}
         </Text>
       </Pressable>
     </View>

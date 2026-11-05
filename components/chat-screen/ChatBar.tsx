@@ -56,6 +56,7 @@ import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import WhatsNewCard from '../WhatsNewCard';
 import ModelUpdateBanner from './ModelUpdateBanner';
+import { useModelStore } from '../../store/modelStore';
 import { needsUpdate } from '../../utils/modelUpdate';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
@@ -135,6 +136,12 @@ const ChatBar = ({
   modelSwitching = false,
   onAttachmentSheetStateChange,
 }: Props) => {
+  const retiredBy = useModelStore(
+    (state) =>
+      state.retiredModels.find(
+        (retired) => retired.replacement === model?.modelName
+      )?.modelName
+  );
   const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
     () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
@@ -612,6 +619,14 @@ const ChatBar = ({
             });
           }}
         />
+      </View>
+    );
+  }
+
+  if (chatId && model && retiredBy && !model.isDownloaded) {
+    return (
+      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
+        <ModelUpdateBanner model={model} replaces={retiredBy} />
       </View>
     );
   }
