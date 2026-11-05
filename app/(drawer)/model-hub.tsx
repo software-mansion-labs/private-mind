@@ -43,12 +43,16 @@ import { isModelCompatible } from '../../utils/modelCompatibility';
 import { radius, space, stroke } from '../../constants/design-system';
 import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
 import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
+import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { useConfirm } from '../../hooks/useConfirm';
 import DownloadsHeaderButton from '../../components/model-hub/DownloadsHeaderButton';
 
 const HEADER_INSET = space.four;
 
 const ModelHubScreen = () => {
+  const drawerSearchOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.drawerSearchOwnsKeyboard
+  );
   useDefaultHeader({ glass: true });
   const headerHeight = useHeaderHeight();
   const router = useRouter();
@@ -184,6 +188,7 @@ const ModelHubScreen = () => {
 
   return (
     <CustomKeyboardAvoidingView
+      enabled={!drawerSearchOwnsKeyboard}
       style={styles.keyboardAvoidingView}
       underTransparentHeader
     >

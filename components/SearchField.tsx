@@ -44,6 +44,7 @@ type Props = Omit<TextInputProps, 'value' | 'onChangeText'> & {
   onChangeText: (text: string) => void;
   leading?: React.ReactNode;
   inputRef?: Ref<TextInput>;
+  surfaceStyle?: StyleProp<ViewStyle>;
 };
 
 const SearchField = ({
@@ -51,12 +52,13 @@ const SearchField = ({
   onChangeText,
   leading = <SearchFieldIcon />,
   inputRef,
+  surfaceStyle,
   ...props
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
 
   return (
-    <SearchFieldSurface>
+    <SearchFieldSurface style={surfaceStyle}>
       {leading}
       <TextInput
         {...TEXT_SELECTION}

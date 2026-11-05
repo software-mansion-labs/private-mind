@@ -1,4 +1,6 @@
 PODS:
+  - DisplayCorners (1.0.0):
+    - ExpoModulesCore
   - EXApplication (57.0.3):
     - ExpoModulesCore
   - EXConstants (57.0.21):
@@ -2743,6 +2745,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
+  - DisplayCorners (from `../modules/display-corners/ios`)
   - EXApplication (from `../node_modules/expo-application/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - Expo (from `../node_modules/expo`)
@@ -2884,6 +2887,8 @@ SPEC REPOS:
     - PulsarHaptics
 
 EXTERNAL SOURCES:
+  DisplayCorners:
+    :path: "../modules/display-corners/ios"
   EXApplication:
     :path: "../node_modules/expo-application/ios"
   EXConstants:
@@ -3149,6 +3154,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  DisplayCorners: 1f2f987178b2e0a0c14c9da2033c2f38d08b9e58
   EXApplication: a727f05eb8592f0bc764f6ab8d51eacc158652ec
   EXConstants: b4e9051547ee9b8337155565fbdbe66036865120
   Expo: ad082d060a56d674d482aa528689e7eda8d8480f

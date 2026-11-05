@@ -14,4 +14,4 @@ export const scrollIndicatorProps = (topInset = 0, bottomInset = 0) =>
           right: SCROLL_INDICATOR_RIGHT_NUDGE,
         },
       } as const)
-    : ({} as const);
+    : ({ showsVerticalScrollIndicator: false } as const);

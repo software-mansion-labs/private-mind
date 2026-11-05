@@ -4,7 +4,10 @@ import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { DRAWER_ITEM_INSET } from '../../constants/drawer-layout';
+import {
+  DRAWER_CHAT_ROW_MIN_HEIGHT,
+  DRAWER_ITEM_INSET,
+} from '../../constants/drawer-layout';
 import { dimmedOpacity } from '../../styles/pressable';
 import { radius, space } from '../../constants/design-system';
 
@@ -87,7 +90,7 @@ export const DrawerItem = memo(
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     item: {
-      minHeight: 44,
+      minHeight: DRAWER_CHAT_ROW_MIN_HEIGHT,
       justifyContent: 'center',
       paddingVertical: space.two,
       paddingHorizontal: DRAWER_ITEM_INSET,

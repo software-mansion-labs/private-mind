@@ -21,6 +21,8 @@ jest.mock('../context/ThemeContext', () => ({
 
 jest.mock('react-native-keyboard-controller', () => ({
   OverKeyboardView: ({ children }: { children: React.ReactNode }) => children,
+  KeyboardController: { isVisible: () => false },
+  KeyboardEvents: { addListener: () => ({ remove: () => {} }) },
   useKeyboardState: (
     selector: (state: { isVisible: boolean; height: number }) => unknown
   ) => selector({ isVisible: false, height: 0 }),

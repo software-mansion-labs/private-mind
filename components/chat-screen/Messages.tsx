@@ -73,7 +73,10 @@ import {
   scrollIndicatorProps,
 } from '../../constants/scroll-indicator';
 import { useKeyboardLift } from './useKeyboardLift';
-import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
+import {
+  selectKeyboardOwnedElsewhere,
+  useKeyboardOwnerStore,
+} from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   floorIsOffscreen,
@@ -350,8 +353,8 @@ const Messages = ({
   }, [branchMarkers]);
 
   const keyboardLift = useKeyboardLift();
-  const modalOwnsKeyboard = useKeyboardOwnerStore(
-    (state) => state.modalOwnsKeyboard
+  const keyboardOwnedElsewhere = useKeyboardOwnerStore(
+    selectKeyboardOwnedElsewhere
   );
   const {
     frozen: sendFrozen,
@@ -578,7 +581,7 @@ const Messages = ({
   const [liftHeldUntilKeyboardHides, setLiftHeldUntilKeyboardHides] =
     useState(false);
   const keyboardLiftBehavior =
-    pinAnchor || liftHeldUntilKeyboardHides || modalOwnsKeyboard
+    pinAnchor || liftHeldUntilKeyboardHides || keyboardOwnedElsewhere
       ? 'never'
       : 'whenAtEnd';
   useEffect(() => {

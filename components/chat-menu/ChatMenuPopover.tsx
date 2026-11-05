@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Keyboard,
   Pressable,
@@ -21,6 +21,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
+import { useHoldKeyboardWhileOpen } from '../../hooks/useHoldKeyboardWhileOpen';
 import { MAX_CHAT_TITLE_LENGTH } from '../../utils/chatLabel';
 import { SvgComponent } from '../../utils/SvgComponent';
 import Popover from '../menu/Popover';
@@ -72,7 +73,10 @@ const ChatMenuPopover = ({
     if (!visible) setDraft(null);
   }, [visible]);
 
-  useHoldKeyboardWhileOpen(visible);
+  const setModalOwnsKeyboard = useKeyboardOwnerStore(
+    (state) => state.setModalOwnsKeyboard
+  );
+  useHoldKeyboardWhileOpen(visible, setModalOwnsKeyboard);
 
   const saveDraft = () => {
     const next = draft?.trim();
@@ -176,40 +180,6 @@ const ChatMenuPopover = ({
         />
       </View>
     </Popover>
-  );
-};
-
-const useHoldKeyboardWhileOpen = (open: boolean) => {
-  const setModalOwnsKeyboard = useKeyboardOwnerStore(
-    (state) => state.setModalOwnsKeyboard
-  );
-  const claimed = useRef(false);
-
-  useEffect(() => {
-    if (open) {
-      claimed.current = true;
-      setModalOwnsKeyboard(true);
-      return;
-    }
-    if (!claimed.current) return;
-    const release = () => {
-      claimed.current = false;
-      setModalOwnsKeyboard(false);
-    };
-    if (!Keyboard.isVisible()) {
-      release();
-      return;
-    }
-    Keyboard.dismiss();
-    const hidden = Keyboard.addListener('keyboardDidHide', release);
-    return () => hidden.remove();
-  }, [open, setModalOwnsKeyboard]);
-
-  useEffect(
-    () => () => {
-      if (claimed.current) setModalOwnsKeyboard(false);
-    },
-    [setModalOwnsKeyboard]
   );
 };
 

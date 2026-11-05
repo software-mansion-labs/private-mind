@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, render, screen, fireEvent } from '@testing-library/react-native';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  within,
+} from '@testing-library/react-native';
 import { Platform, StyleSheet } from 'react-native';
 
 jest.mock('../context/ThemeContext', () => ({
@@ -273,6 +279,24 @@ describe('DrawerMenu — collapsed', () => {
 });
 
 describe('DrawerMenu — searching', () => {
+  it('lifts only the list above the keyboard, leaving the footer at the screen edge', () => {
+    jest
+      .spyOn(
+        require('react-native-keyboard-controller'),
+        'useReanimatedKeyboardAnimation'
+      )
+      .mockReturnValue({ height: { get: () => -300 } });
+
+    renderMenu({
+      searching: true,
+      searchExpansion: { get: () => 1 } as never,
+    });
+
+    const listArea = screen.getByTestId('drawer-list-area');
+    expect(StyleSheet.flatten(listArea.props.style).paddingBottom).toBe(300);
+    expect(within(listArea).queryByTestId('drawer-new-chat')).toBeNull();
+  });
+
   it('shows the search field and back button instead of the search icon', () => {
     renderMenu({ searching: true });
 
