@@ -4,6 +4,7 @@ import * as Application from 'expo-application';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
+import { space } from '../constants/design-system';
 import { LATEST_RELEASE } from '../constants/latest-release';
 import ModelUpdateNotice from './ModelUpdateNotice';
 
@@ -25,18 +26,20 @@ const WhatsNewCard = () => {
       <ScrollView
         testID="whats-new-highlights"
         style={styles.listScroll}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.scrollContent}
         persistentScrollbar
         nestedScrollEnabled
       >
-        {LATEST_RELEASE.highlights.map((item, i) => (
-          <View key={i} style={styles.row}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.item}>{item}</Text>
-          </View>
-        ))}
+        <View style={styles.list}>
+          {LATEST_RELEASE.highlights.map((item, i) => (
+            <View key={i} style={styles.row}>
+              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.item}>{item}</Text>
+            </View>
+          ))}
+        </View>
+        <ModelUpdateNotice />
       </ScrollView>
-      <ModelUpdateNotice />
     </View>
   );
 };
@@ -81,9 +84,12 @@ const createStyles = (theme: Theme) =>
       flexShrink: 1,
       marginRight: -SCROLL_INDICATOR_GUTTER,
     },
+    scrollContent: {
+      gap: space.three,
+      paddingRight: SCROLL_INDICATOR_GUTTER,
+    },
     list: {
       gap: 6,
-      paddingRight: SCROLL_INDICATOR_GUTTER,
     },
     row: {
       flexDirection: 'row',
