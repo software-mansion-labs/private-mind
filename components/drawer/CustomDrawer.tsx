@@ -156,7 +156,10 @@ const CustomDrawer = ({
     closeSearch();
   }, [closeSearch]);
 
-  const handleNavigate = useCallback(() => {
+  const handleNavigate = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      await KeyboardController.dismiss({ keepFocus: true });
+    }
     closeSearch(true);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => navigation.closeDrawer());

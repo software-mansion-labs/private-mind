@@ -336,3 +336,65 @@ describe('CustomDrawer refocus after the chat menu', () => {
     expect(KeyboardController.setFocusTo).not.toHaveBeenCalled();
   });
 });
+
+describe('CustomDrawer navigating from search', () => {
+  const flushPromises = () => act(async () => {});
+  const flushFrames = () => advance(100);
+
+  const keyboardHidesOnResolve = () => {
+    let hide = () => {};
+    jest.mocked(KeyboardController.dismiss).mockReturnValue(
+      new Promise<void>((resolve) => {
+        hide = resolve;
+      })
+    );
+    return () => hide();
+  };
+
+  beforeEach(() => setPlatform('android'));
+
+  afterEach(() => {
+    jest.mocked(KeyboardController.dismiss).mockReset();
+  });
+
+  it('leaves the results on screen and the drawer open until the keyboard is down', async () => {
+    const hideKeyboard = keyboardHidesOnResolve();
+    const { navigation } = renderDrawer();
+    openSearch();
+    act(() => mockMenu.onChangeSearch('machine'));
+
+    act(() => {
+      mockMenu.onNavigate();
+    });
+    flushFrames();
+
+    expect(KeyboardController.dismiss).toHaveBeenCalledWith({
+      keepFocus: true,
+    });
+    expect(mockMenu.searching).toBe(true);
+    expect(mockMenu.search).toBe('machine');
+    expect(navigation.closeDrawer).not.toHaveBeenCalled();
+
+    hideKeyboard();
+    await flushPromises();
+    flushFrames();
+
+    expect(mockMenu.searching).toBe(false);
+    expect(mockMenu.search).toBe('');
+    expect(navigation.closeDrawer).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not wait for the keyboard on iOS', () => {
+    setPlatform('ios');
+    const { navigation } = renderDrawer();
+    openSearch();
+
+    act(() => {
+      mockMenu.onNavigate();
+    });
+    flushFrames();
+
+    expect(KeyboardController.dismiss).not.toHaveBeenCalled();
+    expect(navigation.closeDrawer).toHaveBeenCalledTimes(1);
+  });
+});
