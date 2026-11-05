@@ -4,9 +4,8 @@ One section per release, so the next one can be compared with the last.
 Numbers come from two sources:
 
 - the in-app dev benchmark (`EXPO_PUBLIC_DEV_TOOLS=1`, "Full" mode, fixed
-  seed) run on a phone by `scripts/release-gate/run.mjs` from the
-  `feat/release-gate` branch — load time, a speed probe, peak memory and
-  scenario pass counts for every model the device can run;
+  seed) run on a phone — load time, a speed probe, peak memory and scenario
+  pass counts for every model the device can run;
 - manual regression sessions on phones with the release build, where the
   stats line under each answer gives ttft and tok/s.
 
@@ -18,16 +17,16 @@ Compare like with like (same device, same scenario, cold vs warm model).
 
 ### LFM 3 by device, manual regression (release test builds, 2026-10-28)
 
-| Device                      | RAM   | Model         | Think | tok/s | ttft      | Notes                                                                         |
-| --------------------------- | ----- | ------------- | ----- | ----- | --------- | ----------------------------------------------------------------------------- |
-| iPhone 17 (A19)             | 8 GB  | LFM 3 - 1.7B  | on    | 19–31 | 1.6–4.3 s | 10-turn multilingual chat; Urdu turn spiralled in reasoning (>7 min, stopped) |
-| iPhone 17 (A19)             | 8 GB  | LFM 3 - 1.7B  | off   | 49    | 0.5 s     | short factual answer, no think block                                          |
-| iPhone 17 (A19)             | 8 GB  | LFM 3 - 1.7B  | on    | 32    | 5.3 s     | document Q&A with a PDF attached                                              |
-| iPhone 17 (A19)             | 8 GB  | LFM 3 VL - 2B | —     | —     | —         | photo question answered; OCR of documents unreliable                          |
-| Pixel 10 (Tensor G5)        | 12 GB | LFM 3 - 1.7B  | on    | 7–17  | 0.7–8.4 s | drifted from 17 tok/s early to 5–9 tok/s late in the session                  |
-| Pixel 10 (Tensor G5)        | 12 GB | LFM 3 - 1.7B  | off   | 18    | 0.7 s     |                                                                               |
-| Samsung S20 FE (Exynos 990) | 6 GB  | LFM 3 - 1.7B  | on    | 10–15 | 1.3–7.5 s | PSS after a turn 1.7 GB; no low-memory kill in 9 scenarios                    |
-| Samsung S20 FE (Exynos 990) | 6 GB  | LFM 3 VL - 2B | —     | —     | —         | not offered on 6 GB (below the 7 GB floor)                                    |
+| Device                      | RAM   | Model         | Think | tok/s | ttft      | Notes                                                               |
+| --------------------------- | ----- | ------------- | ----- | ----- | --------- | ------------------------------------------------------------------- |
+| iPhone 17 (A19)             | 8 GB  | LFM 3 - 1.7B  | on    | 19–31 | 1.6–4.3 s | 10-turn multilingual chat; reasoning can run long on some languages |
+| iPhone 17 (A19)             | 8 GB  | LFM 3 - 1.7B  | off   | 49    | 0.5 s     | short factual answer, no think block                                |
+| iPhone 17 (A19)             | 8 GB  | LFM 3 - 1.7B  | on    | 32    | 5.3 s     | document Q&A with a PDF attached                                    |
+| iPhone 17 (A19)             | 8 GB  | LFM 3 VL - 2B | —     | —     | —         | photo question answered; OCR of documents unreliable                |
+| Pixel 10 (Tensor G5)        | 12 GB | LFM 3 - 1.7B  | on    | 7–17  | 0.7–8.4 s | drifted from 17 tok/s early to 5–9 tok/s late in the session        |
+| Pixel 10 (Tensor G5)        | 12 GB | LFM 3 - 1.7B  | off   | 18    | 0.7 s     |                                                                     |
+| Samsung S20 FE (Exynos 990) | 6 GB  | LFM 3 - 1.7B  | on    | 10–15 | 1.3–7.5 s | PSS after a turn 1.7 GB; no low-memory kill in 9 scenarios          |
+| Samsung S20 FE (Exynos 990) | 6 GB  | LFM 3 VL - 2B | —     | —     | —         | not offered on 6 GB (below the 7 GB floor)                          |
 
 Stability across the three devices and the iPhone SE install: zero crashes,
 zero low-memory kills, zero ANR / jetsam in the S1–S10 regression (Pixel 10,
@@ -40,8 +39,8 @@ can carry Latin or Cyrillic fragments.
 
 ### Dev benchmark, Pixel 10 (Android 17, 11.3 GB), seed 1016 — run 1
 
-Gate build 172 (1.3.4 base + the LFM 3 stack, before the benchmark learned to
-switch reasoning off). Scenario columns are passed/total turns for base chat,
+Run on the 1.3.4 base plus the LFM 3 stack, before the benchmark learned to
+switch reasoning off. Scenario columns are passed/total turns for base chat,
 short facts and document questions. A turn fails on any check (time budget,
 cut-off, wrong fact, foreign script, list length), so the counts are a strict
 regression signal, not a quality score. Interrupted after 14 of the 17 models the device offers.
@@ -70,7 +69,7 @@ set on a build that switches reasoning off for the benchmark.
 
 No generation errors and no crashes in any model of this run.
 
-### Dev benchmark, Pixel 10, seed 1016 — run 2 (gate build 173, reasoning off)
+### Dev benchmark, Pixel 10, seed 1016 — run 2 (reasoning off)
 
 The release build plus the benchmark switching reasoning off through the chat
 template. All 17 models the device offers, 2026-10-28 22:10 to 2026-10-29
