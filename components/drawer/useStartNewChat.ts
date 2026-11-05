@@ -1,5 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useLLMStore } from '../../store/llmStore';
+import { useModelUpdateSheetStore } from '../../store/modelUpdateSheetStore';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { Feedback } from '../../utils/Feedback';
 import { useTurnInFlight } from '../../hooks/useTurnInFlight';
@@ -19,6 +20,7 @@ export const useStartNewChat = (onNavigate?: () => void) => {
       return;
     }
     Feedback.newChat();
+    useModelUpdateSheetStore.getState().enterNewChat();
     if (isOnPhantomChat) {
       onNavigate?.();
       return;
