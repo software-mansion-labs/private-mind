@@ -21,10 +21,16 @@ const qwen: Model = {
 };
 
 const updateOutdatedModel = jest.fn(() => Promise.resolve());
+const downloadModel = jest.fn(() => Promise.resolve());
 
 beforeEach(() => {
   updateOutdatedModel.mockClear();
-  useModelStore.setState({ downloadStates: {}, updateOutdatedModel });
+  downloadModel.mockClear();
+  useModelStore.setState({
+    downloadStates: {},
+    updateOutdatedModel,
+    downloadModel,
+  });
 });
 
 describe('the update banner above the composer', () => {
@@ -46,5 +52,32 @@ describe('the update banner above the composer', () => {
     render(<ModelUpdateBanner model={qwen} />);
 
     expect(screen.getByText('25%')).toBeTruthy();
+  });
+
+  it('offers the successor of a removed model for download', () => {
+    const spinQuant = {
+      ...qwen,
+      id: 8,
+      modelName: 'LLaMA 3.2 - 1B - SpinQuant',
+      isDownloaded: false,
+      outdatedSources: undefined,
+    };
+
+    render(
+      <ModelUpdateBanner model={spinQuant} replaces="LLaMA 3.2 - 1B - QLoRa" />
+    );
+
+    expect(
+      screen.getByText(
+        MODEL_UPDATE_TEXT.replacementBanner(
+          'LLaMA 3.2 - 1B - QLoRa',
+          'LLaMA 3.2 - 1B - SpinQuant'
+        )
+      )
+    ).toBeTruthy();
+    fireEvent.press(
+      screen.getByText(MODEL_UPDATE_TEXT.replacementBannerAction)
+    );
+    expect(downloadModel).toHaveBeenCalledWith(spinQuant);
   });
 });

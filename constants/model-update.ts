@@ -13,6 +13,9 @@ export const MODEL_UPDATE_TEXT = {
   chatBanner: (modelName: string) =>
     `${modelName} needs a one-time update to run on the new engine.`,
   chatBannerAction: 'Update',
+  replacementBanner: (removed: string, replacement: string) =>
+    `${removed} was removed. Download ${replacement} to keep this chat going.`,
+  replacementBannerAction: 'Download',
   retired: (modelName: string, replacement: string) =>
     `${modelName} is no longer supported and was removed. Its chats now use ${replacement}.`,
   badge: 'Update needed',
