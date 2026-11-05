@@ -12,7 +12,7 @@ import { ModelState, useModelStore } from '../store/modelStore';
 
 jest.mock('../hooks/useUpdateNetworkCheck', () => ({
   useUpdateNetworkCheck: () => ({
-    canDownload: () => Promise.resolve(true),
+    canDownload: () => Promise.resolve('wifi'),
     ConfirmElement: null,
   }),
 }));
@@ -30,6 +30,7 @@ const qwen: Model = {
   tokenizerPath: '',
   tokenizerConfigPath: '',
   outdatedSources: ['https://hf.example/v0.9.0/qwen.pte'],
+  updateRequired: true,
 };
 
 const updateOutdatedModel = jest.fn(() => Promise.resolve());

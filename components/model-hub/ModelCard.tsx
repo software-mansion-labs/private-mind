@@ -292,9 +292,12 @@ const ModelCard = ({
                 {!isCompatible && (
                   <ModelBadge label="Incompatible" color="error" />
                 )}
-                {isOutdated && (
-                  <ModelBadge label={MODEL_UPDATE_TEXT.badge} color="error" />
-                )}
+                {isOutdated &&
+                  (model.updateRequired ? (
+                    <ModelBadge label={MODEL_UPDATE_TEXT.badge} color="error" />
+                  ) : (
+                    <ModelBadge label={MODEL_UPDATE_TEXT.optionalBadge} />
+                  ))}
                 {model.thinking && <ModelBadge label={THINKING_LABEL} />}
                 {model.vision && <ModelBadge label={VISION_LABEL} />}
                 {labels.map((label) => (

@@ -617,7 +617,9 @@ const ChatBar = ({
               <PromptSuggestions onSelectPrompt={onSelectPrompt} />
             </View>
           )}
-          {needsUpdate(model) && <ModelUpdateBanner model={model} />}
+          {hasMessages && needsUpdate(model) && (
+            <ModelUpdateBanner model={model} />
+          )}
           <View style={styles.inputContainer}>
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}

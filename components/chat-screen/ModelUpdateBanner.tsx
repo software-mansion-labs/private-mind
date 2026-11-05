@@ -26,18 +26,26 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
   const { canDownload, ConfirmElement } = useUpdateNetworkCheck();
 
   const handleUpdate = async () => {
-    if (!(await canDownload(model.modelSize ?? 0))) return;
+    const network = await canDownload(model.modelSize ?? 0);
+    if (!network) return;
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([model.modelName], network === 'mobile-data');
     if (replaces) downloadModel(model);
     else updateOutdatedModel(model);
   };
 
+  const message = () => {
+    if (replaces)
+      return MODEL_UPDATE_TEXT.replacementBanner(replaces, model.modelName);
+    if (model.updateRequired)
+      return MODEL_UPDATE_TEXT.chatBanner(model.modelName);
+    return MODEL_UPDATE_TEXT.newerVersionBanner(model.modelName);
+  };
+
   return (
     <View style={styles.banner} testID="model-update-banner">
-      <Text style={styles.text}>
-        {replaces
-          ? MODEL_UPDATE_TEXT.replacementBanner(replaces, model.modelName)
-          : MODEL_UPDATE_TEXT.chatBanner(model.modelName)}
-      </Text>
+      <Text style={styles.text}>{message()}</Text>
       <Pressable
         onPress={handleUpdate}
         disabled={updating}

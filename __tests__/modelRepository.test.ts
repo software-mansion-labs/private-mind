@@ -240,6 +240,25 @@ describe('sources the catalog replaced after a download', () => {
     expect(model.outdatedSources).toEqual([v09.modelPath, v09.tokenizerPath]);
   });
 
+  it('requires the update when the runner cannot load the files on disk', async () => {
+    const model = await read(rowFor(v09));
+
+    expect(model.updateRequired).toBe(true);
+    expect(model.latestSources?.modelPath).toBe(qwen.modelPath);
+  });
+
+  it('keeps loading an older export the runner still reads, and offers the newer one', async () => {
+    const olderExport = {
+      modelPath: 'https://hf.example/resolve/v0.11.0/qwen-older.pte',
+    };
+    const model = await read(rowFor(olderExport));
+
+    expect(model.updateRequired).toBe(false);
+    expect(model.modelPath).toBe(olderExport.modelPath);
+    expect(model.latestSources?.modelPath).toBe(qwen.modelPath);
+    expect(model.outdatedSources).toEqual([olderExport.modelPath]);
+  });
+
   it('lists nothing when the download already matches the catalog', async () => {
     expect((await read(rowFor({}))).outdatedSources).toBeUndefined();
   });

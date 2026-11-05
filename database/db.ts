@@ -458,6 +458,7 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   useChatStore.getState().setDB(db);
   useModelStore.getState().setDB(db);
   await useModelStore.getState().discardRetiredModels(retired);
+  await useModelStore.getState().loadUpdateConsent();
   useLLMStore.getState().setDB(db);
   useSourceStore.getState().setDB(db);
 

@@ -126,6 +126,7 @@ const baseModel: {
   vision?: boolean;
   labels: string[];
   outdatedSources?: string[];
+  updateRequired?: boolean;
 } = {
   id: 1,
   modelName: 'Llama-3B',
@@ -215,10 +216,26 @@ describe('display', () => {
       isDownloaded: true,
       modelPath: 'https://hf.example/v0.11.0/model.pte',
       outdatedSources: ['https://hf.example/v0.9.0/model.pte'],
+      updateRequired: true,
     });
     expect(
       screen.getByTestId(`model-badge-${MODEL_UPDATE_TEXT.badge}`)
     ).toBeTruthy();
+  });
+
+  it('offers a newer export of a model that still loads as optional', () => {
+    renderCard({
+      isDownloaded: true,
+      modelPath: 'https://hf.example/v0.11.0/model.pte',
+      outdatedSources: ['https://hf.example/v0.10.0/model.pte'],
+      updateRequired: false,
+    });
+    expect(
+      screen.getByTestId(`model-badge-${MODEL_UPDATE_TEXT.optionalBadge}`)
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId(`model-badge-${MODEL_UPDATE_TEXT.badge}`)
+    ).toBeNull();
   });
 
   it('leaves a model on the current files without the update badge', () => {

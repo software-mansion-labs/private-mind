@@ -6,7 +6,6 @@ import { Theme } from '../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../styles/fontStyles';
 import { space } from '../constants/design-system';
 import { LATEST_RELEASE } from '../constants/latest-release';
-import ModelUpdateNotice from './ModelUpdateNotice';
 
 const SCROLL_INDICATOR_GUTTER = 12;
 
@@ -38,7 +37,6 @@ const WhatsNewCard = () => {
             </View>
           ))}
         </View>
-        <ModelUpdateNotice />
       </ScrollView>
     </View>
   );
