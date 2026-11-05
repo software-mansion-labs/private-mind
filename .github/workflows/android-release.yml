@@ -41,11 +41,7 @@ jobs:
           exit 1
 
       - name: Create .env file
-        run: |
-          cat > .env << EOF
-          EXPO_PUBLIC_DETOUR_API_KEY=${{ secrets.EXPO_PUBLIC_DETOUR_API_KEY }}
-          EXPO_PUBLIC_DETOUR_APP_ID=${{ secrets.EXPO_PUBLIC_DETOUR_APP_ID }}
-          EOF
+        run: touch .env
 
       - name: Refuse to build with dev tools enabled
         run: |
