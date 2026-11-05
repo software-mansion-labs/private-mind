@@ -1,9 +1,21 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import ModelUpdateNotice from '../components/ModelUpdateNotice';
 import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import { type Model } from '../database/modelRepository';
 import { ModelState, useModelStore } from '../store/modelStore';
+
+jest.mock('../hooks/useUpdateNetworkCheck', () => ({
+  useUpdateNetworkCheck: () => ({
+    canDownload: () => Promise.resolve(true),
+    ConfirmElement: null,
+  }),
+}));
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
@@ -59,13 +71,13 @@ describe('the model update notice in What’s new', () => {
     expect(screen.getByText('Update 2 models')).toBeTruthy();
   });
 
-  it('starts updating every outdated model from one tap', () => {
+  it('starts updating every outdated model from one tap', async () => {
     useModelStore.setState({ models: [model(1)] });
 
     render(<ModelUpdateNotice />);
     fireEvent.press(screen.getByText('Update 1 model'));
 
-    expect(updateOutdatedModels).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(updateOutdatedModels).toHaveBeenCalledTimes(1));
   });
 
   it('shows how many are left and takes no second tap while it updates', () => {

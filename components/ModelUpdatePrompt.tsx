@@ -18,6 +18,7 @@ import {
   updateSizeGB,
 } from '../utils/modelUpdate';
 import PrimaryButton from './PrimaryButton';
+import { useUpdateNetworkCheck } from '../hooks/useUpdateNetworkCheck';
 
 const progressLabel = (state?: DownloadState) =>
   state?.status === ModelState.Downloading
@@ -56,6 +57,7 @@ const ModelUpdatePrompt = ({ children }: { children: ReactNode }) => {
     (state) => state.updateOutdatedModels
   );
   const toUpdate = modelsToUpdate(models, retiredModels);
+  const { canDownload, ConfirmElement } = useUpdateNetworkCheck();
   const [heldAtLaunch] = useState(() => toUpdate.length > 0);
   const [failed, setFailed] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -70,6 +72,7 @@ const ModelUpdatePrompt = ({ children }: { children: ReactNode }) => {
   const handleLater = () => setDismissed(true);
 
   const handleUpdate = async () => {
+    if (!(await canDownload(updateSizeGB(toUpdate)))) return;
     setFailed(false);
     await updateOutdatedModels();
     setFailed(remainingUpdates().length > 0);
@@ -118,6 +121,7 @@ const ModelUpdatePrompt = ({ children }: { children: ReactNode }) => {
       >
         <Text style={styles.laterText}>{MODEL_UPDATE_TEXT.later}</Text>
       </Pressable>
+      {ConfirmElement}
     </View>
   );
 };

@@ -8,6 +8,11 @@ export const MODEL_UPDATE_TEXT = {
   inProgress: (left: number) => `Updating… ${left} left`,
   failed:
     "The download didn't finish. Check your internet connection and try again.",
+  offline: "You're offline. Connect to the internet to update your models.",
+  mobileDataTitle: 'No Wi-Fi connection',
+  mobileDataMessage: (sizeGB: number) =>
+    `This update downloads ${sizeGB.toFixed(1)} GB over mobile data, which may cost extra. Connect to Wi-Fi to avoid it.`,
+  mobileDataConfirm: 'Update anyway',
   waiting: 'Waiting',
   later: 'Not now',
   chatBanner: (modelName: string) =>

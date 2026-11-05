@@ -1,9 +1,21 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import ModelUpdateBanner from '../components/chat-screen/ModelUpdateBanner';
 import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import { type Model } from '../database/modelRepository';
 import { ModelState, useModelStore } from '../store/modelStore';
+
+jest.mock('../hooks/useUpdateNetworkCheck', () => ({
+  useUpdateNetworkCheck: () => ({
+    canDownload: () => Promise.resolve(true),
+    ConfirmElement: null,
+  }),
+}));
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
@@ -34,14 +46,14 @@ beforeEach(() => {
 });
 
 describe('the update banner above the composer', () => {
-  it('names the chat model and updates it on tap', () => {
+  it('names the chat model and updates it on tap', async () => {
     render(<ModelUpdateBanner model={qwen} />);
 
     expect(
       screen.getByText(MODEL_UPDATE_TEXT.chatBanner('Qwen 3 - 0.6B'))
     ).toBeTruthy();
     fireEvent.press(screen.getByText(MODEL_UPDATE_TEXT.chatBannerAction));
-    expect(updateOutdatedModel).toHaveBeenCalledWith(qwen);
+    await waitFor(() => expect(updateOutdatedModel).toHaveBeenCalledWith(qwen));
   });
 
   it('shows the download progress instead of the button while it updates', () => {
@@ -54,7 +66,7 @@ describe('the update banner above the composer', () => {
     expect(screen.getByText('25%')).toBeTruthy();
   });
 
-  it('offers the successor of a removed model for download', () => {
+  it('offers the successor of a removed model for download', async () => {
     const spinQuant = {
       ...qwen,
       id: 8,
@@ -78,6 +90,6 @@ describe('the update banner above the composer', () => {
     fireEvent.press(
       screen.getByText(MODEL_UPDATE_TEXT.replacementBannerAction)
     );
-    expect(downloadModel).toHaveBeenCalledWith(spinQuant);
+    await waitFor(() => expect(downloadModel).toHaveBeenCalledWith(spinQuant));
   });
 });
