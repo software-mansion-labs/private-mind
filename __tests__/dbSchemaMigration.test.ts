@@ -136,7 +136,7 @@ describe('runMigrations from a real old (pre-RAG) schema', () => {
     await runMigrations(db.asDb());
     db.alterLog.length = 0;
 
-    await expect(runMigrations(db.asDb())).resolves.toBeUndefined();
+    await expect(runMigrations(db.asDb())).resolves.toEqual([]);
     expect(db.alterLog).toEqual([]);
   });
 
@@ -212,7 +212,7 @@ describe('runMigrations from a real old (pre-RAG) schema', () => {
     expect(has(db, 'sources', 'firstChunk')).toBe(false);
 
     db.failOn = null;
-    await expect(runMigrations(db.asDb())).resolves.toBeUndefined();
+    await expect(runMigrations(db.asDb())).resolves.toEqual([]);
     expect(has(db, 'messages', 'sourceDocuments')).toBe(true);
     expect(has(db, 'sources', 'firstChunk')).toBe(true);
   });

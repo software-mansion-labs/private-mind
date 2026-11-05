@@ -10,7 +10,10 @@ import { migrateLegacyVectorStore } from './vectorStoreMigration';
 import { restoreTruncatedChatTitles } from './chatTitleMigration';
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
 import { getActiveCatalog, setActiveCatalog } from '../utils/modelCatalogState';
-import { RETIRED_MODEL_NAMES } from '../constants/retired-models';
+import {
+  RETIRED_MODEL_NAMES,
+  RETIRED_MODEL_REPLACEMENTS,
+} from '../constants/retired-models';
 
 const discardPeakMemoryMeasuredWithTheOldMetric = async (
   db: SQLiteDatabase
@@ -227,16 +230,14 @@ export const runMigrations = async (db: SQLiteDatabase) => {
   const defaultModelNames = catalog.map((m) => m.modelName);
   const placeholders = defaultModelNames.map(() => '?').join(',');
 
-  const retiredPlaceholders = RETIRED_MODEL_NAMES.map(() => '?').join(',');
+  const retired = await moveChatsOffRetiredModels(db);
 
   await db.runAsync(
     `
     DELETE FROM models
     WHERE source = 'built-in' AND modelName NOT IN (${placeholders})
-      AND NOT (isDownloaded = 1 AND modelName IN (${retiredPlaceholders}))
     `,
-    ...defaultModelNames,
-    ...RETIRED_MODEL_NAMES
+    ...defaultModelNames
   );
 
   for (const model of catalog) {
@@ -264,6 +265,73 @@ export const runMigrations = async (db: SQLiteDatabase) => {
       model.modelName
     );
   }
+  return retired;
+};
+
+export interface RetiredModel {
+  modelName: string;
+  replacement: string;
+  sources: string[];
+}
+
+const moveChatsOffRetiredModels = async (
+  db: SQLiteDatabase
+): Promise<RetiredModel[]> => {
+  const placeholders = RETIRED_MODEL_NAMES.map(() => '?').join(',');
+  const rows = await db.getAllAsync<{
+    id: number;
+    modelName: string;
+    modelPath: string;
+    tokenizerPath: string;
+    tokenizerConfigPath: string;
+  }>(
+    `SELECT id, modelName, modelPath, tokenizerPath, tokenizerConfigPath
+     FROM models
+     WHERE source = 'built-in' AND isDownloaded = 1
+       AND modelName IN (${placeholders})`,
+    ...RETIRED_MODEL_NAMES
+  );
+
+  if (rows.length === 0) return [];
+
+  const retiredIds = rows.map((row) => row.id);
+  const others = await db.getAllAsync<{
+    modelPath: string;
+    tokenizerPath: string;
+    tokenizerConfigPath: string;
+  }>(
+    `SELECT modelPath, tokenizerPath, tokenizerConfigPath FROM models
+     WHERE id NOT IN (${retiredIds.map(() => '?').join(',')})`,
+    ...retiredIds
+  );
+  const neededElsewhere = new Set(
+    others.flatMap((o) => [o.modelPath, o.tokenizerPath, o.tokenizerConfigPath])
+  );
+
+  const retired: RetiredModel[] = [];
+  for (const row of rows) {
+    const replacement = RETIRED_MODEL_REPLACEMENTS[row.modelName];
+    const target = await db.getFirstAsync<{ id: number }>(
+      `SELECT id FROM models WHERE source = 'built-in' AND modelName = ?`,
+      replacement
+    );
+    if (target) {
+      await db.runAsync(`UPDATE chats SET modelId = ? WHERE modelId = ?`, [
+        target.id,
+        row.id,
+      ]);
+    }
+    retired.push({
+      modelName: row.modelName,
+      replacement,
+      sources: [
+        row.modelPath,
+        row.tokenizerPath,
+        row.tokenizerConfigPath,
+      ].filter((source) => !neededElsewhere.has(source)),
+    });
+  }
+  return retired;
 };
 
 export const initDatabase = async (db: SQLiteDatabase) => {
@@ -385,10 +453,11 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   setActiveCatalog(models);
 
   // Run migration before inserting default models
-  await runMigrations(db);
+  const retired = await runMigrations(db);
 
   useChatStore.getState().setDB(db);
   useModelStore.getState().setDB(db);
+  await useModelStore.getState().discardRetiredModels(retired);
   useLLMStore.getState().setDB(db);
   useSourceStore.getState().setDB(db);
 

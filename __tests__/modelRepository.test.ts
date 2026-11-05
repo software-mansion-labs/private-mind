@@ -253,40 +253,5 @@ describe('sources the catalog replaced after a download', () => {
     const model = await read(rowFor({ ...v09, source: 'remote' }));
     expect(model.outdatedSources).toBeUndefined();
   });
-});
 
-describe('a downloaded model the catalog retired', () => {
-  const qlora = {
-    id: 7,
-    modelName: 'LLaMA 3.2 - 1B - QLoRa',
-    source: 'built-in',
-    isDownloaded: 1,
-    modelPath: 'https://hf.example/resolve/v0.8.0/qlora.pte',
-    tokenizerPath: 'https://hf.example/resolve/v0.9.0/tokenizer.json',
-    tokenizerConfigPath:
-      'https://hf.example/resolve/v0.9.0/tokenizer_config.json',
-    featured: 0,
-    thinking: 0,
-    vision: 0,
-    labels: null,
-    parameters: null,
-    modelSize: null,
-    systemPrompt: null,
-  };
-  const read = async (row: Record<string, unknown>) =>
-    (
-      await getAllModels({
-        getAllAsync: jest.fn().mockResolvedValue([row]),
-      } as ModelReader)
-    )[0]!;
-
-  it('names the model that takes its place', async () => {
-    expect((await read(qlora)).replacedBy).toBe('LLaMA 3.2 - 1B - SpinQuant');
-  });
-
-  it('names no replacement for a model the user added from their own link', async () => {
-    expect(
-      (await read({ ...qlora, source: 'remote' })).replacedBy
-    ).toBeUndefined();
-  });
 });

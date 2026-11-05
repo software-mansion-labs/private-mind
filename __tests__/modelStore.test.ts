@@ -14,9 +14,6 @@ import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetch
 import Toast from 'react-native-toast-message';
 
 jest.mock('../database/modelRepository');
-jest.mock('../database/chatRepository', () => ({
-  moveChatsToModel: jest.fn(),
-}));
 
 const mockDb = {} as any;
 const mockFetch = ResourceFetcher.fetch as jest.Mock;
@@ -512,18 +509,7 @@ describe('updating a model the catalog moved to a newer export', () => {
   });
 });
 
-describe('replacing a downloaded model the catalog retired', () => {
-  const mockMoveChats = jest.requireMock('../database/chatRepository')
-    .moveChatsToModel as jest.Mock;
-  const retired: modelRepository.Model = {
-    ...baseModel,
-    id: 7,
-    modelName: 'LLaMA 3.2 - 1B - QLoRa',
-    source: 'built-in',
-    isDownloaded: true,
-    modelPath: 'https://hf.example/v0.8.0/qlora.pte',
-    replacedBy: 'LLaMA 3.2 - 1B - SpinQuant',
-  };
+describe('a downloaded model the catalog retired', () => {
   const spinQuant: modelRepository.Model = {
     ...baseModel,
     id: 8,
@@ -532,38 +518,44 @@ describe('replacing a downloaded model the catalog retired', () => {
     isDownloaded: false,
     modelPath: 'https://hf.example/v0.11.0/spinquant.pte',
   };
+  const retired = {
+    modelName: 'LLaMA 3.2 - 1B - QLoRa',
+    replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+    sources: ['https://hf.example/v0.8.0/qlora.pte'],
+  };
 
-  it('downloads the replacement, moves the chats to it and removes the retired model', async () => {
-    useModelStore.setState({ models: [retired, spinQuant] });
-    mockGetAllModels
-      .mockResolvedValueOnce([retired, { ...spinQuant, isDownloaded: true }])
-      .mockResolvedValue([{ ...spinQuant, isDownloaded: true }]);
+  it('has its files deleted and is remembered for the update notice', async () => {
+    useModelStore.setState({ retiredModels: [] });
+
+    await useModelStore.getState().discardRetiredModels([retired]);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(retired.sources[0]);
+    expect(useModelStore.getState().retiredModels).toEqual([
+      {
+        modelName: 'LLaMA 3.2 - 1B - QLoRa',
+        replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+      },
+    ]);
+  });
+
+  it('gets its replacement downloaded by the update', async () => {
+    useModelStore.setState({
+      models: [spinQuant],
+      retiredModels: [
+        {
+          modelName: retired.modelName,
+          replacement: retired.replacement,
+        },
+      ],
+    });
+    mockGetAllModels.mockResolvedValue([{ ...spinQuant, isDownloaded: true }]);
     mockFetch.mockResolvedValue(['/local/file']);
 
-    await useModelStore.getState().updateOutdatedModel(retired);
+    await useModelStore.getState().updateOutdatedModels();
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.any(Function),
       spinQuant.modelPath
     );
-    expect(mockMoveChats).toHaveBeenCalledWith(mockDb, 7, 8);
-    expect(mockRemoveModelFiles).toHaveBeenCalledWith(mockDb, 7);
-    expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({
-        text1:
-          'LLaMA 3.2 - 1B - QLoRa is no longer supported. Your chats now use LLaMA 3.2 - 1B - SpinQuant.',
-      })
-    );
-  });
-
-  it('keeps the retired model and its chats when the replacement fails to download', async () => {
-    useModelStore.setState({ models: [retired, spinQuant] });
-    mockGetAllModels.mockResolvedValue([retired, spinQuant]);
-    mockFetch.mockRejectedValue(new Error('network error'));
-
-    await useModelStore.getState().updateOutdatedModel(retired);
-
-    expect(mockMoveChats).not.toHaveBeenCalled();
-    expect(mockRemoveModelFiles).not.toHaveBeenCalled();
   });
 });
