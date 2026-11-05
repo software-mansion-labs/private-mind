@@ -1,4 +1,5 @@
 import { type Model } from '../database/modelRepository';
+import { isModelCompatible } from './modelCompatibility';
 
 export interface RetiredModelNotice {
   modelName: string;
@@ -6,7 +7,9 @@ export interface RetiredModelNotice {
 }
 
 export const needsUpdate = (model: Model): boolean =>
-  model.isDownloaded && (model.outdatedSources?.length ?? 0) > 0;
+  model.isDownloaded &&
+  (model.outdatedSources?.length ?? 0) > 0 &&
+  isModelCompatible(model);
 
 export const modelsNeedingUpdate = (models: Model[]): Model[] =>
   models.filter(needsUpdate);

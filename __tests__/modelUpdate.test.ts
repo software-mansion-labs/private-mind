@@ -1,3 +1,4 @@
+import DeviceInfo from 'react-native-device-info';
 import { type Model } from '../database/modelRepository';
 import {
   needsUpdate,
@@ -20,6 +21,19 @@ const model = (id: number, overrides: Partial<Model>): Model => ({
 describe('a model that needs its update', () => {
   it('is a download whose files the catalog moved past', () => {
     expect(needsUpdate(model(1, { outdatedSources: ['old.pte'] }))).toBe(true);
+  });
+
+  it('is not a model this phone is not allowed to run', () => {
+    const mockGetDeviceId = DeviceInfo.getDeviceId as jest.Mock;
+    mockGetDeviceId.mockReturnValue('iPhone14,6');
+
+    expect(
+      needsUpdate(
+        model(1, { modelName: 'Qwen 3 - 0.6B', outdatedSources: ['old.pte'] })
+      )
+    ).toBe(false);
+
+    mockGetDeviceId.mockReturnValue('iPhone17,1');
   });
 
   it('is not a model that was never downloaded', () => {
