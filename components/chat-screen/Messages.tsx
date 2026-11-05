@@ -260,9 +260,6 @@ const Messages = ({
     []
   );
 
-  // v0-style initial scroll: hide the view until we've snapped to
-  // the bottom, then fade in so the user never sees content flying by.
-  // https://vercel.com/blog/how-we-built-the-v0-ios-app
   const opacity = useSharedValue(0);
   const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const [revealed, setRevealed] = useState(false);
