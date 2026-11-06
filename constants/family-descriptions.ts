@@ -32,3 +32,14 @@ export const FAMILY_PROVIDERS: Record<string, string> = {
   'Gemma 4': 'Google',
   'Bielik': 'SpeakLeash',
 };
+
+export type SwmModelRole = 'optimized' | 'prepared';
+
+export const FAMILY_SWM_ROLES: Record<string, SwmModelRole> = {
+  'Gemma 4': 'optimized',
+};
+
+export const FAMILY_MODEL_URLS: Record<string, string> = {
+  'Gemma 4':
+    'https://huggingface.co/software-mansion/gemma-4-E2B-it-ExecuTorch',
+};
