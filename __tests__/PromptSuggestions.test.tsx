@@ -32,6 +32,7 @@ jest.mock('react-native-gesture-handler', () => {
 
 import PromptSuggestions from '../components/chat-screen/PromptSuggestions';
 import { NEW_CHAT_HEADING } from '../constants/chat-screen';
+import { DRIFT_SETTLE_MS } from '../components/chat-screen/promptRowMotion';
 import {
   DEFAULT_PROMPT_SUGGESTIONS,
   PROMPT_SUGGESTION_ROWS,
@@ -128,6 +129,20 @@ describe('when the rows drift', () => {
     render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
 
     expect(setActive).toHaveBeenLastCalledWith(true);
+  });
+
+  it('waits for the screen to settle, so a slow mount cannot freeze moving rows', () => {
+    const withDelay = jest.spyOn(Reanimated, 'withDelay');
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} />);
+
+    expect(withDelay).toHaveBeenCalledWith(DRIFT_SETTLE_MS, expect.anything());
+  });
+
+  it('holds still while paused, as on a chat being left', () => {
+    const withDelay = jest.spyOn(Reanimated, 'withDelay');
+    render(<PromptSuggestions onSelectPrompt={jest.fn()} paused />);
+
+    expect(withDelay).not.toHaveBeenCalled();
   });
 
   it('stops while a sheet covers the rows', () => {

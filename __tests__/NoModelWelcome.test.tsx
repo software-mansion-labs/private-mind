@@ -34,7 +34,7 @@ describe('the no-model screen', () => {
   it('welcomes and says what to do first', () => {
     renderWelcome();
 
-    expect(screen.getByRole('header', { name: 'Welcome' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Welcome!' })).toBeTruthy();
     expect(
       screen.getByText('Choose a model to get started with Private Mind')
     ).toBeTruthy();
@@ -68,6 +68,6 @@ describe('the no-model screen', () => {
     );
 
     expect(screen.getByText('Choose a model')).toBeTruthy();
-    expect(screen.queryByText('Welcome')).toBeNull();
+    expect(screen.queryByText('Welcome!')).toBeNull();
   });
 });

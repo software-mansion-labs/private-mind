@@ -31,6 +31,8 @@ const GRADIENT_UNMOUNT_SLACK_MS = 100;
 const GRADIENT_DRIFT_PX = 28;
 const GRADIENT_ENTER_SCALE = 1.05;
 
+let lastRootFrame = { x: 0, y: 0, height: 0 };
+
 export const useChatScreenLayout = ({
   isEmpty,
   headerTitleBottom,
@@ -38,13 +40,14 @@ export const useChatScreenLayout = ({
   theme,
 }: UseChatScreenLayoutOptions) => {
   const rootRef = useRef<View>(null);
-  const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
+  const [rootFrame, setRootFrame] = useState(lastRootFrame);
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
   const { width: windowWidth } = useWindowDimensions();
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y, _width, height) => {
+      lastRootFrame = { x, y, height };
       setRootFrame((current) =>
         current.x === x && current.y === y && current.height === height
           ? current

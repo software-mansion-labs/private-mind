@@ -384,7 +384,7 @@ export default function ChatScreen({
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
           onSpeechInputChange={setSpeechInputOpen}
-          promptsPaused={overlayOpen || whatsNewOpen}
+          promptsPaused={overlayOpen || whatsNewOpen || !isPhantomChat}
         />
       </Animated.View>
 

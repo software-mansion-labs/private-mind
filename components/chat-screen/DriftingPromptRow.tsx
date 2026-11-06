@@ -15,6 +15,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withDecay,
+  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -27,9 +28,11 @@ import { pressedOpacity } from '../../styles/pressable';
 import { GUTTER } from './attachments/constants';
 import {
   DRIFT_RESUME_MS,
+  DRIFT_SETTLE_MS,
   ROW_DRAG_SLOP,
   driftStep,
   rowCopyCount,
+  rowPositionFor,
   wrapRowOffset,
   type DriftDirection,
 } from './promptRowMotion';
@@ -57,9 +60,8 @@ const DriftingPromptRow = ({
   const reducedMotion = useReducedMotion();
   const [measuredCycle, setMeasuredCycle] = useState(0);
 
-  const cycleWidth = useSharedValue(0);
-  const offset = useSharedValue<number>(GUTTER);
-  const driftShare = useSharedValue(1);
+  const { offset, cycleWidth } = rowPositionFor(direction, GUTTER);
+  const driftShare = useSharedValue(0);
   const gliding = useSharedValue(false);
 
   const { setActive } = useFrameCallback(({ timeSincePreviousFrame }) => {
@@ -71,8 +73,18 @@ const DriftingPromptRow = ({
   }, false);
 
   useEffect(() => {
-    setActive(running && !reducedMotion);
-  }, [reducedMotion, running, setActive]);
+    const drifting = running && !reducedMotion;
+    setActive(drifting);
+    cancelAnimation(driftShare);
+    driftShare.set(
+      drifting
+        ? withDelay(
+            DRIFT_SETTLE_MS,
+            withTiming(1, { duration: DRIFT_RESUME_MS })
+          )
+        : 0
+    );
+  }, [driftShare, reducedMotion, running, setActive]);
 
   const handleCycleLayout = useCallback(
     (event: LayoutChangeEvent) => {
