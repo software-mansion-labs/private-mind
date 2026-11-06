@@ -2,6 +2,9 @@ import { Platform } from 'react-native';
 import { type Theme } from '../styles/colors';
 import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from './header-actions';
 
+export const NEW_CHAT_HEADING = 'How can I help?';
+export const NEW_CHAT_REST_BOTTOM_FRACTION = 0.405;
+
 export const SUPPORTS_USER_ACTION_MENU = Platform.OS === 'android';
 
 export const USER_MESSAGE_BOTTOM_SPACING = 24;

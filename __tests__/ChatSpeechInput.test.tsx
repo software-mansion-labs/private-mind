@@ -238,7 +238,7 @@ describe('ChatSpeechInput when the transcript ends without a send', () => {
     );
     await screen.findByText('call mom');
 
-    fireEvent.press(screen.getByTestId('speech-trash'));
+    fireEvent.press(screen.getByTestId('speech-cancel'));
     endStream();
     await act(async () => {});
 

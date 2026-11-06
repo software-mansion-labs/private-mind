@@ -5,7 +5,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useSpeechInput, type Status } from '../../hooks/useSpeechInput';
 import CircleButton from '../CircleButton';
-import TrashIcon from '../../assets/icons/trash.svg';
+import StopIcon from '../../assets/icons/pause_icon.svg';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import RecordingAnimation from './RecordingAnimation';
 import Animated, {
@@ -301,12 +301,12 @@ const ChatSpeechInput: React.FC<Props> = ({
 
       <View style={styles.actionRow}>
         <CircleButton
-          icon={TrashIcon}
+          icon={StopIcon}
           onPress={handleCancel}
-          size={20}
+          size={14}
           color={theme.text.contrastPrimary}
           backgroundColor={theme.bg.voiceModeSurface}
-          testID="speech-trash"
+          testID="speech-cancel"
         />
         <Text style={[styles.secondaryNote, styles.actionNote]}>
           {actionNote}
