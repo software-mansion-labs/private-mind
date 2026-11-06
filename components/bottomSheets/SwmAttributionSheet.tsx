@@ -29,7 +29,7 @@ import SwmLogo from '../../assets/icons/swm-logo.svg';
 import BuildingIcon from '../../assets/icons/building.svg';
 import CubeIcon from '../../assets/icons/cube.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import LockIcon from '../../assets/icons/lock.svg';
+import LockIcon from '../../assets/icons/lock-solid.svg';
 
 export interface SwmAttributionSheetData {
   family: string;
@@ -55,7 +55,6 @@ interface Row {
   icon: SvgComponent;
   title: string;
   detail: string;
-  highlighted?: boolean;
 }
 
 const attributionRows = ({
@@ -74,7 +73,6 @@ const attributionRows = ({
     icon: CubeIcon,
     title: SWM_ROLE_TITLES[role],
     detail: SWM_ROLE_DETAILS[role],
-    highlighted: true,
   },
   { key: 'benchmarked', icon: BenchmarkIcon, ...ATTRIBUTION_ROWS.benchmarked },
   { key: 'private', icon: LockIcon, ...ATTRIBUTION_ROWS.private },
@@ -83,7 +81,6 @@ const attributionRows = ({
 const AttributionRow = ({ row }: { row: Row }) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const Icon = row.icon;
-  const iconColor = row.highlighted ? theme.text.accent : theme.text.primary;
 
   return (
     <View
@@ -92,11 +89,11 @@ const AttributionRow = ({ row }: { row: Row }) => {
       accessibilityLabel={`${row.title}: ${row.detail}`}
       testID={`swm-attribution-row-${row.key}`}
     >
-      <View style={[styles.iconTile, row.highlighted && styles.iconTileAccent]}>
+      <View style={styles.iconTile}>
         <Icon
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ color: iconColor }}
+          style={{ color: theme.text.primary }}
         />
       </View>
       <View style={styles.rowText}>
@@ -135,7 +132,6 @@ const SwmAttributionSheet = ({ bottomSheetModalRef }: Props) => {
               <Text style={styles.title} accessibilityRole="header">
                 {ATTRIBUTION_SHEET_TITLE}
               </Text>
-              <Text style={styles.subtitle}>{data.family}</Text>
             </View>
             <View style={styles.group}>
               {attributionRows(data).map((row, index) => (
@@ -191,11 +187,6 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       color: theme.text.primary,
     },
-    subtitle: {
-      ...textStyles.bodySecondaryRegular,
-      textAlign: 'center',
-      color: theme.text.defaultTertiary,
-    },
     group: {
       borderRadius: radius.eighteen,
       backgroundColor: theme.bg.softTertiary,
@@ -220,9 +211,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bg.softPrimary,
-    },
-    iconTileAccent: {
-      backgroundColor: theme.bg.accentSoft,
     },
     rowText: {
       flex: 1,
