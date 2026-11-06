@@ -176,7 +176,7 @@ jest.mock('../hooks/useStartingFeatures', () => {
             description: 'Chat with files, search the web',
             sizeGb: 0.58,
             status: statuses.documents,
-            progress: 0,
+            progress: statuses.documents === 'downloaded' ? 1 : 0,
           },
           {
             key: 'dictation',
@@ -184,7 +184,7 @@ jest.mock('../hooks/useStartingFeatures', () => {
             description: 'Speak instead of typing',
             sizeGb: 0.08,
             status: statuses.dictation,
-            progress: 0,
+            progress: statuses.dictation === 'downloaded' ? 1 : 0,
           },
         ],
         download,
@@ -321,6 +321,18 @@ describe('select starting model', () => {
     fireEvent.press(screen.getByTestId('starting-features-select-all'));
 
     expect(screen.getByText('Download 3 models · 3.56 GB')).toBeTruthy();
+  });
+
+  it('keeps a finished feature in the section progress so it never steps back', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    act(() =>
+      startingFeatures.useFeatureStatuses.setState({ dictation: 'downloaded' })
+    );
+
+    expect(screen.getByText('12%')).toBeTruthy();
   });
 
   it('leaves an unticked feature out of the download size', async () => {

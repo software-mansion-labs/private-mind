@@ -327,6 +327,7 @@ function SelectStartingModelScreen() {
                 <StartingFeatureList
                   features={features}
                   selectedKeys={selectedFeatureKeys}
+                  startedKeys={startedFeatureKeys}
                   locked={phase !== 'select'}
                   onToggle={toggleFeature}
                   onSelectAll={selectAllFeatures}

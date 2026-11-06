@@ -86,11 +86,11 @@ const sectionSizeLabel = (
   return `${formatSize(totalSizeOf(ticked))} of ${total}`;
 };
 
-const combinedProgress = (downloading: StartingFeature[]) => {
-  const total = totalSizeOf(downloading);
+const combinedProgress = (started: StartingFeature[]) => {
+  const total = totalSizeOf(started);
   if (total === 0) return 0;
   return (
-    downloading.reduce(
+    started.reduce(
       (sum, feature) => sum + feature.sizeGb * feature.progress,
       0
     ) / total
@@ -215,6 +215,7 @@ const StartingFeatureRow = ({
 interface HeaderProps {
   features: StartingFeature[];
   selectedKeys: StartingFeatureKey[];
+  startedKeys: StartingFeatureKey[];
   locked: boolean;
   expanded: boolean;
   onToggleExpanded: () => void;
@@ -224,6 +225,7 @@ interface HeaderProps {
 const SectionHeaderRow = ({
   features,
   selectedKeys,
+  startedKeys,
   locked,
   expanded,
   onToggleExpanded,
@@ -244,7 +246,9 @@ const SectionHeaderRow = ({
   );
   const checkState = sectionCheckState(selectable, ticked);
   const summary = features.map((feature) => feature.name).join(' · ');
-  const progress = combinedProgress(downloading);
+  const progress = combinedProgress(
+    features.filter((feature) => startedKeys.includes(feature.key))
+  );
 
   const handleSelectAll = () => onSelectAll(checkState !== 'checked');
 
@@ -339,6 +343,7 @@ const SectionHeaderRow = ({
 interface Props {
   features: StartingFeature[];
   selectedKeys: StartingFeatureKey[];
+  startedKeys: StartingFeatureKey[];
   locked: boolean;
   onToggle: (key: StartingFeatureKey) => void;
   onSelectAll: (selected: boolean) => void;
@@ -349,6 +354,7 @@ interface Props {
 const StartingFeatureList = ({
   features,
   selectedKeys,
+  startedKeys,
   locked,
   onToggle,
   onSelectAll,
@@ -368,6 +374,7 @@ const StartingFeatureList = ({
       <SectionHeaderRow
         features={features}
         selectedKeys={selectedKeys}
+        startedKeys={startedKeys}
         locked={locked}
         expanded={expanded}
         onToggleExpanded={toggleExpanded}
