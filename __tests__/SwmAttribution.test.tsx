@@ -38,10 +38,11 @@ import SwmAttributionSheet, {
   type SwmAttributionSheetData,
 } from '../components/bottomSheets/SwmAttributionSheet';
 import {
-  FAMILY_MODEL_URLS,
   FAMILY_PROVIDERS,
   FAMILY_SWM_ROLES,
 } from '../constants/family-descriptions';
+import { huggingFaceRepoUrl } from '../utils/huggingFaceRepoUrl';
+import bundledCatalog from '../catalog/model-catalog-v2.json';
 
 const GEMMA_URL =
   'https://huggingface.co/software-mansion/gemma-4-E2B-it-ExecuTorch';
@@ -69,22 +70,49 @@ describe('family attribution config', () => {
     expect(FAMILY_SWM_ROLES['LLaMA 3.2']).toBe('prepared');
   });
 
-  it('links Gemma 4 to the Software Mansion Hugging Face repo that has a model card', () => {
-    expect(FAMILY_MODEL_URLS['Gemma 4']).toBe(GEMMA_URL);
-  });
-
   it('keeps the original author for every credited family', () => {
     for (const family of Object.keys(FAMILY_SWM_ROLES)) {
       expect(FAMILY_PROVIDERS[family]).toBeTruthy();
     }
   });
 
-  it('links every credited family to a Software Mansion repo on Hugging Face', () => {
+  it('finds a Software Mansion Hugging Face repo in the bundled catalog for every credited family', () => {
+    const catalogPaths = (family: string) =>
+      bundledCatalog.models
+        .filter((model) => model.family === family)
+        .flatMap((model) =>
+          typeof model.modelPath === 'string'
+            ? [model.modelPath]
+            : Object.values(model.modelPath)
+        );
     for (const family of Object.keys(FAMILY_SWM_ROLES)) {
-      expect(FAMILY_MODEL_URLS[family]).toMatch(
-        /^https:\/\/huggingface\.co\/software-mansion\/[\w.-]+$/
-      );
+      const repoUrls = catalogPaths(family).map(huggingFaceRepoUrl);
+      expect(repoUrls.length).toBeGreaterThan(0);
+      for (const url of repoUrls) {
+        expect(url).toMatch(
+          /^https:\/\/huggingface\.co\/software-mansion\/[\w.-]+$/
+        );
+      }
     }
+  });
+});
+
+describe('huggingFaceRepoUrl', () => {
+  it('turns a file download URL into the repo page', () => {
+    expect(
+      huggingFaceRepoUrl(
+        'https://huggingface.co/software-mansion/react-native-executorch-qwen-3/resolve/v0.9.0/0_6b/xnnpack/qwen_3_0_6b_xnnpack_8da4w.pte'
+      )
+    ).toBe(
+      'https://huggingface.co/software-mansion/react-native-executorch-qwen-3'
+    );
+  });
+
+  it('gives nothing for a local file or another host, so the link stays hidden', () => {
+    expect(huggingFaceRepoUrl('file:///data/models/model.pte')).toBeUndefined();
+    expect(
+      huggingFaceRepoUrl('https://example.com/org/repo/resolve/main/model.pte')
+    ).toBeUndefined();
   });
 });
 

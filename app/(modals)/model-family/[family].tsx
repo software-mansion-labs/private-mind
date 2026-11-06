@@ -12,6 +12,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../../styles/fontStyles';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
 import { getModelFamily } from '../../../utils/modelFamily';
+import { huggingFaceRepoUrl } from '../../../utils/huggingFaceRepoUrl';
 import ModelDownloadRow from '../../../components/model-hub/ModelDownloadRow';
 import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
 import WarningSheet, {
@@ -30,7 +31,6 @@ import SwmAttributionSheet, {
 import SectionHeader from '../../../components/model-hub/SectionHeader';
 import {
   FAMILY_DESCRIPTIONS,
-  FAMILY_MODEL_URLS,
   FAMILY_PROVIDERS,
   FAMILY_SWM_ROLES,
 } from '../../../constants/family-descriptions';
@@ -64,6 +64,10 @@ const FamilyScreen = () => {
   const description = FAMILY_DESCRIPTIONS[familyName];
   const provider = FAMILY_PROVIDERS[familyName];
   const swmRole = FAMILY_SWM_ROLES[familyName];
+  const familyRepoUrl = familyModels
+    .filter((m) => m.source === 'built-in')
+    .map((m) => huggingFaceRepoUrl(m.modelPath))
+    .find(Boolean);
   const downloadedCount = familyModels.filter((m) => m.isDownloaded).length;
   const downloadedGB = familyModels
     .filter((m) => m.isDownloaded)
@@ -79,7 +83,7 @@ const FamilyScreen = () => {
       family: familyName,
       provider,
       role: swmRole,
-      modelUrl: FAMILY_MODEL_URLS[familyName],
+      modelUrl: familyRepoUrl,
     });
   };
 
