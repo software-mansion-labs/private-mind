@@ -75,7 +75,7 @@ function ChatScreenInner() {
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
     isEmpty,
-    hideTitle: isPhantom,
+    hideTitle: isPhantom || isEmpty,
   });
 
   useFocusEffect(
