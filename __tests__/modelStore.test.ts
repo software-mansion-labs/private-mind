@@ -13,6 +13,8 @@ import {
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
 import { Paths } from 'expo-file-system';
+import { existingFiles } from '../__mocks__/expo-file-system';
+import { downloadedCopyUri } from '../utils/downloadedCopy';
 
 jest.mock('../database/modelRepository');
 
@@ -123,6 +125,24 @@ describe('downloadModel', () => {
         expect.objectContaining({
           text1:
             'Not enough storage for Test Model: it needs 1.25 GB and 0.36 GB is free. Free up space and try again.',
+        })
+      );
+    });
+
+    it('only asks for room for the files that are not downloaded yet', async () => {
+      setFreeBytes(0.36 * GB);
+      mockSize.mockImplementation(async (source: string) =>
+        source.endsWith('.pte') ? 1.25 * GB : 1_000
+      );
+      existingFiles.add(downloadedCopyUri(baseModel.modelPath));
+
+      await useModelStore.getState().downloadModel(baseModel);
+      existingFiles.clear();
+
+      expect(mockFetch).toHaveBeenCalled();
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: expect.stringContaining('Not enough storage'),
         })
       );
     });

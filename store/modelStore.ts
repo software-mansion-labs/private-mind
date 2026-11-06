@@ -24,6 +24,7 @@ import {
   showNotEnoughStorage,
   storageShortfall,
 } from '../utils/storageSpace';
+import { hasDownloadedCopy } from '../utils/downloadedCopy';
 import {
   CANCEL_DEADLINE_MS,
   CANCEL_POLL_MS,
@@ -378,7 +379,9 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
       attempt.fetching = true;
       const sources = sourcesOf(model);
       const sizes = await Promise.all(sources.map(sizeOf));
-      const shortfall = storageShortfall(totalOf(sizes));
+      const shortfall = storageShortfall(
+        totalOf(sizes.filter((_, index) => !hasDownloadedCopy(sources[index])))
+      );
       if (shortfall) {
         if (!isCurrent()) return;
         publish(0, ModelState.NotStarted);
