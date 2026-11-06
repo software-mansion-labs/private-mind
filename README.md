@@ -48,6 +48,10 @@ Models are not bundled with the app: they are downloaded from Hugging Face on fi
 
 With a native build already installed, `yarn start` boots just the dev server.
 
+## Model licences
+
+Each model has its own licence, separate from this repository's.
+
 ## Private Mind is created by Software Mansion
 
 Since 2012 [Software Mansion](https://swmansion.com) is a software agency with experience in building web and mobile apps. We are Core React Native Contributors and experts in dealing with all kinds of React Native issues. We can help you build your next dream product – [Hire us](https://swmansion.com/contact/projects?utm_source=react-native-executorch&utm_medium=readme).

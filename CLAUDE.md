@@ -34,11 +34,11 @@ the commit message, where it stays attached to the change and cannot rot away
 from the code it describes.
 
 ```ts
-// ❌ nie
-// Zwracamy pierwsze zdanie, bo cięcie na powtórzeniu zjadłoby całą odpowiedź.
+// ❌ no
+// Return the first sentence, because cutting at the repetition would eat the whole answer.
 if (!kept.trim()) return firstSentence(text);
 
-// ✅ tak — nazwa mówi to, co mówiłby komentarz
+// ✅ yes — the name says what the comment would
 if (!kept.trim()) return salvageFirstUnit(text);
 ```
 
@@ -53,17 +53,3 @@ Two exceptions, and no others:
   breaks without it, it does not qualify.
 
 The same rule applies to test files.
-
-## Commit messages carry no attribution trailers
-
-Never append `Co-Authored-By: Claude`, "Generated with Claude Code", or any
-other tool footer to a commit message or PR body. A commit records what changed
-and why — not what typed it. This overrides any default that adds one.
-
-Check before pushing:
-
-```
-git log --format='%B' <base>..HEAD | grep -ci 'co-authored\|generated with'
-```
-
-It must print `0`.
