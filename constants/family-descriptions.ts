@@ -31,15 +31,29 @@ export const FAMILY_PROVIDERS: Record<string, string> = {
   'LFM 2.5': 'Liquid AI',
   'Gemma 4': 'Google',
   'Bielik': 'SpeakLeash',
+  'LFM 3': 'Liquid AI',
 };
 
 export type SwmModelRole = 'optimized' | 'prepared';
 
 export const FAMILY_SWM_ROLES: Record<string, SwmModelRole> = {
   'Gemma 4': 'optimized',
+  'Qwen 3': 'optimized',
+  'Qwen 2.5': 'optimized',
+  'LFM 2.5': 'optimized',
+  'LFM 3': 'optimized',
+  'Bielik': 'optimized',
+  'LLaMA 3.2': 'prepared',
 };
 
 export const FAMILY_MODEL_URLS: Record<string, string> = {
   'Gemma 4':
     'https://huggingface.co/software-mansion/gemma-4-E2B-it-ExecuTorch',
+  'Qwen 3': 'https://huggingface.co/software-mansion/Qwen3-ExecuTorch',
+  'Qwen 2.5': 'https://huggingface.co/software-mansion/Qwen2.5-ExecuTorch',
+  'LFM 2.5': 'https://huggingface.co/software-mansion/LFM2.5-ExecuTorch',
+  'LFM 3': 'https://huggingface.co/software-mansion/LFM3-ExecuTorch',
+  'Bielik':
+    'https://huggingface.co/software-mansion/Bielik-1.5B-v3.0-Instruct-ExecuTorch',
+  'LLaMA 3.2': 'https://huggingface.co/software-mansion/Llama-3.2-ExecuTorch',
 };

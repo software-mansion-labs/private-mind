@@ -65,8 +65,8 @@ beforeEach(() => {
 });
 
 describe('family attribution config', () => {
-  it('credits Software Mansion only on Gemma 4 until other families are confirmed', () => {
-    expect(FAMILY_SWM_ROLES).toEqual({ 'Gemma 4': 'optimized' });
+  it('calls Llama 3.2 prepared, not optimized, because Meta trained its SpinQuant and QLoRA quantization', () => {
+    expect(FAMILY_SWM_ROLES['LLaMA 3.2']).toBe('prepared');
   });
 
   it('links Gemma 4 to the Software Mansion Hugging Face repo that has a model card', () => {
@@ -76,6 +76,14 @@ describe('family attribution config', () => {
   it('keeps the original author for every credited family', () => {
     for (const family of Object.keys(FAMILY_SWM_ROLES)) {
       expect(FAMILY_PROVIDERS[family]).toBeTruthy();
+    }
+  });
+
+  it('links every credited family to a Software Mansion repo on Hugging Face', () => {
+    for (const family of Object.keys(FAMILY_SWM_ROLES)) {
+      expect(FAMILY_MODEL_URLS[family]).toMatch(
+        /^https:\/\/huggingface\.co\/software-mansion\/[\w.-]+$/
+      );
     }
   });
 });
