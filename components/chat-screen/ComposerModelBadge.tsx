@@ -60,6 +60,7 @@ const ComposerModelBadge = ({
         family={getModelFamily(model)}
         size="badge"
         iconColor={theme.text.onChatBar}
+        bareIconSize={textStyles.bodySecondaryMedium.fontSize}
       />
       <Text
         style={styles.name}

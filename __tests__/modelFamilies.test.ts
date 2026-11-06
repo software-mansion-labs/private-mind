@@ -1,4 +1,8 @@
-import { familyIcon, familyInitial } from '../constants/model-families';
+import {
+  familyIcon,
+  familyIconScale,
+  familyInitial,
+} from '../constants/model-families';
 
 describe('familyIcon', () => {
   it.each(['Gemma 4', 'Qwen 3', 'Qwen 2.5', 'LLaMA 3.2', 'LFM 2.5', 'Bielik'])(
@@ -36,5 +40,17 @@ describe('familyInitial', () => {
 
   it('returns nothing for an empty name', () => {
     expect(familyInitial('   ')).toBe('');
+  });
+});
+
+describe('familyIconScale', () => {
+  it('draws the Liquid and Qwen marks smaller, since they fill more of their box than Gemma or Meta', () => {
+    expect(familyIconScale('LFM 3')).toBeLessThan(familyIconScale('Qwen 3'));
+    expect(familyIconScale('Qwen 3')).toBeLessThan(familyIconScale('Gemma 4'));
+    expect(familyIconScale('LLaMA 3.2')).toBe(1);
+  });
+
+  it('leaves a family without an icon at full size', () => {
+    expect(familyIconScale('Phi 4')).toBe(1);
   });
 });
