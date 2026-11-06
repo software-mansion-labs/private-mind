@@ -24,16 +24,22 @@ interface Props {
   family: string;
   size: ModelFamilyTileSize;
   iconColor?: string;
+  bareIconSize?: number;
 }
 
-const ModelFamilyTile = ({ family, size, iconColor }: Props) => {
+const ModelFamilyTile = ({ family, size, iconColor, bareIconSize }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles, size);
   const FamilyIcon = familyIcon(family);
-  const iconSize = FAMILY_TILE[size].icon;
+  const iconOnly = bareIconSize !== undefined && !!FamilyIcon;
+  const iconSize = iconOnly ? bareIconSize : FAMILY_TILE[size].icon;
 
   return (
     <View
-      style={[styles.tile, !FamilyIcon && styles.initialTile]}
+      style={[
+        styles.tile,
+        !FamilyIcon && styles.initialTile,
+        iconOnly && [styles.bareTile, { width: iconSize, height: iconSize }],
+      ]}
       testID="model-family-tile"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
@@ -69,6 +75,9 @@ const createStyles = (theme: Theme, size: ModelFamilyTileSize) => {
     },
     initialTile: {
       backgroundColor: theme.label[UNKNOWN_FAMILY_COLOR].background,
+    },
+    bareTile: {
+      backgroundColor: 'transparent',
     },
     initial: {
       fontFamily: fontFamily.bold,
