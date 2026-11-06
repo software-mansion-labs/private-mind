@@ -15,7 +15,9 @@ export type DownloadPhase =
   | 'resumed-after-priority'
   | 'pause-failed'
   | 'resumed-in-foreground'
-  | 'resume-failed';
+  | 'resume-failed'
+  | 'waiting-for-network'
+  | 'reconnected';
 
 interface DownloadEvent {
   at: number;

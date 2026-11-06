@@ -26,6 +26,14 @@ import {
 } from '../utils/storageSpace';
 import { hasDownloadedCopy } from '../utils/downloadedCopy';
 import {
+  ConnectionLostError,
+  MAX_RECONNECTS,
+  connectionLostMessage,
+  isConnectionLostError,
+  lostConnection,
+  waitUntilOnlineAndActive,
+} from '../utils/downloadReconnect';
+import {
   CANCEL_DEADLINE_MS,
   CANCEL_POLL_MS,
   isNotFetchingYet,
@@ -286,6 +294,36 @@ const fetchSharedSource = async (
   return true;
 };
 
+const fetchSurvivingDisconnects = async (
+  attempt: DownloadAttempt,
+  source: string,
+  onProgress: (progress: number) => void
+) => {
+  const { model } = attempt;
+  for (let reconnects = 0; ; reconnects += 1) {
+    try {
+      return await fetchSharedSource(attempt, source, onProgress);
+    } catch (err) {
+      if (attempt.cancelled || reconnects >= MAX_RECONNECTS) throw err;
+      if (isOutOfSpaceError(err) || !(await lostConnection(err))) throw err;
+      recordDownloadEvent(
+        model.id,
+        model.modelName,
+        'waiting-for-network',
+        describeDownloadError(err)
+      );
+      const reconnected = await Promise.race([
+        waitUntilOnlineAndActive(),
+        attempt.cancellation.then(() => false),
+      ]);
+      if (attempt.cancelled) return false;
+      if (!reconnected) throw new ConnectionLostError(err);
+      attempt.resumedSinceLastProgress = true;
+      recordDownloadEvent(model.id, model.modelName, 'reconnected');
+    }
+  }
+};
+
 // Wrapper around ExpoResourceFetcher.deleteResources that swallows errors.
 // We pass model.* source paths (URLs); the fetcher derives the on-disk
 // filename and deletes only files it manages — never user-supplied local paths.
@@ -403,7 +441,7 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
         if (attempt.cancelled) break;
         const before = completed;
         const weight = weights[index]!;
-        const fetched = await fetchSharedSource(attempt, source, (p) =>
+        const fetched = await fetchSurvivingDisconnects(attempt, source, (p) =>
           reportProgress(before + p * weight)
         );
         if (!fetched) break;
@@ -457,6 +495,14 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
         showNotEnoughStorage(model.modelName, undefined, () =>
           retryDownload(model)
         );
+        return;
+      }
+      if (err instanceof ConnectionLostError || isConnectionLostError(err)) {
+        Toast.show({
+          type: 'defaultToast',
+          text1: connectionLostMessage(model.modelName),
+          props: { onRetry: () => retryDownload(model) },
+        });
         return;
       }
       Toast.show({
