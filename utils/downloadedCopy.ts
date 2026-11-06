@@ -17,10 +17,12 @@ const fileExists = (uri: string) => {
   }
 };
 
+export const hasDownloadedCopy = (source: unknown) =>
+  typeof source === 'string' &&
+  REMOTE_SOURCE.test(source) &&
+  fileExists(downloadedCopyUri(source));
+
 export const preferDownloadedCopy = <Source>(
   source: Source
-): Source | string => {
-  if (typeof source !== 'string' || !REMOTE_SOURCE.test(source)) return source;
-  const localUri = downloadedCopyUri(source);
-  return fileExists(localUri) ? localUri : source;
-};
+): Source | string =>
+  hasDownloadedCopy(source) ? downloadedCopyUri(source as string) : source;

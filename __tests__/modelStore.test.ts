@@ -12,8 +12,25 @@ import {
 } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
+import { Paths } from 'expo-file-system';
+import { existingFiles } from '../__mocks__/expo-file-system';
+import { downloadedCopyUri } from '../utils/downloadedCopy';
+import { waitUntilOnlineAndActive } from '../utils/downloadReconnect';
 
 jest.mock('../database/modelRepository');
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn(async () => ({
+    isConnected: true,
+    isInternetReachable: true,
+  })),
+  addEventListener: jest.fn(() => () => {}),
+}));
+jest.mock('../utils/downloadReconnect', () => ({
+  ...jest.requireActual('../utils/downloadReconnect'),
+  waitUntilOnlineAndActive: jest.fn(async () => true),
+}));
+
+const mockWaitUntilOnline = waitUntilOnlineAndActive as jest.Mock;
 
 const mockDb = {} as any;
 const mockFetch = ResourceFetcher.fetch as jest.Mock;
@@ -95,6 +112,129 @@ describe('downloadModel', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: expect.stringContaining('Test Model') })
     );
+  });
+
+  describe('when the device is short of storage', () => {
+    const GB = 1_000_000_000;
+    const mockSize = ExpoResourceFetcher.getFilesTotalSize as jest.Mock;
+    const setFreeBytes = (bytes: number | undefined) => {
+      (Paths as { availableDiskSpace?: number }).availableDiskSpace = bytes;
+    };
+
+    afterEach(() => setFreeBytes(undefined));
+
+    it('does not start a download that would not fit, and says how much space it needs', async () => {
+      setFreeBytes(0.36 * GB);
+      mockSize.mockImplementation(async (source: string) =>
+        source.endsWith('.pte') ? 1.25 * GB : 0
+      );
+
+      await useModelStore.getState().downloadModel(baseModel);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(
+        useModelStore.getState().downloadStates[baseModel.id]?.status
+      ).toBe(ModelState.NotStarted);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1:
+            'Not enough storage for Test Model: it needs 1.25 GB and 0.36 GB is free. Free up space and try again.',
+        })
+      );
+    });
+
+    it('only asks for room for the files that are not downloaded yet', async () => {
+      setFreeBytes(0.36 * GB);
+      mockSize.mockImplementation(async (source: string) =>
+        source.endsWith('.pte') ? 1.25 * GB : 1_000
+      );
+      existingFiles.add(downloadedCopyUri(baseModel.modelPath));
+
+      await useModelStore.getState().downloadModel(baseModel);
+      existingFiles.clear();
+
+      expect(mockFetch).toHaveBeenCalled();
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: expect.stringContaining('Not enough storage'),
+        })
+      );
+    });
+
+    it('blames the full disk, not the network, when a write runs out of space', async () => {
+      mockFetch.mockRejectedValue(
+        new Error('write failed: ENOSPC (No space left on device)')
+      );
+
+      await useModelStore.getState().downloadModel(baseModel);
+
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: expect.stringContaining('out of storage'),
+        })
+      );
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: 'Test Model could not be downloaded.',
+        })
+      );
+    });
+  });
+
+  describe('when the connection drops mid-download', () => {
+    const connectionAbort = () => new Error('Software caused connection abort');
+
+    it('picks the download back up once the connection returns', async () => {
+      mockFetch
+        .mockRejectedValueOnce(connectionAbort())
+        .mockResolvedValue(['/path']);
+
+      await useModelStore.getState().downloadModel(baseModel);
+      await flushMicrotasks();
+
+      expect(mockWaitUntilOnline).toHaveBeenCalledTimes(1);
+      expect(
+        useModelStore.getState().downloadStates[baseModel.id]?.status
+      ).toBe(ModelState.Downloaded);
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ props: expect.anything() })
+      );
+    });
+
+    it('says the connection is gone when it does not come back', async () => {
+      mockWaitUntilOnline.mockResolvedValueOnce(false);
+      mockFetch.mockRejectedValue(connectionAbort());
+
+      await useModelStore.getState().downloadModel(baseModel);
+      await flushMicrotasks();
+
+      expect(
+        useModelStore.getState().downloadStates[baseModel.id]?.status
+      ).toBe(ModelState.NotStarted);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1:
+            'Test Model download stopped: no internet connection. Connect and try again.',
+          props: { onRetry: expect.any(Function) },
+        })
+      );
+    });
+
+    it('stops waiting for the connection when the user cancels', async () => {
+      mockWaitUntilOnline.mockReturnValueOnce(new Promise(() => {}));
+      mockFetch.mockRejectedValueOnce(connectionAbort());
+
+      const download = useModelStore.getState().downloadModel(baseModel);
+      await flushMicrotasks();
+      await useModelStore.getState().cancelDownload(baseModel);
+      await download;
+      await flushMicrotasks();
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ props: expect.anything() })
+      );
+    });
   });
 
   it('resets to NotStarted and shows error toast on failure', async () => {
