@@ -1,6 +1,6 @@
 diff --git a/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js b/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
 index a71f4a0d..9580f089 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/lib/module/legacy/src/controllers/LLMController.js
+--- a/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
 +++ b/node_modules/react-native-executorch/lib/module/legacy/src/controllers/LLMController.js
 @@ -6,6 +6,7 @@ import { parseToolCall } from '../utils/llm';
  import { Logger } from '../common/Logger';
@@ -67,7 +67,7 @@ index a71f4a0d..9580f089 100644
              // Audio soft-token expansion: audio_encoder pads samples to
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
 index ec11c102..e300fa8b 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/multimodal_runner.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
 @@ -87,10 +87,21 @@ Error MultimodalRunner::generate_internal(
          ET_CHECK_OK_OR_RETURN_ERROR(load());
@@ -103,7 +103,7 @@ index ec11c102..e300fa8b 100644
      }
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
 index 6c684419..ad11686b 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/text_token_generator.h
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_token_generator.h
 @@ -91,13 +91,15 @@ public:
                                          executorch::aten::ScalarType::Long);
@@ -161,7 +161,7 @@ index 6c684419..ad11686b 100644
      // stats
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h
 index 63d4ec60..4892a883 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/text_runner.h
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.h
 @@ -21,6 +21,9 @@ public:
                                                            .topp = 0.9F});
@@ -175,7 +175,7 @@ index 63d4ec60..4892a883 100644
          const std::vector<MultimodalInput> &inputs,
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
 index 6a10166b..63f7ecd5 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/text_prefiller.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_prefiller.cpp
 @@ -46,6 +46,9 @@ TextPrefiller::prefill(std::vector<uint64_t> &prompt_tokens,
          int num_tokens_to_process = 0;
@@ -213,7 +213,7 @@ index 6a10166b..63f7ecd5 100644
  
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
 index dbc4459a..80443ee8 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/text_decoder_runner.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.cpp
 @@ -13,6 +13,7 @@
  #include "irunner.h"
@@ -264,7 +264,7 @@ index dbc4459a..80443ee8 100644
      const std::vector<uint64_t> &recent_tokens) {
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
 index dbd10fba..4c5e1081 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/base_llm_runner.h
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.h
 @@ -56,6 +56,7 @@ public:
      int32_t get_max_context_length() const;
@@ -286,7 +286,7 @@ index dbd10fba..4c5e1081 100644
  
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
 index e289df8c..13febe9b 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/text_decoder_runner.h
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_decoder_runner.h
 @@ -13,6 +13,8 @@
  #include "constants.h"
@@ -337,7 +337,7 @@ index e289df8c..13febe9b 100644
  } // namespace llm
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
 index bfef1f53..fb512b03 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/multimodal_prefiller.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
 @@ -329,34 +329,49 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
          ids.resize(static_cast<size_t>(max_seq_len), 0);
@@ -437,7 +437,7 @@ index bfef1f53..fb512b03 100644
          }
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h b/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
 index 3637dd6a..dd0087ec 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/irunner.h
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/irunner.h
 @@ -71,6 +71,11 @@ struct GenerationConfig {
      // Values > 1.0 discourage repetition. 1.0 disables the penalty.
@@ -453,7 +453,7 @@ index 3637dd6a..dd0087ec 100644
      // have accumulated or `batch_time_interval_ms` milliseconds have elapsed
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h
 index 4ecec3e2..bd224c50 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/multimodal_runner.h
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.h
 @@ -28,6 +28,9 @@ public:
      bool is_loaded() const override;
@@ -467,7 +467,7 @@ index 4ecec3e2..bd224c50 100644
          const std::vector<MultimodalInput> &inputs,
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
 index 72301a85..302d983b 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/base_llm_runner.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/base_llm_runner.cpp
 @@ -169,6 +169,15 @@ void BaseLLMRunner::set_time_interval(size_t time_interval) {
      config_.batch_time_interval_ms = time_interval;
@@ -487,7 +487,7 @@ index 72301a85..302d983b 100644
                                                int32_t max_context_len,
 diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
 index e65c70fc..4b997705 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/runner/text_runner.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/runner/text_runner.cpp
 @@ -73,6 +73,9 @@ Error TextRunner::generate_internal(
          stats_.model_load_end_ms = time_in_ms();
@@ -524,7 +524,7 @@ index e65c70fc..4b997705 100644
  }
 diff --git a/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js b/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
 index 8e348d85..05b219bc 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
+--- a/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
 +++ b/node_modules/react-native-executorch/lib/module/legacy/src/modules/natural_language_processing/LLMModule.js
 @@ -164,6 +164,12 @@ export class LLMModule {
      getTotalTokensCount() {
@@ -541,7 +541,7 @@ index 8e348d85..05b219bc 100644
       * Note you cannot delete model while it's generating.
 diff --git a/node_modules/react-native-executorch/legacy/src/types/llm.ts b/node_modules/react-native-executorch/legacy/src/types/llm.ts
 index 16de2f2b..19e55eab 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/src/types/llm.ts
+--- a/node_modules/react-native-executorch/legacy/src/types/llm.ts
 +++ b/node_modules/react-native-executorch/legacy/src/types/llm.ts
 @@ -386,6 +386,10 @@ export interface GenerationConfig {
    repetitionPenalty?: number;
@@ -556,7 +556,7 @@ index 16de2f2b..19e55eab 100644
  /**
 diff --git a/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts b/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
 index af0450a2..fb6a1eff 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/src/controllers/LLMController.ts
+--- a/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
 +++ b/node_modules/react-native-executorch/legacy/src/controllers/LLMController.ts
 @@ -16,6 +16,8 @@ import { Logger } from '../common/Logger';
  import { RnExecutorchError, parseUnknownError } from '../errors/errorUtils';
@@ -640,7 +640,7 @@ index af0450a2..fb6a1eff 100644
        const imageCount = messages.filter((m) => m.mediaPath).length;
 diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
 index 11a61f00..6d86bb0b 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/host_objects/ModelHostObject.h
 @@ -182,6 +182,15 @@ public:
                  synchronousHostFunction<&Model::setRepetitionPenalty>,
@@ -660,7 +660,7 @@ index 11a61f00..6d86bb0b 100644
                  synchronousHostFunction<&Model::getMaxContextLength>,
 diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
 index 86ed7281..21e31c6e 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/lib/typescript/legacy/src/types/llm.d.ts
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
 +++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/types/llm.d.ts
 @@ -312,6 +312,10 @@ export interface GenerationConfig {
      repetitionPenalty?: number;
@@ -675,7 +675,7 @@ index 86ed7281..21e31c6e 100644
   * Defines a strategy for managing the conversation context window and message history.
 diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts
 index 0aef856f..95a2c447 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/lib/typescript/legacy/src/controllers/LLMController.d.ts
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts
 +++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/controllers/LLMController.d.ts
 @@ -42,6 +42,8 @@ export declare class LLMController {
      getGeneratedTokenCount(): number;
@@ -688,7 +688,7 @@ index 0aef856f..95a2c447 100644
          imagePath?: string;
 diff --git a/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts b/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts
 index f5b0d720..5499a0b4 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/src/modules/natural_language_processing/LLMModule.ts
+--- a/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts
 +++ b/node_modules/react-native-executorch/legacy/src/modules/natural_language_processing/LLMModule.ts
 @@ -225,6 +225,14 @@ export class LLMModule {
      return this.controller.getTotalTokenCount();
@@ -707,7 +707,7 @@ index f5b0d720..5499a0b4 100644
     * Note you cannot delete model while it's generating.
 diff --git a/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts b/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
 index 9e3ba4a8..5cc21579 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
+--- a/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
 +++ b/node_modules/react-native-executorch/lib/typescript/legacy/src/modules/natural_language_processing/LLMModule.d.ts
 @@ -121,6 +121,8 @@ export declare class LLMModule {
       * @returns The count of prompt and generated tokens.
@@ -720,7 +720,7 @@ index 9e3ba4a8..5cc21579 100644
       * Note you cannot delete model while it's generating.
 diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
 index 528cf3f5..a16d68bf 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
 @@ -298,6 +298,26 @@ void LLM::setRepetitionPenalty(float repetitionPenalty) {
      runner_->set_repetition_penalty(repetitionPenalty);
@@ -751,7 +751,7 @@ index 528cf3f5..a16d68bf 100644
          throw RnExecutorchError(
 diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
 index bf7c7f58..ef9136c0 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/rnexecutorch/models/llm/LLM.h
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
 +++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.h
 @@ -42,6 +42,9 @@ public:
      void setMinP(float minP);
@@ -765,7 +765,7 @@ index bf7c7f58..ef9136c0 100644
  private:
 diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
 index 79b550bf..5f22c054 100644
---- a/node_modules/react-native-executorch/private/tmp/claude-501/-Users-krzysztoffaracik-Projects-private-mind-B/c2a48c6e-9575-4249-988b-0ac5ddcd45fe/scratchpad/rne/0.11.0/package/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
 +++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/embeddings/BaseEmbeddings.cpp
 @@ -6,7 +6,7 @@ namespace rnexecutorch::models::embeddings {
  
