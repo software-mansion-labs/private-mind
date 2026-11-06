@@ -4,11 +4,13 @@ export interface AppNotice {
   id: string;
   title: string;
   message?: string;
+  onDismiss?: () => void;
 }
 
 interface NoticeStore {
   notices: AppNotice[];
   showNotice: (notice: AppNotice) => void;
+  dismissNotice: (notice: AppNotice) => void;
 }
 
 export const useNoticeStore = create<NoticeStore>((set) => ({
@@ -20,4 +22,10 @@ export const useNoticeStore = create<NoticeStore>((set) => ({
         notice,
       ],
     })),
+  dismissNotice: (notice) => {
+    set((state) => ({
+      notices: state.notices.filter((shown) => shown.id !== notice.id),
+    }));
+    notice.onDismiss?.();
+  },
 }));
