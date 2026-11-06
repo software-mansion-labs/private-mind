@@ -5,7 +5,7 @@ import { Theme } from '../../styles/colors';
 import { space, textStyles, rowChevron } from '../../constants/design-system';
 import { ModelFamily, familyLabels } from '../../utils/modelFamily';
 import { FAMILY_SUMMARIES } from '../../constants/family-descriptions';
-import ModelFamilyTile from './ModelFamilyTile';
+import ModelFamilyTile, { familyTileSize } from './ModelFamilyTile';
 import ModelBadge from './ModelBadge';
 import { incompatibilityLabel } from '../../utils/modelCompatibility';
 import DownloadedBadge from './DownloadedBadge';
@@ -22,6 +22,7 @@ const TRAILING_WIDTH = 20;
 const CHECK_SIZE = 20;
 const SPINNER_STROKE = 2;
 const STATUS_ICON_GAP = space.two;
+const FAMILY_ICON_SIZE = 24;
 
 interface Props {
   family: ModelFamily;
@@ -73,7 +74,11 @@ const FamilyCard = ({ family, onPress, runnable = true }: Props) => {
       testID={`family-card-${family.name}`}
     >
       <View style={styles.tile}>
-        <ModelFamilyTile family={family.name} size="list" />
+        <ModelFamilyTile
+          family={family.name}
+          size="list"
+          bareIconSize={FAMILY_ICON_SIZE}
+        />
       </View>
       <ModelRowText title={family.name} subtitle={summary} subtitleLines={1}>
         {(!runnable || labels.length > 0) && (
@@ -134,6 +139,10 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softTertiary,
     },
     tile: {
+      width: familyTileSize('list'),
+      height: familyTileSize('list'),
+      alignItems: 'center',
+      justifyContent: 'center',
       alignSelf: 'flex-start',
       marginTop: TILE_ROW.tileOffset,
     },
