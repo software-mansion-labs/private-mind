@@ -16,6 +16,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
+import {
+  isOutOfSpaceError,
+  shortfallBehind,
+  showNotEnoughStorage,
+} from '../../utils/storageSpace';
+import { WHISPER_DOWNLOAD_SIZE_BYTES } from '../../utils/sttModelFiles';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
 import { radius, space } from '../../constants/design-system';
@@ -133,12 +139,19 @@ const ChatSpeechInput: React.FC<Props> = ({
         } else if (exitStateRef.current === null) {
           onEndedEarly(shownTranscript(text, pendingText));
         }
-      } catch {
+      } catch (error) {
         if (unmountedRef.current) return;
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Could not start live transcript',
-        });
+        if (isOutOfSpaceError(error)) {
+          showNotEnoughStorage(
+            'Voice dictation',
+            shortfallBehind(error, WHISPER_DOWNLOAD_SIZE_BYTES)
+          );
+        } else {
+          Toast.show({
+            type: 'defaultToast',
+            text1: 'Could not start live transcript',
+          });
+        }
         onCancel();
         return;
       }

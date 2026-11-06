@@ -12,6 +12,7 @@ import {
 } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
+import { Paths } from 'expo-file-system';
 
 jest.mock('../database/modelRepository');
 
@@ -95,6 +96,55 @@ describe('downloadModel', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: expect.stringContaining('Test Model') })
     );
+  });
+
+  describe('when the device is short of storage', () => {
+    const GB = 1_000_000_000;
+    const mockSize = ExpoResourceFetcher.getFilesTotalSize as jest.Mock;
+    const setFreeBytes = (bytes: number | undefined) => {
+      (Paths as { availableDiskSpace?: number }).availableDiskSpace = bytes;
+    };
+
+    afterEach(() => setFreeBytes(undefined));
+
+    it('does not start a download that would not fit, and says how much space it needs', async () => {
+      setFreeBytes(0.36 * GB);
+      mockSize.mockImplementation(async (source: string) =>
+        source.endsWith('.pte') ? 1.25 * GB : 0
+      );
+
+      await useModelStore.getState().downloadModel(baseModel);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(
+        useModelStore.getState().downloadStates[baseModel.id]?.status
+      ).toBe(ModelState.NotStarted);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1:
+            'Not enough storage for Test Model: it needs 1.25 GB and 0.36 GB is free. Free up space and try again.',
+        })
+      );
+    });
+
+    it('blames the full disk, not the network, when a write runs out of space', async () => {
+      mockFetch.mockRejectedValue(
+        new Error('write failed: ENOSPC (No space left on device)')
+      );
+
+      await useModelStore.getState().downloadModel(baseModel);
+
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: expect.stringContaining('out of storage'),
+        })
+      );
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          text1: 'Test Model could not be downloaded.',
+        })
+      );
+    });
   });
 
   it('resets to NotStarted and shows error toast on failure', async () => {

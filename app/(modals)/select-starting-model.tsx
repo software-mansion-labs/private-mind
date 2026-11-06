@@ -3,6 +3,10 @@ import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
+import {
+  showNotEnoughStorage,
+  storageShortfall,
+} from '../../utils/storageSpace';
 import { fontSizes, fontFamily, lineHeights } from '../../styles/fontStyles';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
@@ -48,14 +52,17 @@ const APP_ICON_SIZE = 72;
 const SECTION_GAP = 28;
 const CARD_BORDER_ROOM = stroke.strong;
 
+const BYTES_PER_GB = 1_000_000_000;
+
+const totalSizeGb = (models: Model[], features: StartingFeature[]) =>
+  models.reduce((sum, model) => sum + (model.modelSize ?? 0), 0) +
+  features.reduce((sum, feature) => sum + feature.sizeGb, 0);
+
 const downloadLabel = (models: Model[], features: StartingFeature[]) => {
   if (models.length === 0) return 'Select a model';
   const count = models.length + features.length;
   const noun = count === 1 ? 'model' : 'models';
-  const totalGb =
-    models.reduce((sum, model) => sum + (model.modelSize ?? 0), 0) +
-    features.reduce((sum, feature) => sum + feature.sizeGb, 0);
-  return `Download ${count} ${noun} · ${totalGb.toFixed(2)} GB`;
+  return `Download ${count} ${noun} · ${totalSizeGb(models, features).toFixed(2)} GB`;
 };
 
 type Phase = 'select' | 'downloading' | 'ready';
@@ -178,17 +185,26 @@ function SelectStartingModelScreen() {
       return;
     }
 
+    const modelsToDownload = selectedModels.filter(
+      (model) => !isModelDownloaded(model.id)
+    );
+    const shortfall = storageShortfall(
+      totalSizeGb(modelsToDownload, featuresToDownload) * BYTES_PER_GB
+    );
+    if (shortfall) {
+      showNotEnoughStorage('the selected downloads', shortfall);
+      return;
+    }
+
     setStarted(true);
     setStartedFeatureKeys(featuresToDownload.map((feature) => feature.key));
     Feedback.downloadStart();
 
     await Promise.all([
-      ...selectedModels
-        .filter((model) => !isModelDownloaded(model.id))
-        .map(async (model) => {
-          await downloadModel(model);
-          if (!isModelDownloaded(model.id)) deselect(model.id);
-        }),
+      ...modelsToDownload.map(async (model) => {
+        await downloadModel(model);
+        if (!isModelDownloaded(model.id)) deselect(model.id);
+      }),
       ...featuresToDownload.map(async (feature) => {
         const finished = await downloadFeature(feature.key);
         if (cancelledFeaturesRef.current.delete(feature.key)) return;

@@ -1,3 +1,4 @@
+import { ensureStorageFor } from './storageSpace';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { Platform } from 'react-native';
 import {
@@ -41,6 +42,9 @@ export const fetchWhisperFiles = async (
 ): Promise<boolean> => {
   const sources = remoteSources();
   if (sources.length === 0) return false;
+  if (!(await isWhisperDownloaded())) {
+    ensureStorageFor(WHISPER_DOWNLOAD_SIZE_BYTES);
+  }
   const paths = await ResourceFetcher.fetch(onProgress, ...sources);
   return paths !== null;
 };

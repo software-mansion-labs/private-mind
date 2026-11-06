@@ -20,6 +20,11 @@ import {
 } from '../utils/downloadDiagnostics';
 import { RateSample, nextProgressRate } from '../utils/downloadEta';
 import {
+  isOutOfSpaceError,
+  showNotEnoughStorage,
+  storageShortfall,
+} from '../utils/storageSpace';
+import {
   CANCEL_DEADLINE_MS,
   CANCEL_POLL_MS,
   isNotFetchingYet,
@@ -239,11 +244,13 @@ const sizeOf = async (source: string) => {
   }
 };
 
-const sourceWeights = async (sources: readonly string[]) => {
-  const sizes = await Promise.all(sources.map(sizeOf));
-  const total = sizes.reduce((sum, size) => sum + size, 0);
+const totalOf = (sizes: readonly number[]) =>
+  sizes.reduce((sum, size) => sum + size, 0);
+
+const weightsFor = (sizes: readonly number[]) => {
+  const total = totalOf(sizes);
   if (total > 0) return sizes.map((size) => size / total);
-  return sources.map(() => 1 / sources.length);
+  return sizes.map(() => 1 / sizes.length);
 };
 
 const fetchSharedSource = async (
@@ -370,7 +377,23 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
     try {
       attempt.fetching = true;
       const sources = sourcesOf(model);
-      const weights = await sourceWeights(sources);
+      const sizes = await Promise.all(sources.map(sizeOf));
+      const shortfall = storageShortfall(totalOf(sizes));
+      if (shortfall) {
+        if (!isCurrent()) return;
+        publish(0, ModelState.NotStarted);
+        recordDownloadEvent(
+          model.id,
+          model.modelName,
+          'failed',
+          `not enough storage: needs ${shortfall.neededBytes} B, ${shortfall.freeBytes} B free`
+        );
+        showNotEnoughStorage(model.modelName, shortfall, () =>
+          retryDownload(model)
+        );
+        return;
+      }
+      const weights = weightsFor(sizes);
       let completed = 0;
 
       for (const [index, source] of sources.entries()) {
@@ -427,6 +450,12 @@ const runDownload = async (model: Model, attempt: DownloadAttempt) => {
         describeDownloadError(err)
       );
       console.error('Failed:', err);
+      if (isOutOfSpaceError(err)) {
+        showNotEnoughStorage(model.modelName, undefined, () =>
+          retryDownload(model)
+        );
+        return;
+      }
       Toast.show({
         type: 'defaultToast',
         text1:

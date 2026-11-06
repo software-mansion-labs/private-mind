@@ -6,6 +6,7 @@ import {
   LFM_2_5_EMBEDDING_SOURCES,
 } from '../constants/embedding-model';
 import { cancelFetchingSources } from './cancelFetching';
+import { ensureStorageFor } from './storageSpace';
 
 export const isEmbeddingModelDownloaded = async (): Promise<boolean> => {
   try {
@@ -25,6 +26,9 @@ export const embeddingModelDownloadSizeLabel = (): string => {
 export const fetchEmbeddingModelFiles = async (
   onProgress: (progress: number) => void
 ): Promise<boolean> => {
+  if (!(await isEmbeddingModelDownloaded())) {
+    ensureStorageFor(LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES);
+  }
   const paths = await ResourceFetcher.fetch(
     onProgress,
     LFM_2_5_EMBEDDING_SOURCES.modelSource!,
