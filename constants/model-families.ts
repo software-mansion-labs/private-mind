@@ -4,6 +4,7 @@ import GemmaIcon from '@lobehub/icons-static-svg/icons/gemma-color.svg';
 import QwenIcon from '@lobehub/icons-static-svg/icons/qwen-color.svg';
 import MetaIcon from '@lobehub/icons-static-svg/icons/meta-color.svg';
 import LiquidIcon from '@lobehub/icons-static-svg/icons/liquid.svg';
+import BielikIcon from '../assets/icons/bielik.svg';
 
 const FAMILY_ICONS: [
   prefix: string,
@@ -14,6 +15,7 @@ const FAMILY_ICONS: [
   ['qwen', QwenIcon, 0.9],
   ['llama', MetaIcon, 1],
   ['lfm', LiquidIcon, 0.8],
+  ['bielik', BielikIcon, 1],
 ];
 
 const findFamilyIcon = (familyName: string) => {

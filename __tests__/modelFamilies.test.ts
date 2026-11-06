@@ -5,7 +5,7 @@ import {
 } from '../constants/model-families';
 
 describe('familyIcon', () => {
-  it.each(['Gemma 4', 'Qwen 3', 'Qwen 2.5', 'LLaMA 3.2', 'LFM 2.5'])(
+  it.each(['Gemma 4', 'Qwen 3', 'Qwen 2.5', 'LLaMA 3.2', 'LFM 2.5', 'Bielik'])(
     'has an icon for %s',
     (family) => {
       expect(familyIcon(family)).toBeDefined();
@@ -20,7 +20,7 @@ describe('familyIcon', () => {
     expect(familyIcon('  llama 4')).toBeDefined();
   });
 
-  it.each(['Bielik', 'Phi 4', ''])('has no icon for %p', (family) => {
+  it.each(['Mistral', 'Phi 4', ''])('has no icon for %p', (family) => {
     expect(familyIcon(family)).toBeUndefined();
   });
 });
@@ -51,6 +51,6 @@ describe('familyIconScale', () => {
   });
 
   it('leaves a family without an icon at full size', () => {
-    expect(familyIconScale('Bielik')).toBe(1);
+    expect(familyIconScale('Phi 4')).toBe(1);
   });
 });
