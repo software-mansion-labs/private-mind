@@ -9,12 +9,14 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { space, textStyles } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
-import { NEW_CHAT_HEADING } from '../../constants/chat-screen';
+import {
+  NEW_CHAT_HEADING,
+  NEW_CHAT_REST_BOTTOM_FRACTION,
+} from '../../constants/chat-screen';
 import WhatsNewBadge from '../WhatsNewBadge';
 import { GUTTER } from './attachments/constants';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 
-const REST_BOTTOM_FRACTION = 0.405;
 const GAP_ABOVE_BAR = space.four;
 
 export const heroPushUp = (barTop: number, restBottom: number): number => {
@@ -35,7 +37,7 @@ const NewChatHero = ({
   keyboardLift,
   onWhatsNewOpenChange,
 }: Props) => {
-  const restBottom = screenHeight * REST_BOTTOM_FRACTION;
+  const restBottom = screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION;
   const { styles } = useThemedStyles(createStyles, screenHeight - restBottom);
 
   const pushStyle = useAnimatedStyle(() => ({

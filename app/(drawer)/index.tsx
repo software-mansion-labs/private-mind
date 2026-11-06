@@ -7,17 +7,13 @@ import React, {
 } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
 import { useFocusEffect, useNavigation } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { View, Image, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import PrimaryButton from '../../components/PrimaryButton';
-import TextButton from '../../components/TextButton';
-import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useImportChat } from '../../hooks/useImportChat';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
@@ -25,10 +21,9 @@ import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
-import WhatsNewBadge from '../../components/WhatsNewBadge';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
-import { radius, space } from '../../constants/design-system';
+import NoModelWelcome from '../../components/NoModelWelcome';
 
 let coldStartRedirectPending = true;
 
@@ -48,13 +43,7 @@ export default function App() {
   const db = useSQLiteContext();
   useDefaultHeader({ glass: true });
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => <NewChatHeaderButton noOp glass />,
-    });
-  }, [navigation]);
-  const headerHeight = useHeaderHeight();
-  const { styles, theme } = useThemedStyles(createStyles, headerHeight);
+  const { styles, theme } = useThemedStyles(createStyles);
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
@@ -99,6 +88,13 @@ export default function App() {
 
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () =>
+        willRedirect ? <NewChatHeaderButton noOp glass /> : null,
+    });
+  }, [navigation, willRedirect]);
+
   return (
     <>
       <LinearGradient
@@ -106,26 +102,10 @@ export default function App() {
         style={styles.container}
       >
         {!willRedirect && (
-          <View style={styles.emptyContainer}>
-            <Image
-              source={require('../../assets/icons/icon.png')}
-              style={styles.icon}
-            />
-            <WhatsNewBadge />
-            <View style={styles.buttonGroup}>
-              <PrimaryButton
-                text="Choose a model"
-                onPress={() => {
-                  bottomSheetModalRef.current?.present();
-                }}
-              />
-              <TextButton
-                text="Import chat"
-                onPress={handleImport}
-                style={styles.flatButton}
-              />
-            </View>
-          </View>
+          <NoModelWelcome
+            onChooseModel={() => bottomSheetModalRef.current?.present()}
+            onImportChat={handleImport}
+          />
         )}
       </LinearGradient>
       <ModelSelectSheet
@@ -137,30 +117,9 @@ export default function App() {
   );
 }
 
-const createStyles = (theme: Theme, headerHeight: number) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
       flex: 1,
-      paddingBottom: space.four + theme.insets.bottom,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'flex-start',
-      alignItems: 'center',
-      paddingHorizontal: space.four,
-      paddingTop: headerHeight + 64,
-      gap: space.six,
-    },
-    icon: {
-      width: 64,
-      height: 64,
-      borderRadius: radius.twelve,
-    },
-    buttonGroup: {
-      gap: space.two,
-      width: '100%',
-    },
-    flatButton: {
-      borderWidth: 0,
     },
   });
