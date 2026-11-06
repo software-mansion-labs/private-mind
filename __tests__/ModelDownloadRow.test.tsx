@@ -231,16 +231,16 @@ describe('display', () => {
   });
 
   it('shows the first letter of a family without an icon', () => {
-    renderRow({ modelName: 'Bielik - v3.0', showFamilyTile: true });
+    renderRow({ modelName: 'Phi - 4 Mini', showFamilyTile: true });
     expect(
       screen.queryByTestId('model-family-icon', { includeHiddenElements: true })
     ).toBeNull();
-    expect(screen.getByText('B', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText('P', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('keeps the family tile out of the screen reader, the name already says it', () => {
-    renderRow({ modelName: 'Bielik - v3.0', showFamilyTile: true });
-    expect(screen.queryByText('B')).toBeNull();
+    renderRow({ modelName: 'Phi - 4 Mini', showFamilyTile: true });
+    expect(screen.queryByText('P')).toBeNull();
   });
 
   it('calls onPress when the row is tapped', () => {

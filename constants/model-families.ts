@@ -4,12 +4,14 @@ import GemmaIcon from '@lobehub/icons-static-svg/icons/gemma-color.svg';
 import QwenIcon from '@lobehub/icons-static-svg/icons/qwen-color.svg';
 import MetaIcon from '@lobehub/icons-static-svg/icons/meta-color.svg';
 import LiquidIcon from '@lobehub/icons-static-svg/icons/liquid.svg';
+import BielikIcon from '../assets/icons/bielik.svg';
 
 const FAMILY_ICONS: [prefix: string, icon: SvgComponent][] = [
   ['gemma', GemmaIcon],
   ['qwen', QwenIcon],
   ['llama', MetaIcon],
   ['lfm', LiquidIcon],
+  ['bielik', BielikIcon],
 ];
 
 export const familyIcon = (familyName: string): SvgComponent | undefined => {
