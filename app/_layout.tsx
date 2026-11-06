@@ -18,6 +18,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
 import AppNotices from '../components/notices/AppNotices';
 import { useUnsupportedCpuNotice } from '../hooks/useUnsupportedCpuNotice';
+import { useAndroidSupportEndingNotice } from '../hooks/useAndroidSupportEndingNotice';
 import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -40,6 +41,7 @@ function RootNavigator() {
   useTurnResumesOnForeground();
   useDownloadsSurviveBackground();
   useUnsupportedCpuNotice();
+  useAndroidSupportEndingNotice();
   useEffect(() => {
     SplashScreen.hideAsync();
     noteAppLaunch();

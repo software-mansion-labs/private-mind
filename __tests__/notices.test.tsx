@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Text } from 'react-native';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import AppNotices from '../components/notices/AppNotices';
 import { useNoticeStore, type AppNotice } from '../store/noticeStore';
 
@@ -69,5 +69,32 @@ describe('AppNotices', () => {
 
     expect(screen.getByText('Not supported')).toBeTruthy();
     expect(mounts).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no way to close a notice that cannot be dismissed', () => {
+    useNoticeStore.getState().showNotice(warning);
+    render(
+      <AppNotices>
+        <Text>app content</Text>
+      </AppNotices>
+    );
+
+    expect(screen.queryByTestId('notice-cpu-dismiss')).toBeNull();
+  });
+
+  it('closes a dismissible notice and reports the dismissal', () => {
+    const onDismiss = jest.fn();
+    useNoticeStore.getState().showNotice({ ...warning, onDismiss });
+    render(
+      <AppNotices>
+        <Text>app content</Text>
+      </AppNotices>
+    );
+
+    fireEvent.press(screen.getByTestId('notice-cpu-dismiss'));
+
+    expect(screen.queryByText('Not supported')).toBeNull();
+    expect(screen.getByText('app content')).toBeTruthy();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });
