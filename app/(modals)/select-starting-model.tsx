@@ -91,6 +91,8 @@ function SelectStartingModelScreen() {
     cancel: cancelFeature,
   } = useStartingFeatures();
   const isContinuingRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const revealFeaturesRef = useRef(false);
   const cancelledFeaturesRef = useRef(new Set<StartingFeatureKey>());
   const { initPhantomChat } = useChatStore();
   const { setActiveChatId } = useLLMStore();
@@ -150,6 +152,21 @@ function SelectStartingModelScreen() {
     setSelectedFeatureKeys((keys) =>
       keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]
     );
+  };
+
+  const selectAllFeatures = (selected: boolean) => {
+    if (phase !== 'select') return;
+    setSelectedFeatureKeys(selected ? STARTING_FEATURE_KEYS : []);
+  };
+
+  const revealFeatures = () => {
+    revealFeaturesRef.current = true;
+  };
+
+  const scrollToRevealedFeatures = () => {
+    if (!revealFeaturesRef.current) return;
+    revealFeaturesRef.current = false;
+    scrollRef.current?.scrollToEnd({ animated: true });
   };
 
   const stopFeature = async (key: StartingFeatureKey) => {
@@ -277,8 +294,10 @@ function SelectStartingModelScreen() {
         </View>
 
         <ScrollView
+          ref={scrollRef}
           style={styles.modelsScroll}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToRevealedFeatures}
         >
           <View style={styles.sections}>
             <View style={styles.section}>
@@ -305,16 +324,17 @@ function SelectStartingModelScreen() {
             </View>
             {!featuresAlreadyOnPhone && (
               <View style={styles.section}>
-                <SectionHeader title="More features" summary="Optional" />
                 <StartingFeatureList
                   features={features}
                   selectedKeys={selectedFeatureKeys}
                   locked={phase !== 'select'}
                   onToggle={toggleFeature}
+                  onSelectAll={selectAllFeatures}
                   onCancel={stopFeature}
+                  onExpand={revealFeatures}
                 />
                 <Text style={styles.caption}>
-                  You can still get these later.
+                  Optional. You can still get these later.
                 </Text>
               </View>
             )}
