@@ -12,6 +12,7 @@ import { fontFamily, fontSizes, lineHeights } from '../../../styles/fontStyles';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
 import { getModelFamily } from '../../../utils/modelFamily';
+import { huggingFaceRepoUrl } from '../../../utils/huggingFaceRepoUrl';
 import ModelDownloadRow from '../../../components/model-hub/ModelDownloadRow';
 import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
 import WarningSheet, {
@@ -23,10 +24,15 @@ import GlassScreenHeader, {
 import ModelFamilyTile from '../../../components/model-hub/ModelFamilyTile';
 import RowGroup from '../../../components/model-hub/RowGroup';
 import FamilyProviderRow from '../../../components/model-hub/FamilyProviderRow';
+import SwmAttributionCard from '../../../components/model-hub/SwmAttributionCard';
+import SwmAttributionSheet, {
+  SwmAttributionSheetData,
+} from '../../../components/bottomSheets/SwmAttributionSheet';
 import SectionHeader from '../../../components/model-hub/SectionHeader';
 import {
   FAMILY_DESCRIPTIONS,
   FAMILY_PROVIDERS,
+  FAMILY_SWM_ROLES,
 } from '../../../constants/family-descriptions';
 import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
 import { space } from '../../../constants/design-system';
@@ -44,6 +50,8 @@ const FamilyScreen = () => {
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
     null
   );
+  const attributionSheetRef =
+    useRef<BottomSheetModal<SwmAttributionSheetData> | null>(null);
 
   const familyModels = useMemo(
     () =>
@@ -55,6 +63,11 @@ const FamilyScreen = () => {
 
   const description = FAMILY_DESCRIPTIONS[familyName];
   const provider = FAMILY_PROVIDERS[familyName];
+  const swmRole = FAMILY_SWM_ROLES[familyName];
+  const familyRepoUrl = familyModels
+    .filter((m) => m.source === 'built-in')
+    .map((m) => huggingFaceRepoUrl(m.modelPath))
+    .find(Boolean);
   const downloadedCount = familyModels.filter((m) => m.isDownloaded).length;
   const downloadedGB = familyModels
     .filter((m) => m.isDownloaded)
@@ -63,6 +76,28 @@ const FamilyScreen = () => {
     downloadedCount > 0
       ? `${downloadedCount} downloaded · ${downloadedGB.toFixed(2)} GB`
       : 'None downloaded';
+
+  const handleOpenAttribution = () => {
+    if (!provider || !swmRole) return;
+    attributionSheetRef.current?.present({
+      family: familyName,
+      provider,
+      role: swmRole,
+      modelUrl: familyRepoUrl,
+    });
+  };
+
+  const renderAttribution = () => {
+    if (!provider) return null;
+    if (!swmRole) return <FamilyProviderRow provider={provider} />;
+    return (
+      <SwmAttributionCard
+        role={swmRole}
+        provider={provider}
+        onPress={handleOpenAttribution}
+      />
+    );
+  };
 
   return (
     <BottomSheetModalProvider>
@@ -77,7 +112,7 @@ const FamilyScreen = () => {
             contentContainerStyle={styles.scrollContent}
             {...scrollIndicatorProps(headerHeight)}
           >
-            {provider && <FamilyProviderRow provider={provider} />}
+            {renderAttribution()}
             {description && (
               <Text style={styles.description}>{description}</Text>
             )}
@@ -109,6 +144,7 @@ const FamilyScreen = () => {
         />
         <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
         <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
+        <SwmAttributionSheet bottomSheetModalRef={attributionSheetRef} />
       </View>
     </BottomSheetModalProvider>
   );

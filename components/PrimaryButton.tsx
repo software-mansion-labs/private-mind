@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  AccessibilityRole,
   Pressable,
   Text,
   StyleSheet,
@@ -20,6 +21,8 @@ interface Props {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityRole?: AccessibilityRole;
+  accessibilityHint?: string;
 }
 
 const PrimaryButton = ({
@@ -29,6 +32,8 @@ const PrimaryButton = ({
   disabled = false,
   style,
   textStyle,
+  accessibilityRole,
+  accessibilityHint,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles, disabled);
 
@@ -36,6 +41,8 @@ const PrimaryButton = ({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityHint={accessibilityHint}
       style={({ pressed }) => [styles.button, style, pressed && pressedOpacity]}
     >
       {icon}
