@@ -44,9 +44,8 @@ export const useBarGrowth = ({
     (event: BarLayoutEvent) => {
       const height = event.nativeEvent.layout.height;
       // Only capture the default height once we're in the "with messages"
-      // layout — otherwise the empty-state extras (WhatsNewCard, prompt
-      // suggestions) would bake into the baseline and squeeze the scroll
-      // view once they disappear. Re-capture on inset changes (Android
+      // layout — otherwise the empty-state prompt suggestions would bake into
+      // the baseline and squeeze the scroll view once they disappear. Re-capture on inset changes (Android
       // navigation mode, rotation), or the stale baseline reads the difference
       // as "the bar grew".
       if (hasMessages && isResting) {

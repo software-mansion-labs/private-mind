@@ -838,6 +838,20 @@ describe('speech input', () => {
     );
   });
 
+  it('tells the screen while speech input is open, so the heading can hide', async () => {
+    const onSpeechInputChange = jest.fn();
+    renderBar({ onSpeechInputChange } as Partial<typeof defaultProps>);
+    expect(onSpeechInputChange).toHaveBeenLastCalledWith(false);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    expect(onSpeechInputChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.press(screen.getByTestId('speech-cancel'));
+    expect(onSpeechInputChange).toHaveBeenLastCalledWith(false);
+  });
+
   it('switches to speech input view after mic button press when permission granted', async () => {
     renderBar();
     await act(async () => {

@@ -400,6 +400,7 @@ const Messages = ({
   useLayoutEffect(() => {
     const prevChatLength = prevChatLengthRef.current;
     prevChatLengthRef.current = chatHistory.length;
+    if (chatHistory.length === 0) setShowScrollButton(false);
 
     const sendInFlight = pendingPinRef.current || pinActive.current;
     if (
@@ -1320,15 +1321,17 @@ const Messages = ({
           <View style={styles.bottomFadeSolid} />
         </Reanimated.View>
       )}
-      <Reanimated.View
-        style={[scrollButtonStyle, scrollButtonAnimatedStyle]}
-        pointerEvents="box-none"
-      >
-        <ScrollToLatestButton
-          visible={showScrollButton}
-          onPress={scrollToBottom}
-        />
-      </Reanimated.View>
+      {hasMessages && (
+        <Reanimated.View
+          style={[scrollButtonStyle, scrollButtonAnimatedStyle]}
+          pointerEvents="box-none"
+        >
+          <ScrollToLatestButton
+            visible={showScrollButton}
+            onPress={scrollToBottom}
+          />
+        </Reanimated.View>
+      )}
 
       <SourcesSheet ref={sourcesSheetRef} />
     </View>

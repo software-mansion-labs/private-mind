@@ -19,8 +19,6 @@ export interface PromptSuggestion {
   tone: LabelColor;
 }
 
-export const SUGGESTION_CARD_WIDTH = 220;
-
 export const DEFAULT_PROMPT_SUGGESTIONS: PromptSuggestion[] = [
   {
     id: '1',
@@ -99,6 +97,9 @@ export const DEFAULT_PROMPT_SUGGESTIONS: PromptSuggestion[] = [
   },
 ];
 
-export const PROMPT_SUGGESTIONS_TEXT = {
-  title: 'How can I help?',
-} as const;
+const PROMPTS_IN_FIRST_ROW = 5;
+
+export const PROMPT_SUGGESTION_ROWS = [
+  DEFAULT_PROMPT_SUGGESTIONS.slice(0, PROMPTS_IN_FIRST_ROW),
+  DEFAULT_PROMPT_SUGGESTIONS.slice(PROMPTS_IN_FIRST_ROW),
+];

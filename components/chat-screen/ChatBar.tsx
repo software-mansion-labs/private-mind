@@ -54,7 +54,7 @@ import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
-import WhatsNewCard from '../WhatsNewCard';
+import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -101,6 +101,8 @@ interface Props {
   extraContentPadding: SharedValue<number>;
   onHeightChange?: (height: number) => void;
   onBarGrow?: () => void;
+  onSpeechInputChange?: (open: boolean) => void;
+  promptsPaused?: boolean;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
@@ -124,6 +126,8 @@ const ChatBar = ({
   extraContentPadding,
   onHeightChange,
   onBarGrow,
+  onSpeechInputChange,
+  promptsPaused = false,
   thinkingEnabled,
   onThinkingToggle,
   webSearchEnabled,
@@ -552,6 +556,10 @@ const ChatBar = ({
 
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
+  useEffect(() => {
+    onSpeechInputChange?.(showSpeechInput);
+  }, [onSpeechInputChange, showSpeechInput]);
+
   const openSpeechInput = async () => {
     if (hasLoadingAttachment) {
       Toast.show({
@@ -636,10 +644,15 @@ const ChatBar = ({
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
-            <View style={styles.suggestionsContainer}>
-              <WhatsNewCard />
-              <PromptSuggestions onSelectPrompt={onSelectPrompt} />
-            </View>
+            <Animated.View
+              style={styles.suggestionsContainer}
+              exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
+            >
+              <PromptSuggestions
+                onSelectPrompt={onSelectPrompt}
+                paused={promptsPaused}
+              />
+            </Animated.View>
           )}
           <View style={styles.inputContainer}>
             <Animated.View
@@ -785,8 +798,7 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: space.five,
-      gap: space.six,
+      marginBottom: space.four,
     },
     content: {
       flexDirection: 'row',

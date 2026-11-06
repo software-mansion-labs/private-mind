@@ -82,6 +82,16 @@ module.exports = {
   withRepeat: (val: any) => val,
   withDelay: (_d: any, val: any) => val,
   withSequence: (val: any) => val,
+  makeMutable: <T>(value: T) => makeSharedValue(value),
+  withDecay: (_config: unknown, callback?: (finished: boolean) => void) => {
+    callback?.(true);
+    return 0;
+  },
+  useFrameCallback: () => ({
+    setActive: () => {},
+    isActive: false,
+    callbackId: 0,
+  }),
   cancelAnimation: () => {},
   Easing: {
     linear: (t: any) => t,

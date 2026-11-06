@@ -1,4 +1,11 @@
-export const LATEST_RELEASE = {
+export interface Release {
+  version: string;
+  title: string;
+  highlights: string[];
+  opensOnLaunch: boolean;
+}
+
+export const LATEST_RELEASE: Release = {
   version: '1.3.5',
   title: 'LFM 3 is here',
   highlights: [
@@ -6,4 +13,5 @@ export const LATEST_RELEASE = {
     'LFM 3 VL 2B: ask about your photos',
     'Think switch turns LFM 3 reasoning on or off',
   ],
+  opensOnLaunch: false,
 };
