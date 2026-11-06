@@ -26,13 +26,18 @@ describe('ModelFamilyTile', () => {
   });
 
   it('drops the tile and draws the icon at the size it is given', () => {
-    render(
-      <ModelFamilyTile family="Qwen 2.5" size="badge" bareIconSize={14} />
-    );
+    render(<ModelFamilyTile family="Gemma 4" size="badge" bareIconSize={14} />);
 
     expect(tileStyle().backgroundColor).toBe('transparent');
     expect(tileStyle().width).toBe(14);
     expect(iconWidth()).toBe(14);
+  });
+
+  it('shrinks an oversized mark inside an unchanged box', () => {
+    render(<ModelFamilyTile family="LFM 3" size="badge" bareIconSize={14} />);
+
+    expect(tileStyle().width).toBe(14);
+    expect(iconWidth()).toBeLessThan(14);
   });
 
   it('keeps the coloured letter tile for a family without an icon, even without a tile requested', () => {

@@ -5,17 +5,27 @@ import QwenIcon from '@lobehub/icons-static-svg/icons/qwen-color.svg';
 import MetaIcon from '@lobehub/icons-static-svg/icons/meta-color.svg';
 import LiquidIcon from '@lobehub/icons-static-svg/icons/liquid.svg';
 
-const FAMILY_ICONS: [prefix: string, icon: SvgComponent][] = [
-  ['gemma', GemmaIcon],
-  ['qwen', QwenIcon],
-  ['llama', MetaIcon],
-  ['lfm', LiquidIcon],
+const FAMILY_ICONS: [
+  prefix: string,
+  icon: SvgComponent,
+  opticalScale: number,
+][] = [
+  ['gemma', GemmaIcon, 1],
+  ['qwen', QwenIcon, 0.9],
+  ['llama', MetaIcon, 1],
+  ['lfm', LiquidIcon, 0.8],
 ];
 
-export const familyIcon = (familyName: string): SvgComponent | undefined => {
+const findFamilyIcon = (familyName: string) => {
   const name = familyName.trim().toLowerCase();
-  return FAMILY_ICONS.find(([prefix]) => name.startsWith(prefix))?.[1];
+  return FAMILY_ICONS.find(([prefix]) => name.startsWith(prefix));
 };
+
+export const familyIcon = (familyName: string): SvgComponent | undefined =>
+  findFamilyIcon(familyName)?.[1];
+
+export const familyIconScale = (familyName: string): number =>
+  findFamilyIcon(familyName)?.[2] ?? 1;
 
 export const UNKNOWN_FAMILY_COLOR: LabelColor = 'periwinkle';
 

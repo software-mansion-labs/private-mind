@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   UNKNOWN_FAMILY_COLOR,
   familyIcon,
+  familyIconScale,
   familyInitial,
 } from '../../constants/model-families';
 import { radius, space } from '../../constants/design-system';
@@ -20,6 +21,9 @@ const FAMILY_TILE = {
 
 export type ModelFamilyTileSize = keyof typeof FAMILY_TILE;
 
+export const familyTileSize = (size: ModelFamilyTileSize): number =>
+  FAMILY_TILE[size].tile;
+
 interface Props {
   family: string;
   size: ModelFamilyTileSize;
@@ -32,6 +36,7 @@ const ModelFamilyTile = ({ family, size, iconColor, bareIconSize }: Props) => {
   const FamilyIcon = familyIcon(family);
   const iconOnly = bareIconSize !== undefined && !!FamilyIcon;
   const iconSize = iconOnly ? bareIconSize : FAMILY_TILE[size].icon;
+  const drawnIconSize = iconSize * familyIconScale(family);
 
   return (
     <View
@@ -46,8 +51,8 @@ const ModelFamilyTile = ({ family, size, iconColor, bareIconSize }: Props) => {
     >
       {FamilyIcon ? (
         <FamilyIcon
-          width={iconSize}
-          height={iconSize}
+          width={drawnIconSize}
+          height={drawnIconSize}
           style={{ color: iconColor ?? theme.text.primary }}
           testID="model-family-icon"
         />
