@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" />
+
 declare module '*.svg' {
   import { CustomSvgProps } from './utils/CustomSvgProps';
 
