@@ -28,8 +28,7 @@ import { GRADIENT_EXIT_MS } from './gradientHandoff';
 
 const REFERENCE_SCREEN_HEIGHT = 844;
 const SPHERE_RADIUS = 95;
-const DOT_SIZE = 1.5;
-const RISE_DISTANCE = 220;
+const DOT_SIZE = 1.7;
 const DRIFT_DISTANCE = 36;
 const DOTS_SECONDS = 3;
 const CANVAS_OVERSCAN_RADII = 3;
@@ -77,19 +76,14 @@ export const swarmGeometry = (
 ) => {
   const scale = Math.min(1, screenHeight / REFERENCE_SCREEN_HEIGHT);
   const radius = SPHERE_RADIUS * scale;
-  const rise = RISE_DISTANCE * scale;
   const centerY =
     screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION + headingClearance + radius;
   const overscan = radius * CANVAS_OVERSCAN_RADII;
   const canvasTop = Math.max(0, centerY - overscan);
-  const canvasBottom = Math.min(
-    screenHeight,
-    centerY + Math.max(overscan, rise + radius)
-  );
+  const canvasBottom = Math.min(screenHeight, centerY + overscan);
   return {
     scale,
     radius,
-    rise,
     canvasTop,
     canvasHeight: canvasBottom - canvasTop,
     centerInCanvas: centerY - canvasTop,
@@ -165,7 +159,6 @@ const NewChatSwarm = ({
       centerY: geometry.centerInCanvas,
       radius: geometry.radius,
       dotSize: DOT_SIZE,
-      rise: geometry.rise,
       drift: DRIFT_DISTANCE * geometry.scale,
       ...(dark ? PALETTE_DARK : PALETTE_LIGHT),
     };

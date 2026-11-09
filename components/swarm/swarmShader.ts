@@ -1,6 +1,7 @@
 import tgpu, { d, std, type TgpuRoot } from 'typegpu';
+import { sampleLogo, seededRandom } from './logoPoints';
 
-export const SWARM_DOT_COUNT = 5000;
+export const SWARM_DOT_COUNT = 3000;
 const WORKGROUP_SIZE = 64;
 export const SWARM_WORKGROUPS = Math.ceil(SWARM_DOT_COUNT / WORKGROUP_SIZE);
 const VERTICES_PER_QUAD = 4;
@@ -10,6 +11,7 @@ const Source = d.struct({
   home: d.vec3f,
   arrivalJitter: d.f32,
   departureJitter: d.f32,
+  origin: d.vec3f,
 });
 
 const Dot = d.struct({
@@ -30,7 +32,6 @@ const Look = d.struct({
   center: d.vec2f,
   radius: d.f32,
   dotSize: d.f32,
-  rise: d.f32,
   drift: d.f32,
   pixelScale: d.f32,
   backAlpha: d.f32,
@@ -160,6 +161,9 @@ const rotateX = (p: d.v3f, a: number): d.v3f => {
   return d.vec3f(p.x, c * p.y - s * p.z, s * p.y + c * p.z);
 };
 
+const SWIRL = 0.2;
+const HALF_TURN = Math.PI;
+
 const easeOutCubic = (x: number): number => {
   'use gpu';
   const inverse = 1 - std.clamp(x, 0, 1);
@@ -190,22 +194,24 @@ const updateDots = tgpu.computeFn({
   );
   const departureSquared = departure * departure;
   const coarse = simplexNoise(
-    home.mul(1.35).add(d.vec3f(t * 0.3, -t * 0.2, t * 0.25))
+    home.mul(2.2).add(d.vec3f(t * 0.3, -t * 0.2, t * 0.25))
   );
-  const fine = simplexNoise(home.mul(3).add(d.vec3f(-t * 0.25, t * 0.35, 0)));
-  const swell =
-    (1 + coarse * 0.17 + fine * 0.04) * (0.25 + 0.75 * arrival) +
-    departureSquared * 1.1;
-  const p = rotateX(
-    rotateY(
-      home.mul(swell),
-      clock.angle * (0.7 + 0.6 * source.departureJitter)
-    ),
-    0.2
-  );
+  const fine = simplexNoise(home.mul(5).add(d.vec3f(-t * 0.25, t * 0.35, 0)));
+  const shimmer = d.vec3f(coarse, fine, coarse * fine).mul(0.018);
+  const scatter = d.vec3f(coarse, fine, 0).mul(departureSquared * 0.45);
+  const flight = home.sub(source.origin);
+  const swirl = d
+    .vec3f(-flight.y, flight.x, 0)
+    .mul(std.sin(arrival * HALF_TURN) * SWIRL);
+  const travelled = std.mix(source.origin, home, arrival).add(swirl);
+  const spread = travelled
+    .mul(1 + departureSquared * 0.35)
+    .add(shimmer)
+    .add(scatter);
+  const p = rotateX(rotateY(spread, std.sin(clock.angle) * 0.18), 0.08);
 
   const perspective = 1 / (1 - p.z * 0.22);
-  const depth = std.clamp((p.z + 1) * 0.5, 0, 1);
+  const depth = std.clamp(0.75 + p.z * 0.6, 0, 1);
   const size =
     look.dotSize *
     std.mix(0.55, 1.15, depth) *
@@ -216,18 +222,16 @@ const updateDots = tgpu.computeFn({
     std.mix(look.backAlpha, 1, std.pow(depth, 1.3)) *
     arrival *
     (1 - departureSquared);
-  const highlight = 0.5 + 0.5 * coarse;
+  const highlight = 0.25 + 0.35 * (0.5 + 0.5 * coarse);
   const body = std.mix(look.backColor, look.frontColor, depth);
 
   computeLayout.$.dots[id.x] = Dot({
     position: look.center
       .add(d.vec2f(p.x, -p.y).mul(look.radius * perspective))
-      .add(
-        d.vec2f(0, (1 - arrival) * look.rise - departureSquared * look.drift)
-      ),
+      .add(d.vec2f(0, -departureSquared * look.drift)),
     pixelSize: std.max(size, 1),
     alpha: alpha * std.min(size, 1),
-    color: std.mix(body, look.highlightColor, highlight * depth),
+    color: std.mix(body, look.highlightColor, highlight),
   });
 });
 
@@ -239,7 +243,6 @@ export interface SwarmLook {
   centerY: number;
   radius: number;
   dotSize: number;
-  rise: number;
   drift: number;
   pixelScale: number;
   backAlpha: number;
@@ -249,26 +252,27 @@ export interface SwarmLook {
   additive: boolean;
 }
 
-const mulberry32 = (seed: number) => () => {
-  seed = (seed + 0x6d2b79f5) | 0;
-  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const SOURCE_SEED = 7;
+const LOGO_DEPTH = 0.12;
+const ORIGIN_NEAREST = 1.3;
+const ORIGIN_SPREAD = 1.1;
+const ORIGIN_VERTICAL_STRETCH = 1.15;
+const ORIGIN_DEPTH = 0.6;
 
-const fibonacciSources = () => {
-  const random = mulberry32(SOURCE_SEED);
-  return Array.from({ length: SWARM_DOT_COUNT }, (_, i) => {
-    const y = 1 - (2 * (i + 0.5)) / SWARM_DOT_COUNT;
-    const ring = Math.sqrt(1 - y * y);
-    const theta = i * GOLDEN_ANGLE;
+const logoSources = () => {
+  const random = seededRandom(SOURCE_SEED);
+  return sampleLogo(SWARM_DOT_COUNT, SOURCE_SEED).map(([x, y]) => {
+    const angle = random() * 2 * Math.PI;
+    const distance = ORIGIN_NEAREST + random() * ORIGIN_SPREAD;
     return {
-      home: d.vec3f(Math.cos(theta) * ring, y, Math.sin(theta) * ring),
+      home: d.vec3f(x, y, (random() * 2 - 1) * LOGO_DEPTH),
       arrivalJitter: random(),
       departureJitter: random(),
+      origin: d.vec3f(
+        Math.cos(angle) * distance,
+        Math.sin(angle) * distance * ORIGIN_VERTICAL_STRETCH,
+        (random() * 2 - 1) * ORIGIN_DEPTH
+      ),
     };
   });
 };
@@ -281,7 +285,7 @@ export const buildSwarm = (
   format: GPUTextureFormat
 ) => {
   const sources = root
-    .createBuffer(d.arrayOf(Source, SWARM_DOT_COUNT), fibonacciSources())
+    .createBuffer(d.arrayOf(Source, SWARM_DOT_COUNT), logoSources())
     .$usage('storage');
   const dots = root
     .createBuffer(d.arrayOf(Dot, SWARM_DOT_COUNT))
@@ -293,7 +297,6 @@ export const buildSwarm = (
       center: d.vec2f(look.width / 2, look.centerY),
       radius: look.radius,
       dotSize: look.dotSize,
-      rise: look.rise,
       drift: look.drift,
       pixelScale: look.pixelScale,
       backAlpha: look.backAlpha,
