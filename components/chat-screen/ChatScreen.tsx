@@ -87,7 +87,7 @@ export default function ChatScreen({
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
   const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
-  const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
+  const phantomChatOpens = useChatStore((state) => state.phantomChatOpens);
   const isPhantomChat = phantomChat?.id === chatId && !chat;
 
   const { styles, theme } = useThemedStyles(createStyles);
@@ -307,7 +307,7 @@ export default function ChatScreen({
     !!model?.isDownloaded &&
     !speechInputOpen &&
     rootFrame.height > 0;
-  const playSwarm = useSwarmOncePerNewChat(showHero, phantomChatStarts);
+  const playSwarm = useSwarmOncePerNewChat(showHero, phantomChatOpens);
 
   return (
     <View
@@ -329,7 +329,7 @@ export default function ChatScreen({
       )}
       {playSwarm && (
         <NewChatSwarm
-          key={phantomChatStarts}
+          key={phantomChatOpens}
           screenHeight={rootFrame.height}
           headingClearance={SWARM_CLEARANCE_WITH_PROMPTS}
           keyboardLift={keyboardLift}
