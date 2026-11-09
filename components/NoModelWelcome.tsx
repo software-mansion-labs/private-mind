@@ -8,6 +8,9 @@ import { CAPPED_TEXT_MAX_SCALE } from '../constants/font-scale';
 import PrimaryButton from './PrimaryButton';
 import TextButton from './TextButton';
 import WhatsNewBadge from './WhatsNewBadge';
+import NewChatSwarm, {
+  SWARM_CLEARANCE_WITH_DESCRIPTION,
+} from './chat-screen/NewChatSwarm';
 
 const IMPORT_BUTTON_HEIGHT = 44;
 const ACTIONS_GAP = 9;
@@ -17,9 +20,14 @@ const DESCRIPTION_GUTTER = space.twelve;
 interface Props {
   onChooseModel: () => void;
   onImportChat: () => void;
+  playSwarm?: boolean;
 }
 
-const NoModelWelcome = ({ onChooseModel, onImportChat }: Props) => {
+const NoModelWelcome = ({
+  onChooseModel,
+  onImportChat,
+  playSwarm = false,
+}: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const [screenHeight, setScreenHeight] = useState(0);
   const restBottom = screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION;
@@ -32,6 +40,12 @@ const NoModelWelcome = ({ onChooseModel, onImportChat }: Props) => {
     >
       {screenHeight > 0 && (
         <>
+          {playSwarm && (
+            <NewChatSwarm
+              screenHeight={screenHeight}
+              headingClearance={SWARM_CLEARANCE_WITH_DESCRIPTION}
+            />
+          )}
           <View
             style={[styles.hero, { bottom: screenHeight - restBottom }]}
             pointerEvents="box-none"

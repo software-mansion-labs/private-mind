@@ -86,6 +86,14 @@ export default function App() {
     }, [db, downloadedModels])
   );
 
+  const [isFocused, setIsFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => setIsFocused(false);
+    }, [])
+  );
+
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 
   useLayoutEffect(() => {
@@ -105,6 +113,7 @@ export default function App() {
           <NoModelWelcome
             onChooseModel={() => bottomSheetModalRef.current?.present()}
             onImportChat={handleImport}
+            playSwarm={isFocused}
           />
         )}
       </LinearGradient>

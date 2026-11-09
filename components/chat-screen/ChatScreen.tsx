@@ -26,6 +26,10 @@ import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
 import NewChatHero from './NewChatHero';
+import NewChatSwarm, {
+  SWARM_CLEARANCE_WITH_PROMPTS,
+  useSwarmOncePerNewChat,
+} from './NewChatSwarm';
 import { TopFade, topFadeHeight } from './TopFade';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
@@ -83,6 +87,7 @@ export default function ChatScreen({
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
   const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
+  const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const isPhantomChat = phantomChat?.id === chatId && !chat;
 
   const { styles, theme } = useThemedStyles(createStyles);
@@ -297,6 +302,13 @@ export default function ChatScreen({
 
   useLegacyChatNotice(messageHistory);
 
+  const showHero =
+    isEmpty &&
+    !!model?.isDownloaded &&
+    !speechInputOpen &&
+    rootFrame.height > 0;
+  const playSwarm = useSwarmOncePerNewChat(showHero, phantomChatStarts);
+
   return (
     <View
       ref={rootRef}
@@ -314,6 +326,14 @@ export default function ChatScreen({
             style={StyleSheet.absoluteFill}
           />
         </Animated.View>
+      )}
+      {playSwarm && (
+        <NewChatSwarm
+          key={phantomChatStarts}
+          screenHeight={rootFrame.height}
+          headingClearance={SWARM_CLEARANCE_WITH_PROMPTS}
+          keyboardLift={keyboardLift}
+        />
       )}
       <View style={styles.messagesLayer} pointerEvents="box-none">
         <Messages
@@ -338,17 +358,14 @@ export default function ChatScreen({
         />
       </View>
 
-      {isEmpty &&
-        model?.isDownloaded &&
-        !speechInputOpen &&
-        rootFrame.height > 0 && (
-          <NewChatHero
-            screenHeight={rootFrame.height}
-            barHeight={barHeight}
-            keyboardLift={keyboardLift}
-            onWhatsNewOpenChange={setWhatsNewOpen}
-          />
-        )}
+      {showHero && (
+        <NewChatHero
+          screenHeight={rootFrame.height}
+          barHeight={barHeight}
+          keyboardLift={keyboardLift}
+          onWhatsNewOpenChange={setWhatsNewOpen}
+        />
+      )}
 
       <Animated.View
         onLayout={handleBarLayout}
