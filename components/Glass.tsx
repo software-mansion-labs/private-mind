@@ -7,18 +7,31 @@ import React, {
   type ComponentProps,
   type ComponentType,
 } from 'react';
-import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  View,
+  type ViewProps,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
-import { isDarkTheme } from '../styles/colors';
+import { isDarkTheme, type Theme } from '../styles/colors';
 
 export const LIQUID_GLASS = isLiquidGlassAvailable();
 
 const DARK_SCHEME_SCRIM = 'rgba(0, 0, 0, 0.18)';
 const FALLBACK_BLUR_INTENSITY = 60;
+const RAISED_SHADOW = {
+  opacity: 0.1,
+  radius: 10,
+  offsetY: 3,
+  elevation: 3,
+};
+const PAINTS_SOLID_FILL = Platform.OS === 'android';
 
 type NativeGlassProps = ComponentProps<typeof GlassView> & {
   borderRadius?: number;
@@ -35,6 +48,18 @@ function useGlassStyle(target: GlassStyleName, duration: number) {
 
 function shapeOf(radius: number): ViewStyle {
   return { borderRadius: radius, borderCurve: 'continuous' };
+}
+
+function raisedEdge(theme: Theme): ViewStyle {
+  return {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.border.popover,
+    shadowColor: theme.bg.shadow,
+    shadowOffset: { width: 0, height: RAISED_SHADOW.offsetY },
+    shadowOpacity: RAISED_SHADOW.opacity,
+    shadowRadius: RAISED_SHADOW.radius,
+    elevation: RAISED_SHADOW.elevation,
+  };
 }
 
 export interface GlassProps extends ViewProps {
@@ -69,12 +94,28 @@ export function Glass({
   }));
 
   if (!LIQUID_GLASS) {
+    const fill = fallbackTint ?? schemeTint ?? theme.bg.glassFallback;
+    const solidFill = PAINTS_SOLID_FILL && !fade;
     return (
-      <View style={[shapeOf(radius), styles.clip, style]} {...rest}>
-        {active ? (
+      <View
+        style={[
+          shapeOf(radius),
+          solidFill && active && { backgroundColor: fill },
+          solidFill && styles.clip,
+          scheme === 'theme' && raisedEdge(theme),
+          style,
+        ]}
+        {...rest}
+      >
+        {active && !solidFill ? (
           <Animated.View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, scrimStyle]}
+            style={[
+              StyleSheet.absoluteFill,
+              shapeOf(radius),
+              styles.clip,
+              scrimStyle,
+            ]}
           >
             <BlurView
               intensity={FALLBACK_BLUR_INTENSITY}
@@ -84,13 +125,7 @@ export function Glass({
               style={StyleSheet.absoluteFill}
             />
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor:
-                    fallbackTint ?? schemeTint ?? theme.bg.glassFallback,
-                },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: fill }]}
             />
           </Animated.View>
         ) : null}

@@ -33,7 +33,11 @@ import {
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
 import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
-import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
+import {
+  COMPOSER,
+  COMPOSER_CARD_RADIUS,
+  COMPOSER_STRIP_HEIGHT,
+} from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
@@ -68,7 +72,7 @@ import {
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
-import { Glass, LIQUID_GLASS } from '../Glass';
+import { Glass } from '../Glass';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -656,13 +660,10 @@ const ChatBar = ({
             </Animated.View>
           )}
           <Glass
-            radius={radius.eighteen}
+            radius={COMPOSER_CARD_RADIUS}
             interactive={false}
             fallbackTint={theme.bg.chatBar}
-            style={[
-              styles.inputContainer,
-              !LIQUID_GLASS && styles.inputContainerBorder,
-            ]}
+            style={styles.inputContainer}
           >
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
@@ -820,10 +821,6 @@ const createStyles = (theme: Theme) =>
       paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
     },
-    inputContainerBorder: {
-      borderWidth: stroke.soft,
-      borderColor: theme.border.chatBar,
-    },
     textInputWrapper: {
       flex: 1,
     },
@@ -836,6 +833,7 @@ const createStyles = (theme: Theme) =>
         : { includeFontPadding: false }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
+      paddingHorizontal: space.one,
       color: theme.text.onChatBar,
     },
     strip: {

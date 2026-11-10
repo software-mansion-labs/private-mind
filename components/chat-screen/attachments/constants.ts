@@ -9,13 +9,12 @@ export const GUTTER = 16;
 export const COMPOSER = {
   barPaddingBottom: 16,
   cardPadding: 16,
-  cardPaddingTop: 5,
-  inputGapBelow: 5,
+  cardPaddingTop: 8,
+  inputGapBelow: 2,
   plusWell: 36,
   stripPaddingTop: 8,
   stripGap: 8,
   thumbSize: 72,
-  thumbRadius: 8,
   thumbGap: 8,
   plusSlide: 16,
 } as const;
@@ -25,6 +24,12 @@ export const PLUS_CENTER_X =
 
 export const PLUS_CENTER_ABOVE_BOTTOM =
   COMPOSER.cardPadding + COMPOSER.plusWell / 2;
+
+export const COMPOSER_CARD_RADIUS =
+  COMPOSER.plusWell / 2 + COMPOSER.cardPadding;
+
+export const COMPOSER_THUMB_RADIUS =
+  COMPOSER_CARD_RADIUS - COMPOSER.cardPadding;
 
 export const COMPOSER_STRIP_HEIGHT =
   COMPOSER.stripPaddingTop + COMPOSER.thumbSize + COMPOSER.stripGap;
