@@ -32,7 +32,7 @@ configureReanimatedLogger({
 });
 
 export default function App() {
-  useOnboardingRedirect();
+  const onboardingRedirect = useOnboardingRedirect();
 
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -87,12 +87,19 @@ export default function App() {
   );
 
   const [isFocused, setIsFocused] = useState(false);
+  const [hasLeftScreen, setHasLeftScreen] = useState(false);
   useFocusEffect(
     useCallback(() => {
       setIsFocused(true);
-      return () => setIsFocused(false);
+      return () => {
+        setIsFocused(false);
+        setHasLeftScreen(true);
+      };
     }, [])
   );
+  const welcomeIsUncovered =
+    onboardingRedirect === 'stayed' ||
+    (onboardingRedirect === 'redirected' && hasLeftScreen);
 
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 
@@ -111,7 +118,7 @@ export default function App() {
           <NoModelWelcome
             onChooseModel={() => bottomSheetModalRef.current?.present()}
             onImportChat={handleImport}
-            playSwarm={isFocused}
+            playSwarm={isFocused && welcomeIsUncovered}
           />
         )}
       </View>
