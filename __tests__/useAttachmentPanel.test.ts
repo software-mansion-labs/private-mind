@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react-native';
 import { KeyboardController } from 'react-native-keyboard-controller';
 import { useAttachmentPanel } from '../components/chat-screen/attachments/useAttachmentPanel';
 import { DURATION } from '../components/chat-screen/attachments/constants';
+import type { DocumentPickOutcome } from '../hooks/useAttachment';
 
 jest.mock('react-native-reanimated', () => ({
   ...jest.requireActual('react-native-reanimated'),
@@ -31,8 +32,11 @@ jest.mock('../utils/Feedback', () => ({
   Feedback: new Proxy({}, { get: () => jest.fn() }),
 }));
 
-const openPanel = () => {
-  const view = renderHook(() => useAttachmentPanel());
+const openPanel = (
+  onSelectFiles: () => Promise<DocumentPickOutcome> = () =>
+    Promise.resolve('awaiting-download')
+) => {
+  const view = renderHook(() => useAttachmentPanel({ onSelectFiles }));
   act(() => view.result.current.onPlusPress());
   act(() => {
     jest.advanceTimersByTime(DURATION.plusLead);
@@ -74,5 +78,23 @@ describe('closing the attachment panel', () => {
     });
     act(() => result.current.dismiss());
     expect(KeyboardController.setFocusTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the keyboard down when Files hands over to the document model download', async () => {
+    const { result } = openPanel();
+    await act(async () => {
+      result.current.onMenuAction('files');
+    });
+    expect(result.current.mode).toBe('closed');
+    expect(KeyboardController.setFocusTo).not.toHaveBeenCalled();
+  });
+
+  it('gives the keyboard back after a document was picked', async () => {
+    const { result } = openPanel(() => Promise.resolve('picked'));
+    await act(async () => {
+      result.current.onMenuAction('files');
+    });
+    expect(result.current.mode).toBe('closed');
+    expect(KeyboardController.setFocusTo).toHaveBeenCalledWith('current');
   });
 });

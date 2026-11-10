@@ -179,13 +179,14 @@ export function useAttachmentPanel({
       if (picking && typeof (picking as Promise<unknown>).then === 'function') {
         (picking as Promise<DocumentPickOutcome | void>).then((outcome) => {
           if (outcome === 'canceled') return;
-          dismiss();
+          if (outcome === 'awaiting-download') dismissWithoutRefocus();
+          else dismiss();
         }, dismiss);
       } else {
         dismiss();
       }
     },
-    [dismiss]
+    [dismiss, dismissWithoutRefocus]
   );
 
   const onMenuAction = useCallback(
