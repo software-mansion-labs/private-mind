@@ -129,11 +129,12 @@ const noSwitchInFlight = async () => undefined;
 const useSend = (
   chatId = 1,
   loading = false,
-  waitForModelSwitch?: () => Promise<Model | undefined>
+  waitForModelSwitch?: () => Promise<Model | undefined>,
+  model: Model = { id: 1, modelName: 'Test LLM' } as Model
 ) =>
   useSendChatMessage({
     chatId,
-    model: { id: 1, modelName: 'Test LLM' } as Model,
+    model,
     messageHistory: [],
     chatSettings: {
       systemPrompt: '',
@@ -196,6 +197,36 @@ describe('sending while another turn is open', () => {
   it('sends normally when nothing is in flight', async () => {
     expect(await useSend(1)('hello')).toBe(true);
     expect(mockedState().interrupt).not.toHaveBeenCalled();
+  });
+
+  it('refuses a model the new engine cannot run yet, without trying to load it', async () => {
+    const state = mockedState();
+    state.model = null;
+    const outdated = {
+      id: 1,
+      modelName: 'Qwen 3 - 0.6B',
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.9.0/model.pte'],
+      updateRequired: true,
+    } as Model;
+
+    expect(await useSend(1, false, undefined, outdated)('hello')).toBe(
+      'model-needs-update'
+    );
+    expect(state.loadModel).not.toHaveBeenCalled();
+    expect(state.sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('still sends with a model whose newer files are optional', async () => {
+    const optional = {
+      id: 1,
+      modelName: 'Qwen 3 - 0.6B',
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.11.0/model.pte'],
+      updateRequired: false,
+    } as Model;
+
+    expect(await useSend(1, false, undefined, optional)('hello')).toBe(true);
   });
 
   it('refuses an empty message', async () => {

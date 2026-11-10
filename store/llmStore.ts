@@ -461,7 +461,7 @@ export const modelLoadFailedCopy = (modelName: string) =>
   `${modelName} could not be loaded. Try again or pick another model.`;
 
 export const modelNeedsUpdateCopy = (modelName: string) =>
-  `${modelName} needs a one-time update. Connect to the internet and tap Update above the message box.`;
+  `${modelName} needs a one-time update. Connect to the internet and tap Update at the top of the chat.`;
 
 const loadModelInstance = async (
   model: Model,

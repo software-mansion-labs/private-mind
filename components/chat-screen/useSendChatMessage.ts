@@ -18,7 +18,8 @@ export type SendRefusal =
   | 'busy'
   | 'chat-not-created'
   | 'image-not-saved'
-  | 'image-unsupported';
+  | 'image-unsupported'
+  | 'model-needs-update';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import {
@@ -27,6 +28,7 @@ import {
 } from './loadModelPinnedToChat';
 import { buildMessageSources } from '../../utils/messageSources';
 import { isDeviceOnline } from '../../utils/network';
+import { requiresUpdate } from '../../utils/modelUpdate';
 import { runWebSearch } from '../../utils/web/runWebSearch';
 import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
@@ -123,6 +125,9 @@ export const useSendChatMessage = ({
     }
     if (imagePath && pinnedModel && !pinnedModel.vision) {
       return 'image-unsupported';
+    }
+    if (pinnedModel && requiresUpdate(pinnedModel)) {
+      return 'model-needs-update';
     }
     const llm = useLLMStore.getState();
     const busy = llm.isGenerating || llm.isProcessingPrompt;
