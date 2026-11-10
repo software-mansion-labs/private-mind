@@ -41,6 +41,7 @@ export function useAttachmentPanel({
   const [closing, setClosing] = useState(false);
   const leadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sheetResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refocusOnCloseRef = useRef(true);
 
   const open = useSharedValue(0);
   const plusOut = useSharedValue(0);
@@ -62,7 +63,8 @@ export function useAttachmentPanel({
   const closeSheet = useCallback(() => {
     setMode('closed');
     setClosing(false);
-    KeyboardController.setFocusTo('current');
+    if (refocusOnCloseRef.current) KeyboardController.setFocusTo('current');
+    refocusOnCloseRef.current = true;
   }, []);
 
   const pulseBlur = useCallback(() => {
@@ -96,36 +98,42 @@ export function useAttachmentPanel({
     }, DURATION.plusLead);
   }, [blur, clearLead, gridOpacity, menuOpacity, morph, open, plusOut]);
 
-  const dismiss = useCallback(() => {
-    clearLead();
-    onLeaveSheet?.();
-    setClosing(true);
-    blur.set(withTiming(1, { duration: DURATION.panel, easing: EASE_FADE }));
-    morph.set(withSpring(0, SPRING.panelOut));
-    menuOpacity.set(
-      withTiming(1, { duration: DURATION.crossfade, easing: EASE_FADE })
-    );
-    gridOpacity.set(
-      withTiming(0, { duration: DURATION.crossfade, easing: EASE_FADE })
-    );
-    open.set(
-      withSpring(0, SPRING.panelOut, (finished) => {
-        'worklet';
-        if (finished) scheduleOnRN(closeSheet);
-      })
-    );
-    plusOut.set(withDelay(DURATION.plusLead, withSpring(0, SPRING.panelOut)));
-  }, [
-    blur,
-    clearLead,
-    closeSheet,
-    gridOpacity,
-    menuOpacity,
-    morph,
-    onLeaveSheet,
-    open,
-    plusOut,
-  ]);
+  const closePanel = useCallback(
+    (refocus: boolean) => {
+      refocusOnCloseRef.current = refocus;
+      clearLead();
+      onLeaveSheet?.();
+      setClosing(true);
+      blur.set(withTiming(1, { duration: DURATION.panel, easing: EASE_FADE }));
+      morph.set(withSpring(0, SPRING.panelOut));
+      menuOpacity.set(
+        withTiming(1, { duration: DURATION.crossfade, easing: EASE_FADE })
+      );
+      gridOpacity.set(
+        withTiming(0, { duration: DURATION.crossfade, easing: EASE_FADE })
+      );
+      open.set(
+        withSpring(0, SPRING.panelOut, (finished) => {
+          'worklet';
+          if (finished) scheduleOnRN(closeSheet);
+        })
+      );
+      plusOut.set(withDelay(DURATION.plusLead, withSpring(0, SPRING.panelOut)));
+    },
+    [
+      blur,
+      clearLead,
+      closeSheet,
+      gridOpacity,
+      menuOpacity,
+      morph,
+      onLeaveSheet,
+      open,
+      plusOut,
+    ]
+  );
+
+  const dismiss = useCallback(() => closePanel(true), [closePanel]);
 
   const showSheet = useCallback(
     (next: Sheet) => {
@@ -164,6 +172,11 @@ export function useAttachmentPanel({
       withTiming(0, { duration: DURATION.crossfade, easing: EASE_FADE })
     );
   }, [gridOpacity, menuOpacity, morph, onLeaveSheet, pulseBlur]);
+
+  const dismissWithoutRefocus = useCallback(
+    () => closePanel(false),
+    [closePanel]
+  );
 
   const dismissUnlessCanceled = useCallback(
     (picking: void | Promise<DocumentPickOutcome | void>) => {
@@ -250,6 +263,7 @@ export function useAttachmentPanel({
     blur,
     onPlusPress,
     dismiss,
+    dismissWithoutRefocus,
     backToMenu,
     onMenuAction,
     collapseForLeave,
