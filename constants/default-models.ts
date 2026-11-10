@@ -7,19 +7,17 @@ import {
   type ProfileTarget,
 } from './model-profiles';
 import {
-  QWEN3_0_6B_QUANTIZED,
-  QWEN3_1_7B_QUANTIZED,
-  LLAMA3_2_1B_QLORA,
-  LLAMA3_2_1B_SPINQUANT,
-  LLAMA3_2_3B_QLORA,
-  LLAMA3_2_3B_SPINQUANT,
-  QWEN2_5_0_5B_QUANTIZED,
-  QWEN2_5_1_5B_QUANTIZED,
-  QWEN2_5_3B_QUANTIZED,
-  LFM2_5_1_2B_INSTRUCT_QUANTIZED,
-  LFM2_5_VL_1_6B_QUANTIZED,
-  LFM2_5_VL_450M_QUANTIZED,
-  BIELIK_V3_0_1_5B_QUANTIZED,
+  QWEN3_0_6B_QUANTIZED as LEGACY_QWEN3_0_6B_QUANTIZED,
+  QWEN3_1_7B_QUANTIZED as LEGACY_QWEN3_1_7B_QUANTIZED,
+  LLAMA3_2_1B_SPINQUANT as LEGACY_LLAMA3_2_1B_SPINQUANT,
+  LLAMA3_2_3B_SPINQUANT as LEGACY_LLAMA3_2_3B_SPINQUANT,
+  QWEN2_5_0_5B_QUANTIZED as LEGACY_QWEN2_5_0_5B_QUANTIZED,
+  QWEN2_5_1_5B_QUANTIZED as LEGACY_QWEN2_5_1_5B_QUANTIZED,
+  QWEN2_5_3B_QUANTIZED as LEGACY_QWEN2_5_3B_QUANTIZED,
+  LFM2_5_1_2B_INSTRUCT_QUANTIZED as LEGACY_LFM2_5_1_2B_INSTRUCT_QUANTIZED,
+  LFM2_5_VL_1_6B_QUANTIZED as LEGACY_LFM2_5_VL_1_6B_QUANTIZED,
+  LFM2_5_VL_450M_QUANTIZED as LEGACY_LFM2_5_VL_450M_QUANTIZED,
+  BIELIK_V3_0_1_5B_QUANTIZED as LEGACY_BIELIK_V3_0_1_5B_QUANTIZED,
   GEMMA4_E2B_MLX_MODEL,
   GEMMA4_E2B_VULKAN_MODEL,
   GEMMA4_E2B_MLX_MM,
@@ -27,24 +25,37 @@ import {
   GEMMA4_E2B_TOKENIZER,
   GEMMA4_E2B_TOKENIZER_CONFIG,
 } from 'react-native-executorch/legacy';
+import { onRne011 } from './model-sources';
 
-// Must stay on /legacy: the non-legacy entry point moves Gemma to v0.10.0 and
-// re-downloads every copy already on a device.
-const GEMMA4_E2B = {
+const QWEN3_0_6B_QUANTIZED = onRne011(LEGACY_QWEN3_0_6B_QUANTIZED);
+const QWEN3_1_7B_QUANTIZED = onRne011(LEGACY_QWEN3_1_7B_QUANTIZED);
+const LLAMA3_2_1B_SPINQUANT = onRne011(LEGACY_LLAMA3_2_1B_SPINQUANT);
+const LLAMA3_2_3B_SPINQUANT = onRne011(LEGACY_LLAMA3_2_3B_SPINQUANT);
+const QWEN2_5_0_5B_QUANTIZED = onRne011(LEGACY_QWEN2_5_0_5B_QUANTIZED);
+const QWEN2_5_1_5B_QUANTIZED = onRne011(LEGACY_QWEN2_5_1_5B_QUANTIZED);
+const QWEN2_5_3B_QUANTIZED = onRne011(LEGACY_QWEN2_5_3B_QUANTIZED);
+const LFM2_5_1_2B_INSTRUCT_QUANTIZED = onRne011(
+  LEGACY_LFM2_5_1_2B_INSTRUCT_QUANTIZED
+);
+const LFM2_5_VL_1_6B_QUANTIZED = onRne011(LEGACY_LFM2_5_VL_1_6B_QUANTIZED);
+const LFM2_5_VL_450M_QUANTIZED = onRne011(LEGACY_LFM2_5_VL_450M_QUANTIZED);
+const BIELIK_V3_0_1_5B_QUANTIZED = onRne011(LEGACY_BIELIK_V3_0_1_5B_QUANTIZED);
+
+const GEMMA4_E2B = onRne011({
   modelName: 'gemma4-e2b',
   modelSource:
     Platform.OS === 'android' ? GEMMA4_E2B_VULKAN_MODEL : GEMMA4_E2B_MLX_MODEL,
   tokenizerSource: GEMMA4_E2B_TOKENIZER,
   tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
-} as const;
+} as const);
 
-const GEMMA4_E2B_MM = {
+const GEMMA4_E2B_MM = onRne011({
   modelName: 'gemma4-e2b-multimodal',
   modelSource:
     Platform.OS === 'android' ? GEMMA4_E2B_VULKAN_MM : GEMMA4_E2B_MLX_MM,
   tokenizerSource: GEMMA4_E2B_TOKENIZER,
   tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
-} as const;
+} as const);
 
 const LFM3_HF_BASE =
   'https://huggingface.co/software-mansion/LFM3-ExecuTorch/resolve/v1.0.0';
@@ -113,9 +124,7 @@ export const getStartingModels = (deviceRamInGB: number): string[] => {
 const RNE_MODELS = [
   QWEN3_0_6B_QUANTIZED,
   QWEN3_1_7B_QUANTIZED,
-  LLAMA3_2_1B_QLORA,
   LLAMA3_2_1B_SPINQUANT,
-  LLAMA3_2_3B_QLORA,
   LLAMA3_2_3B_SPINQUANT,
   QWEN2_5_0_5B_QUANTIZED,
   QWEN2_5_1_5B_QUANTIZED,
@@ -182,7 +191,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: QWEN3_0_6B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 0.75,
-    modelSize: 0.94,
+    modelSize: 0.53,
     featured: true,
     thinking: true,
     labels: ['Fast', 'Reasoning'],
@@ -195,22 +204,10 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: QWEN3_1_7B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.03,
-    modelSize: 2.16,
+    modelSize: 1.32,
     featured: true,
     thinking: true,
     labels: ['Smart', 'Reasoning'],
-  },
-  {
-    modelName: 'LLaMA 3.2 - 1B - QLoRa',
-    family: 'LLaMA 3.2',
-    tokenizerPath: LLAMA3_2_1B_QLORA.tokenizerSource,
-    modelPath: LLAMA3_2_1B_QLORA.modelSource,
-    tokenizerConfigPath: LLAMA3_2_1B_QLORA.tokenizerConfigSource,
-    source: 'remote',
-    parameters: 1.24,
-    modelSize: 1.18,
-    featured: true,
-    labels: ['Good at coding'],
   },
   {
     modelName: 'LLaMA 3.2 - 1B - SpinQuant',
@@ -220,21 +217,9 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: LLAMA3_2_1B_SPINQUANT.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.24,
-    modelSize: 1.14,
+    modelSize: 1.09,
     featured: true,
     labels: ['Good at coding', 'Fast', 'Great first model'],
-  },
-  {
-    modelName: 'LLaMA 3.2 - 3B - QLoRa',
-    family: 'LLaMA 3.2',
-    tokenizerPath: LLAMA3_2_3B_QLORA.tokenizerSource,
-    modelPath: LLAMA3_2_3B_QLORA.modelSource,
-    tokenizerConfigPath: LLAMA3_2_3B_QLORA.tokenizerConfigSource,
-    source: 'remote',
-    parameters: 3.21,
-    modelSize: 2.65,
-    featured: true,
-    labels: ['Good at coding'],
   },
   {
     modelName: 'LLaMA 3.2 - 3B - SpinQuant',
@@ -244,7 +229,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: LLAMA3_2_3B_SPINQUANT.tokenizerConfigSource,
     source: 'remote',
     parameters: 3.21,
-    modelSize: 2.55,
+    modelSize: 2.39,
     featured: true,
     labels: ['Good at coding', 'Fast'],
   },
@@ -256,7 +241,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: QWEN2_5_0_5B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 0.49,
-    modelSize: 0.81,
+    modelSize: 0.44,
     featured: true,
     labels: ['Fast', 'Small'],
   },
@@ -268,7 +253,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: QWEN2_5_1_5B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.54,
-    modelSize: 1.76,
+    modelSize: 1.17,
     featured: true,
     labels: ['Balanced'],
   },
@@ -280,7 +265,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: QWEN2_5_3B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 3.09,
-    modelSize: 2.89,
+    modelSize: 2.11,
     featured: true,
     labels: ['Powerful'],
   },
@@ -292,7 +277,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: LFM2_5_1_2B_INSTRUCT_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.2,
-    modelSize: 1.14,
+    modelSize: 0.82,
     featured: true,
     labels: ['Balanced'],
   },
@@ -304,7 +289,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: LFM2_5_VL_1_6B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.6,
-    modelSize: 2.43,
+    modelSize: 2.48,
     featured: true,
     thinking: false,
     vision: true,
@@ -336,7 +321,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: LFM3_1_7B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.73,
-    modelSize: 1.25,
+    modelSize: 1.27,
     featured: true,
     thinking: true,
     labels: ['Balanced', 'Reasoning'],
@@ -349,7 +334,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: LFM3_VL_2B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.92,
-    modelSize: 2.01,
+    modelSize: 2.03,
     featured: true,
     thinking: true,
     vision: true,
@@ -365,7 +350,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: BIELIK_V3_0_1_5B_QUANTIZED.tokenizerConfigSource,
     source: 'remote',
     parameters: 1.5,
-    modelSize: 0.86,
+    modelSize: 0.94,
     featured: true,
     experimental: true,
     thinking: false,
@@ -381,7 +366,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: Platform.OS === 'android' ? 2.5 : 2.9,
+    modelSize: Platform.OS === 'android' ? 2.99 : 2.56,
     featured: true,
     thinking: false,
     labels: ['Balanced'],
@@ -394,7 +379,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B_MM.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: Platform.OS === 'android' ? 4.0 : 3.0,
+    modelSize: Platform.OS === 'android' ? 3.84 : 2.76,
     featured: true,
     thinking: false,
     vision: true,

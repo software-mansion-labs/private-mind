@@ -19,6 +19,7 @@ import { useImportChat } from '../../hooks/useImportChat';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
+import { useModelUpdateSheetStore } from '../../store/modelUpdateSheetStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
@@ -70,6 +71,7 @@ export default function App() {
             ? 'replace-immediately'
             : 'replace';
           coldStartRedirectPending = false;
+          useModelUpdateSheetStore.getState().enterNewChat();
           await startPhantomChat(db, mode);
         } catch (error) {
           console.error(

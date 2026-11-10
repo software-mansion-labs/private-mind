@@ -128,6 +128,8 @@ PODS:
   - hermes-engine (250829098.0.17):
     - hermes-engine/Pre-built (= 250829098.0.17)
   - hermes-engine/Pre-built (250829098.0.17)
+  - ImagePixels (1.0.0):
+    - ExpoModulesCore
   - MemoryProbe (1.0.0):
     - ExpoModulesCore
   - MMKV (2.4.2):
@@ -2782,6 +2784,7 @@ DEPENDENCIES:
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - ImagePixels (from `../modules/image-pixels/ios`)
   - MemoryProbe (from `../modules/memory-probe/ios`)
   - "op-sqlite (from `../node_modules/@op-engineering/op-sqlite`)"
   - Pdfium (from `../node_modules/react-native-pdfium`)
@@ -2962,6 +2965,8 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.17
+  ImagePixels:
+    :path: "../modules/image-pixels/ios"
   MemoryProbe:
     :path: "../modules/memory-probe/ios"
   op-sqlite:
@@ -3191,6 +3196,7 @@ SPEC CHECKSUMS:
   ExpoWebBrowser: a4d7c382116fbe33c1ec7f60293f02b7e97042e4
   FBLazyVector: 2138c6c2ab66c31bf5754dc18097fbc498a49c7f
   hermes-engine: 63c5db7d529c36335fada6582fd293ae2a105d77
+  ImagePixels: 1b073561d1e7939a130d0334f6330465cd53fd08
   MemoryProbe: 8495878b5180ecc97b16bb87a390024aa4843e05
   MMKV: d37bccee64404d7c3e1457fabd9368e78d69a80f
   MMKVCore: a58d2ce5b580948122e85be3ddf378c9b1ef739e

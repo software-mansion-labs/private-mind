@@ -6,7 +6,10 @@ import {
   LOW_MEMORY_DEVICE_IOS_GB,
   STRONG_DEVICE_MEMORY_GB,
 } from '../constants/web';
-import { MODEL_MIN_RAM_GB } from '../constants/model-memory';
+import {
+  MODEL_BLOCKED_DEVICE_IDS,
+  MODEL_MIN_RAM_GB,
+} from '../constants/model-memory';
 import {
   ANDROID_SYSTEM_RESERVE_GB,
   ANDROID_SYSTEM_RESERVE_SHARE,
@@ -65,10 +68,17 @@ const getModelMemoryCostGB = (
   return getModelMemoryRequirement(model as CompatibilityCheckedModel);
 };
 
+const isBlockedOnThisDevice = (model: CompatibilityCheckedModel): boolean =>
+  MODEL_BLOCKED_DEVICE_IDS[model.modelName]?.includes(
+    DeviceInfo.getDeviceId()
+  ) ?? false;
+
 export const isModelCompatibleWithRam = (
   model: CompatibilityCheckedModel,
   deviceRamGB: number
 ): boolean => {
+  if (isBlockedOnThisDevice(model)) return false;
+
   const declaredMinRamGB = MODEL_MIN_RAM_GB[model.modelName];
 
   if (declaredMinRamGB !== undefined) {
@@ -114,6 +124,7 @@ export const incompatibilityLabel = (
   try {
     const share = reportedShareOfNominalRam();
     const requirements = models
+      .filter((model) => !isBlockedOnThisDevice(model))
       .map((model) => requiredDeviceRamGB(model, share))
       .filter((ramGB): ramGB is number => ramGB !== null);
     if (requirements.length === 0) return INCOMPATIBLE_LABEL;
