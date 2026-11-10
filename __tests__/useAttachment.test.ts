@@ -151,10 +151,12 @@ describe('useAttachment', () => {
       });
       const { view, downloadSheet } = mountWithSheets();
 
+      let outcome: DocumentPickOutcome | undefined;
       await act(async () => {
-        await view.result.current.pickDocument();
+        outcome = await view.result.current.pickDocument();
       });
 
+      expect(outcome).toBe('awaiting-download');
       expect(downloadSheet.present).not.toHaveBeenCalled();
 
       act(() => {

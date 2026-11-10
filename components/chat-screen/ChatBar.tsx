@@ -289,10 +289,10 @@ const ChatBar = ({
     else markPanelOpen();
   }, [panel.mode, markPanelClosed, markPanelOpen]);
 
-  const { dismiss: dismissPanel } = panel;
+  const { dismissWithoutRefocus: dismissPanelWithoutRefocus } = panel;
   const dismissPanelIfOpen = useCallback(() => {
-    if (panelOpenRef.current) dismissPanel();
-  }, [dismissPanel]);
+    if (panelOpenRef.current) dismissPanelWithoutRefocus();
+  }, [dismissPanelWithoutRefocus]);
 
   useEffect(() => {
     onAttachmentSheetStateChange?.(panel.mode !== 'closed');
