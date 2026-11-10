@@ -183,6 +183,16 @@ describe('loadModel', () => {
     expect(mockLLMEngine.load).not.toHaveBeenCalled();
   });
 
+  it('leaves a model that needs its update unloaded, so the runner never gets a missing file', async () => {
+    await useLLMStore.getState().loadModel({
+      ...baseModel,
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.9.0/model.pte'],
+      updateRequired: true,
+    });
+    expect(mockLLMEngine.load).not.toHaveBeenCalled();
+  });
+
   it('reloads same model when hardReload=true', async () => {
     useLLMStore.setState({ model: baseModel });
     await useLLMStore.getState().loadModel(baseModel, true);

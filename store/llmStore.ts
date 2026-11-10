@@ -36,7 +36,7 @@ import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
-import { needsUpdate } from '../utils/modelUpdate';
+import { needsUpdate, requiresUpdate } from '../utils/modelUpdate';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
@@ -1051,6 +1051,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (model.id === currentModel?.id && llmInstance && !hardReload) {
       return;
     }
+    if (requiresUpdate(model)) return;
     const result = modelLoadChain.then(async () => {
       // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
       if (await cpuLacksLseAtomics()) {
