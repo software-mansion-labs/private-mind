@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import Animated, {
   FadeOut,
   interpolate,
   runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -24,6 +26,8 @@ import { isDarkTheme } from '../../styles/colors';
 import { NEW_CHAT_REST_BOTTOM_FRACTION } from '../../constants/chat-screen';
 import { useSplashFinished } from '../../utils/splashState';
 import ParticleSwarm from '../swarm/ParticleSwarm';
+import { HEADING_OUTLINES } from '../swarm/headingOutlines';
+import type { HeadingAnchor } from './useHeadingAnchor';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 
 const REFERENCE_SCREEN_HEIGHT = 844;
@@ -31,11 +35,16 @@ const SPHERE_RADIUS = 95;
 const DOT_SIZE = 1.7;
 const DRIFT_DISTANCE = 36;
 const DOTS_SECONDS = 3;
+const DOTS_INTO_TEXT_SECONDS = 4.4;
+const HEADING_REVEAL_RANGE = [0.84, 0.95];
+const HEADING_MIDDLE_EM = 0.35;
+const BADGE_FADE_IN_MS = 450;
 const CANVAS_OVERSCAN_RADII = 3;
 
 const BLOOM_PEAK_OPACITY = 0.6;
-const BLOOM_RISE_MS = DOTS_SECONDS * 0.8 * 1000;
-const BLOOM_FALL_MS = DOTS_SECONDS * 0.85 * 1000;
+const BLOOM_RISE_SHARE = 0.8;
+const BLOOM_FALL_SHARE = 0.85;
+const MS_PER_SECOND = 1000;
 const BLOOM_HEIGHT_FRACTION = 520 / REFERENCE_SCREEN_HEIGHT;
 const BLOOM_EASING = Easing.inOut(Easing.quad);
 const BLOOM_LOCATIONS = [0, 0.5, 1] as const;
@@ -72,11 +81,13 @@ export const SWARM_CLEARANCE_WITH_DESCRIPTION = 84;
 
 export const swarmGeometry = (
   screenHeight: number,
-  headingClearance: number
+  headingClearance: number,
+  logoCenterY?: number
 ) => {
   const scale = Math.min(1, screenHeight / REFERENCE_SCREEN_HEIGHT);
   const radius = SPHERE_RADIUS * scale;
   const centerY =
+    logoCenterY ??
     screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION + headingClearance + radius;
   const overscan = radius * CANVAS_OVERSCAN_RADII;
   const canvasTop = Math.max(0, centerY - overscan);
@@ -107,12 +118,20 @@ interface Props {
   screenHeight: number;
   headingClearance: number;
   keyboardLift?: SharedValue<number>;
+  heading?: string;
+  headingAnchor?: HeadingAnchor | null;
+  headingReveal?: SharedValue<number>;
+  badgeReveal?: SharedValue<number>;
 }
 
 const NewChatSwarm = ({
   screenHeight,
   headingClearance,
   keyboardLift,
+  heading,
+  headingAnchor,
+  headingReveal,
+  badgeReveal,
 }: Props) => {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
@@ -123,26 +142,91 @@ const NewChatSwarm = ({
   const skipped = reducedMotion || keyboardWasOpen;
   const dark = isDarkTheme(theme);
   const splashFinished = useSplashFinished();
+  const outline = heading ? HEADING_OUTLINES[heading] : undefined;
+  const measuringHeading = !!outline && headingAnchor === undefined;
+  const formsText = !!outline && !!headingAnchor;
+  const durationSeconds = formsText ? DOTS_INTO_TEXT_SECONDS : DOTS_SECONDS;
+  const progress = useSharedValue(0);
+  const logoCenterY =
+    outline && headingAnchor
+      ? headingAnchor.baseline -
+        (headingAnchor.width / outline.advance) * HEADING_MIDDLE_EM
+      : undefined;
+
+  useLayoutEffect(() => {
+    const hidden = skipped || !outline ? 1 : 0;
+    headingReveal?.set(hidden);
+    badgeReveal?.set(hidden);
+    return () => {
+      headingReveal?.set(1);
+      badgeReveal?.set(1);
+    };
+  }, [badgeReveal, headingReveal, outline, skipped]);
+
+  useEffect(() => {
+    if (headingAnchor !== null) return;
+    headingReveal?.set(1);
+    badgeReveal?.set(1);
+  }, [badgeReveal, headingAnchor, headingReveal]);
+
+  const handleKeyboardTookOver = useCallback(() => {
+    progress.set(1);
+    headingReveal?.set(1);
+    badgeReveal?.set(1);
+    setDotsDone(true);
+    setBloomDone(true);
+  }, [badgeReveal, headingReveal, progress]);
+
+  useAnimatedReaction(
+    () => ({
+      dots: progress.get(),
+      keyboard: keyboardLift
+        ? interpolate(
+            keyboardLift.get(),
+            [-KEYBOARD_FADE_DISTANCE, 0],
+            [1, 0],
+            'clamp'
+          )
+        : 0,
+    }),
+    ({ dots, keyboard }, previous) => {
+      if (formsText && headingReveal) {
+        headingReveal.set(
+          Math.max(
+            interpolate(dots, HEADING_REVEAL_RANGE, [0, 1], 'clamp'),
+            keyboard
+          )
+        );
+      }
+      if (keyboard > 0 && badgeReveal) {
+        badgeReveal.set(Math.max(badgeReveal.get(), keyboard));
+      }
+      if (keyboard >= 1 && (previous?.keyboard ?? 0) < 1) {
+        runOnJS(handleKeyboardTookOver)();
+      }
+    }
+  );
 
   const bloom = useSharedValue(0);
   useEffect(() => {
-    if (skipped || !splashFinished) return;
+    if (skipped || !splashFinished || measuringHeading) return;
+    const durationMs = durationSeconds * MS_PER_SECOND;
     bloom.set(
       withSequence(
         withTiming(BLOOM_PEAK_OPACITY, {
-          duration: BLOOM_RISE_MS,
+          duration: durationMs * BLOOM_RISE_SHARE,
           easing: BLOOM_EASING,
         }),
         withTiming(
           0,
-          { duration: BLOOM_FALL_MS, easing: BLOOM_EASING },
+          { duration: durationMs * BLOOM_FALL_SHARE, easing: BLOOM_EASING },
           (finished) => {
             if (finished) runOnJS(setBloomDone)(true);
           }
         )
       )
     );
-  }, [bloom, skipped, splashFinished]);
+  }, [bloom, durationSeconds, measuringHeading, skipped, splashFinished]);
 
   const bloomStyle = useAnimatedStyle(() => ({ opacity: bloom.get() }));
   const keyboardFadeStyle = useAnimatedStyle(() => ({
@@ -152,7 +236,7 @@ const NewChatSwarm = ({
   }));
 
   const look = useMemo(() => {
-    const geometry = swarmGeometry(screenHeight, headingClearance);
+    const geometry = swarmGeometry(screenHeight, headingClearance, logoCenterY);
     return {
       width,
       height: geometry.canvasHeight,
@@ -161,13 +245,36 @@ const NewChatSwarm = ({
       dotSize: DOT_SIZE,
       drift: DRIFT_DISTANCE * geometry.scale,
       ...(dark ? PALETTE_DARK : PALETTE_LIGHT),
+      text:
+        heading && outline && headingAnchor
+          ? {
+              heading,
+              left: headingAnchor.left,
+              baseline: headingAnchor.baseline - geometry.canvasTop,
+              em: headingAnchor.width / outline.advance,
+            }
+          : null,
     };
-  }, [dark, headingClearance, screenHeight, width]);
+  }, [
+    dark,
+    heading,
+    headingAnchor,
+    headingClearance,
+    logoCenterY,
+    outline,
+    screenHeight,
+    width,
+  ]);
   const canvasFrame = useMemo(() => {
-    const geometry = swarmGeometry(screenHeight, headingClearance);
+    const geometry = swarmGeometry(screenHeight, headingClearance, logoCenterY);
     return { top: geometry.canvasTop, height: geometry.canvasHeight };
-  }, [headingClearance, screenHeight]);
-  const handleDotsFinished = useCallback(() => setDotsDone(true), []);
+  }, [headingClearance, logoCenterY, screenHeight]);
+  const handleDotsFinished = useCallback(() => {
+    progress.set(1);
+    headingReveal?.set(1);
+    badgeReveal?.set(withTiming(1, { duration: BADGE_FADE_IN_MS }));
+    setDotsDone(true);
+  }, [badgeReveal, headingReveal, progress]);
 
   if (skipped || (dotsDone && bloomDone)) return null;
 
@@ -192,13 +299,14 @@ const NewChatSwarm = ({
             style={StyleSheet.absoluteFill}
           />
         </Animated.View>
-        {!dotsDone && (
+        {!dotsDone && !measuringHeading && (
           <Animated.View style={[styles.canvas, canvasFrame]}>
             <ParticleSwarm
               look={look}
-              durationSeconds={DOTS_SECONDS}
+              durationSeconds={durationSeconds}
               playing={splashFinished}
               onFinished={handleDotsFinished}
+              progress={progress}
             />
           </Animated.View>
         )}

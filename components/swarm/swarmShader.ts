@@ -1,5 +1,6 @@
 import tgpu, { d, std, type TgpuRoot } from 'typegpu';
-import { sampleLogo, seededRandom } from './logoPoints';
+import { sampleLogo, sampleOutline, seededRandom } from './logoPoints';
+import { HEADING_OUTLINES, HEADING_UNITS_PER_EM } from './headingOutlines';
 
 export const SWARM_DOT_COUNT = 3000;
 const WORKGROUP_SIZE = 64;
@@ -12,6 +13,8 @@ const Source = d.struct({
   arrivalJitter: d.f32,
   departureJitter: d.f32,
   origin: d.vec3f,
+  morphJitter: d.f32,
+  glyph: d.vec2f,
 });
 
 const Dot = d.struct({
@@ -38,6 +41,8 @@ const Look = d.struct({
   backColor: d.vec3f,
   frontColor: d.vec3f,
   highlightColor: d.vec3f,
+  textOrigin: d.vec2f,
+  textEm: d.f32,
 });
 
 const computeLayout = tgpu.bindGroupLayout({
@@ -170,6 +175,24 @@ const easeOutCubic = (x: number): number => {
   return 1 - inverse * inverse * inverse;
 };
 
+const easeInOutCubic = (x: number): number => {
+  'use gpu';
+  const t = std.clamp(x, 0, 1);
+  const rising = 4 * t * t * t;
+  const back = -2 * t + 2;
+  return std.select(1 - (back * back * back) / 2, rising, t < 0.5);
+};
+
+const TEXT_ARRIVAL_SPAN = 0.32;
+const TEXT_ARRIVAL_SPREAD = 0.1;
+const MORPH_START = 0.46;
+const MORPH_SPREAD = 0.14;
+const MORPH_SPAN = 0.26;
+const HANDOFF_START = 0.86;
+const HANDOFF_SPAN = 0.1;
+const MORPH_ARC = 0.22;
+const TEXT_DOT_SCALE = 0.85;
+
 const updateDots = tgpu.computeFn({
   in: { id: d.builtin.globalInvocationId },
   workgroupSize: [WORKGROUP_SIZE],
@@ -184,20 +207,32 @@ const updateDots = tgpu.computeFn({
   const home = source.home;
   const t = clock.time;
 
+  const textMode = std.select(d.f32(0), d.f32(1), look.textEm > 0);
   const arrival = easeOutCubic(
-    (clock.progress - source.arrivalJitter * 0.15) / 0.46
+    (clock.progress -
+      source.arrivalJitter * std.mix(0.15, TEXT_ARRIVAL_SPREAD, textMode)) /
+      std.mix(0.46, TEXT_ARRIVAL_SPAN, textMode)
   );
-  const departure = std.clamp(
-    (clock.progress - 0.5 - source.departureJitter * 0.18) / 0.32,
-    0,
-    1
-  );
+  const departure =
+    std.clamp(
+      (clock.progress - 0.5 - source.departureJitter * 0.18) / 0.32,
+      0,
+      1
+    ) *
+    (1 - textMode);
+  const morph =
+    easeInOutCubic(
+      (clock.progress - MORPH_START - source.morphJitter * MORPH_SPREAD) /
+        MORPH_SPAN
+    ) * textMode;
+  const handoff =
+    std.clamp((clock.progress - HANDOFF_START) / HANDOFF_SPAN, 0, 1) * textMode;
   const departureSquared = departure * departure;
   const coarse = simplexNoise(
     home.mul(2.2).add(d.vec3f(t * 0.3, -t * 0.2, t * 0.25))
   );
   const fine = simplexNoise(home.mul(5).add(d.vec3f(-t * 0.25, t * 0.35, 0)));
-  const shimmer = d.vec3f(coarse, fine, coarse * fine).mul(0.018);
+  const shimmer = d.vec3f(coarse, fine, coarse * fine).mul(0.018 * (1 - morph));
   const scatter = d.vec3f(coarse, fine, 0).mul(departureSquared * 0.45);
   const flight = home.sub(source.origin);
   const swirl = d
@@ -225,13 +260,28 @@ const updateDots = tgpu.computeFn({
   const highlight = 0.25 + 0.35 * (0.5 + 0.5 * coarse);
   const body = std.mix(look.backColor, look.frontColor, depth);
 
+  const inLogo = look.center
+    .add(d.vec2f(p.x, -p.y).mul(look.radius * perspective))
+    .add(d.vec2f(0, -departureSquared * look.drift));
+  const inText = look.textOrigin.add(source.glyph.mul(look.textEm));
+  const path = inText.sub(inLogo);
+  const arc = d
+    .vec2f(-path.y, path.x)
+    .mul(std.sin(morph * HALF_TURN) * MORPH_ARC * (source.morphJitter - 0.5));
+  const textSize = look.dotSize * TEXT_DOT_SCALE * look.pixelScale;
+  const finalSize = std.mix(size, textSize, morph);
+
   computeLayout.$.dots[id.x] = Dot({
-    position: look.center
-      .add(d.vec2f(p.x, -p.y).mul(look.radius * perspective))
-      .add(d.vec2f(0, -departureSquared * look.drift)),
-    pixelSize: std.max(size, 1),
-    alpha: alpha * std.min(size, 1),
-    color: std.mix(body, look.highlightColor, highlight),
+    position: std.mix(inLogo, inText, morph).add(arc),
+    pixelSize: std.max(finalSize, 1),
+    alpha:
+      std.mix(alpha * std.min(size, 1), std.min(textSize, 1), morph) *
+      (1 - handoff),
+    color: std.mix(
+      std.mix(body, look.highlightColor, highlight),
+      look.highlightColor,
+      morph
+    ),
   });
 });
 
@@ -250,6 +300,14 @@ export interface SwarmLook {
   frontColor: readonly [number, number, number];
   highlightColor: readonly [number, number, number];
   additive: boolean;
+  text: SwarmText | null;
+}
+
+export interface SwarmText {
+  heading: string;
+  left: number;
+  baseline: number;
+  em: number;
 }
 
 const SOURCE_SEED = 7;
@@ -259,12 +317,44 @@ const ORIGIN_SPREAD = 1.1;
 const ORIGIN_VERTICAL_STRETCH = 1.15;
 const ORIGIN_DEPTH = 0.6;
 
-const logoSources = () => {
+const byX = (points: readonly (readonly [number, number])[]) =>
+  points
+    .map((point, index) => ({ x: point[0], index }))
+    .sort((a, b) => a.x - b.x)
+    .map(({ index }) => index);
+
+const glyphsFor = (
+  logo: readonly (readonly [number, number])[],
+  heading: string | null
+) => {
+  const outline = heading ? HEADING_OUTLINES[heading] : undefined;
+  if (!outline) return logo.map(() => d.vec2f(0, 0));
+  const text = sampleOutline(
+    outline.path,
+    logo.length,
+    SOURCE_SEED,
+    HEADING_UNITS_PER_EM
+  );
+  const logoOrder = byX(logo);
+  const textOrder = byX(text);
+  const glyphs = new Array<ReturnType<typeof d.vec2f>>(logo.length);
+  logoOrder.forEach((logoIndex, rank) => {
+    const [x, y] = text[textOrder[rank]];
+    glyphs[logoIndex] = d.vec2f(x, y);
+  });
+  return glyphs;
+};
+
+const logoSources = (heading: string | null) => {
   const random = seededRandom(SOURCE_SEED);
-  return sampleLogo(SWARM_DOT_COUNT, SOURCE_SEED).map(([x, y]) => {
+  const logo = sampleLogo(SWARM_DOT_COUNT, SOURCE_SEED);
+  const glyphs = glyphsFor(logo, heading);
+  return logo.map(([x, y], index) => {
     const angle = random() * 2 * Math.PI;
     const distance = ORIGIN_NEAREST + random() * ORIGIN_SPREAD;
     return {
+      morphJitter: random(),
+      glyph: glyphs[index],
       home: d.vec3f(x, y, (random() * 2 - 1) * LOGO_DEPTH),
       arrivalJitter: random(),
       departureJitter: random(),
@@ -285,7 +375,10 @@ export const buildSwarm = (
   format: GPUTextureFormat
 ) => {
   const sources = root
-    .createBuffer(d.arrayOf(Source, SWARM_DOT_COUNT), logoSources())
+    .createBuffer(
+      d.arrayOf(Source, SWARM_DOT_COUNT),
+      logoSources(look.text?.heading ?? null)
+    )
     .$usage('storage');
   const dots = root
     .createBuffer(d.arrayOf(Dot, SWARM_DOT_COUNT))
@@ -303,6 +396,9 @@ export const buildSwarm = (
       backColor: d.vec3f(...look.backColor),
       frontColor: d.vec3f(...look.frontColor),
       highlightColor: d.vec3f(...look.highlightColor),
+      textOrigin: d.vec2f(look.text?.left ?? 0, look.text?.baseline ?? 0),
+      textEm:
+        look.text && HEADING_OUTLINES[look.text.heading] ? look.text.em : 0,
     })
     .$usage('uniform');
 

@@ -4,6 +4,7 @@ import {
   runOnJS,
   useFrameCallback,
   useSharedValue,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { Canvas, installWebGPU, type CanvasRef } from 'react-native-webgpu';
 import tgpu, { type TgpuRoot } from 'typegpu';
@@ -54,6 +55,7 @@ interface Props {
   durationSeconds: number;
   playing: boolean;
   onFinished: () => void;
+  progress?: SharedValue<number>;
 }
 
 const ParticleSwarm = ({
@@ -61,6 +63,7 @@ const ParticleSwarm = ({
   durationSeconds,
   playing,
   onFinished,
+  progress: reportedProgress,
 }: Props) => {
   const canvasRef = useRef<CanvasRef>(null);
   const [built, setBuilt] = useState<Built | null>(null);
@@ -110,30 +113,31 @@ const ParticleSwarm = ({
     };
   }, [finish, look]);
 
-  const startedAt = useSharedValue<number | null>(null);
-  const lastDrawnAt = useSharedValue(0);
+  const lastDrawnAt = useSharedValue<number | null>(null);
+  const progressSoFar = useSharedValue(0);
 
   const frameCallback = useFrameCallback((frame) => {
     'worklet';
     if (!built) return;
-    let start = startedAt.get();
-    if (start === null) {
+    const previousFrameAt = lastDrawnAt.get();
+    if (previousFrameAt === null) {
       installWebGPU();
       built.context.configure({
         device: built.device,
         format: built.format,
         alphaMode: 'premultiplied',
       });
-      start = frame.timestamp;
-      startedAt.set(start);
-    } else if (frame.timestamp - lastDrawnAt.get() < MIN_FRAME_INTERVAL_MS) {
+    } else if (frame.timestamp - previousFrameAt < MIN_FRAME_INTERVAL_MS) {
       return;
     }
     lastDrawnAt.set(frame.timestamp);
 
-    const elapsed = (frame.timestamp - start) / MS_PER_SECOND;
-    const progress = elapsed / durationSeconds;
+    const sinceLastFrame =
+      (frame.timestamp - (previousFrameAt ?? frame.timestamp)) / MS_PER_SECOND;
+    const progress = progressSoFar.get() + sinceLastFrame / durationSeconds;
+    progressSoFar.set(progress);
     const motionTime = progress * DESIGNED_DURATION_SECONDS;
+    reportedProgress?.set(Math.min(progress, 1));
     if (progress >= 1) {
       runOnJS(finish)();
       return;

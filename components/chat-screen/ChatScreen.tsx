@@ -14,6 +14,7 @@ import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
 } from 'react-native-reanimated';
 import type { MessagesHandle } from './Messages';
@@ -25,6 +26,7 @@ import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
 import NewChatHero from './NewChatHero';
+import { useHeadingAnchor } from './useHeadingAnchor';
 import NewChatSwarm, {
   SWARM_CLEARANCE_WITH_PROMPTS,
   useSwarmOncePerNewChat,
@@ -43,7 +45,10 @@ import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { useBackToDismiss } from '../../hooks/useBackToDismiss';
-import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
+import {
+  LAYOUT_HEIGHT_CHANGE_THRESHOLD,
+  NEW_CHAT_HEADING,
+} from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
 import { useMemoryStallCard } from './useMemoryStallCard';
 import { startPhantomChat } from '../../utils/startPhantomChat';
@@ -307,6 +312,10 @@ export default function ChatScreen({
     !speechInputOpen &&
     rootFrame.height > 0;
   const playSwarm = useSwarmOncePerNewChat(showHero, phantomChatOpens);
+  const heading = useHeadingAnchor(rootRef, rootFrame.height);
+  const heroOpacityBeforeSwarm = useReducedMotion() ? 1 : 0;
+  const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
+  const badgeReveal = useSharedValue(heroOpacityBeforeSwarm);
 
   return (
     <View
@@ -329,6 +338,10 @@ export default function ChatScreen({
           screenHeight={rootFrame.height}
           headingClearance={SWARM_CLEARANCE_WITH_PROMPTS}
           keyboardLift={keyboardLift}
+          heading={NEW_CHAT_HEADING}
+          headingAnchor={heading.anchor}
+          headingReveal={headingReveal}
+          badgeReveal={badgeReveal}
         />
       )}
       <View style={styles.messagesLayer} pointerEvents="box-none">
@@ -360,6 +373,10 @@ export default function ChatScreen({
           barHeight={barHeight}
           keyboardLift={keyboardLift}
           onWhatsNewOpenChange={setWhatsNewOpen}
+          headingRef={heading.textRef}
+          onHeadingLayout={heading.onTextLayout}
+          headingReveal={headingReveal}
+          badgeReveal={badgeReveal}
         />
       )}
 
