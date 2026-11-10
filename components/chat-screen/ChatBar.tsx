@@ -68,6 +68,7 @@ import {
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
+import { Glass, LIQUID_GLASS } from './attachments/Glass';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -654,7 +655,15 @@ const ChatBar = ({
               />
             </Animated.View>
           )}
-          <View style={styles.inputContainer}>
+          <Glass
+            radius={radius.eighteen}
+            interactive={false}
+            fallbackTint={theme.bg.chatBar}
+            style={[
+              styles.inputContainer,
+              !LIQUID_GLASS && styles.inputContainerBorder,
+            ]}
+          >
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -749,7 +758,7 @@ const ChatBar = ({
                 onWebSearchToggle={webSearchToggle}
               />
             </View>
-          </View>
+          </Glass>
           <AttachmentOverlay
             panel={panel}
             onWindowHeight={setPanelWindowHeight}
@@ -807,13 +816,13 @@ const createStyles = (theme: Theme) =>
     },
     inputContainer: {
       flexDirection: 'column',
-      backgroundColor: theme.bg.chatBar,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.chatBar,
-      borderRadius: radius.eighteen,
       padding: COMPOSER.cardPadding,
       paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
+    },
+    inputContainerBorder: {
+      borderWidth: stroke.soft,
+      borderColor: theme.border.chatBar,
     },
     textInputWrapper: {
       flex: 1,

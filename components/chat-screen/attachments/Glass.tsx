@@ -17,7 +17,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { isDarkTheme } from '../../../styles/colors';
 import { panelPalette } from './constants';
 
-const LIQUID_GLASS = isLiquidGlassAvailable();
+export const LIQUID_GLASS = isLiquidGlassAvailable();
 
 type GlassSurfaceProps = ComponentProps<typeof GlassView> & {
   borderRadius?: number;

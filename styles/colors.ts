@@ -14,7 +14,7 @@ export const lightTheme = {
     switchThumb: '#ffffff',
     strongPrimary: '#020f3c',
     chatBar: '#F6F7FB',
-    chatBarBadge: '#FFFFFF',
+    chatBarBadge: 'rgba(255, 255, 255, 0.55)',
     popover: '#FFFFFF',
     popoverScrim: 'rgba(2, 15, 60, 0.12)',
     titlePressed: '#E6E7EB',
