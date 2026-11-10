@@ -91,7 +91,9 @@ const forThisPlatform = (source: PerPlatform): string => {
 
 export const onRne011 = <M extends { modelName: string }>(model: M) => {
   const sources = RNE_0_11_SOURCES[model.modelName];
-  if (!sources) return model;
+  if (!sources) {
+    throw new Error(`No RNE 0.11 export is listed for ${model.modelName}`);
+  }
   return {
     ...model,
     modelSource: forThisPlatform(sources.modelSource),

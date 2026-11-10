@@ -11,7 +11,7 @@ import { Model } from '../database/modelRepository';
 import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
 import { stripThinkBlocks } from './thinking';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
-import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
+import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import {
   estimatePromptTokens,
   getPromptCharBudget,
