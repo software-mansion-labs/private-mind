@@ -5,7 +5,6 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
@@ -31,6 +30,7 @@ import NewChatSwarm, {
   useSwarmOncePerNewChat,
 } from './NewChatSwarm';
 import { TopFade, topFadeHeight } from './TopFade';
+import { NewChatBackground } from './NewChatBackground';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
@@ -126,8 +126,7 @@ export default function ChatScreen({
     showGradient,
     fadeBottom,
     topFadeAnchor,
-    emptyFadeColors,
-  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight });
   const chatBarTopClearance = Math.max(
     headerHeight,
     topFadeHeight(topFadeAnchor)
@@ -321,10 +320,7 @@ export default function ChatScreen({
           style={[StyleSheet.absoluteFill, gradientStyle]}
           pointerEvents="none"
         >
-          <LinearGradient
-            colors={[theme.bg.softPrimary, theme.bg.main]}
-            style={StyleSheet.absoluteFill}
-          />
+          <NewChatBackground />
         </Animated.View>
       )}
       {playSwarm && (
@@ -414,7 +410,11 @@ export default function ChatScreen({
           ]}
           pointerEvents="none"
         >
-          <TopFade anchor={topFadeAnchor} colors={emptyFadeColors} />
+          <TopFade
+            anchor={topFadeAnchor}
+            backdrop={<NewChatBackground />}
+            backdropHeight={rootFrame.height}
+          />
         </Animated.View>
       )}
 

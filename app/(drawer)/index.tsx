@@ -12,8 +12,8 @@ import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, View } from 'react-native';
+import { NewChatBackground } from '../../components/chat-screen/NewChatBackground';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useImportChat } from '../../hooks/useImportChat';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
@@ -43,7 +43,7 @@ export default function App() {
   const db = useSQLiteContext();
   useDefaultHeader({ glass: true });
 
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
@@ -105,10 +105,8 @@ export default function App() {
 
   return (
     <>
-      <LinearGradient
-        colors={[theme.bg.softPrimary, theme.bg.main]}
-        style={styles.container}
-      >
+      <View style={styles.container}>
+        <NewChatBackground />
         {!willRedirect && (
           <NoModelWelcome
             onChooseModel={() => bottomSheetModalRef.current?.present()}
@@ -116,7 +114,7 @@ export default function App() {
             playSwarm={isFocused}
           />
         )}
-      </LinearGradient>
+      </View>
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
         onModelPicked={pickModel}

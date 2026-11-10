@@ -7,7 +7,6 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { mixColors, Theme } from '../../styles/colors';
 import {
   USER_ACTION_MENU_OFFSET,
   USER_MESSAGE_BOTTOM_SPACING,
@@ -24,7 +23,6 @@ interface UseChatScreenLayoutOptions {
   isEmpty: boolean;
   headerTitleBottom?: number;
   headerHeight: number;
-  theme: Theme;
 }
 
 const GRADIENT_UNMOUNT_SLACK_MS = 100;
@@ -37,7 +35,6 @@ export const useChatScreenLayout = ({
   isEmpty,
   headerTitleBottom,
   headerHeight,
-  theme,
 }: UseChatScreenLayoutOptions) => {
   const rootRef = useRef<View>(null);
   const [rootFrame, setRootFrame] = useState(lastRootFrame);
@@ -124,16 +121,6 @@ export const useChatScreenLayout = ({
       ? headerTitleBottom - rootFrame.y
       : undefined;
   const topFadeAnchor = fadeBottom ?? headerHeight;
-  const emptyFadeColors = useMemo(() => {
-    const sample = (y: number) =>
-      mixColors(
-        theme.bg.softPrimary,
-        theme.bg.main,
-        rootFrame.height > 0 ? y / rootFrame.height : 0
-      );
-    return [sample(0), sample(topFadeAnchor)] as const;
-  }, [rootFrame.height, theme.bg.main, theme.bg.softPrimary, topFadeAnchor]);
-
   return {
     rootRef,
     rootFrame,
@@ -146,6 +133,5 @@ export const useChatScreenLayout = ({
     showGradient,
     fadeBottom,
     topFadeAnchor,
-    emptyFadeColors,
   };
 };
