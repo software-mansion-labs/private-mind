@@ -144,7 +144,7 @@ const NewChatSwarm = ({
   const splashFinished = useSplashFinished();
   const outline = heading ? HEADING_OUTLINES[heading] : undefined;
   const measuringHeading = !!outline && headingAnchor === undefined;
-  const formsText = !!outline && !!headingAnchor;
+  const formsText = !!outline && !!headingAnchor && !skipped;
   const durationSeconds = formsText ? DOTS_INTO_TEXT_SECONDS : DOTS_SECONDS;
   const progress = useSharedValue(0);
   const logoCenterY =
@@ -154,9 +154,9 @@ const NewChatSwarm = ({
       : undefined;
 
   useLayoutEffect(() => {
-    const hidden = skipped || !outline ? 1 : 0;
-    headingReveal?.set(hidden);
-    badgeReveal?.set(hidden);
+    const startOpacity = skipped || !outline ? 1 : 0;
+    headingReveal?.set(startOpacity);
+    badgeReveal?.set(startOpacity);
     return () => {
       headingReveal?.set(1);
       badgeReveal?.set(1);

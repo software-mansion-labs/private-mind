@@ -1,5 +1,8 @@
-import { renderHook } from '@testing-library/react-native';
-import {
+import React from 'react';
+import { render, renderHook } from '@testing-library/react-native';
+import * as Reanimated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
+import NewChatSwarm, {
   swarmGeometry,
   SWARM_CLEARANCE_WITH_DESCRIPTION,
   SWARM_CLEARANCE_WITH_PROMPTS,
@@ -73,5 +76,51 @@ describe('useSwarmOncePerNewChat', () => {
     expect(result.current).toBe(false);
     rerender({ active: true, starts: 2 });
     expect(result.current).toBe(true);
+  });
+});
+
+const revealValue = (start: number) => {
+  let current = start;
+  return {
+    get: () => current,
+    set: (next: number) => {
+      current = next;
+    },
+  } as unknown as SharedValue<number>;
+};
+
+const renderSwarm = () => {
+  const headingReveal = revealValue(1);
+  const badgeReveal = revealValue(1);
+  const screen = render(
+    <NewChatSwarm
+      screenHeight={844}
+      headingClearance={SWARM_CLEARANCE_WITH_PROMPTS}
+      heading="How can I help?"
+      headingAnchor={{ left: 96, baseline: 330, width: 209 }}
+      headingReveal={headingReveal}
+      badgeReveal={badgeReveal}
+    />
+  );
+  return { screen, headingReveal, badgeReveal };
+};
+
+describe('NewChatSwarm with reduced motion', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('plays nothing and leaves the heading and badge visible', () => {
+    jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(true);
+    const { screen, headingReveal, badgeReveal } = renderSwarm();
+    expect(screen.queryByTestId('new-chat-swarm')).toBeNull();
+    expect(headingReveal.get()).toBe(1);
+    expect(badgeReveal.get()).toBe(1);
+  });
+
+  it('hides the heading and badge until the dots hand over, without reduced motion', () => {
+    jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(false);
+    const { screen, headingReveal, badgeReveal } = renderSwarm();
+    expect(screen.getByTestId('new-chat-swarm')).toBeTruthy();
+    expect(headingReveal.get()).toBe(0);
+    expect(badgeReveal.get()).toBe(0);
   });
 });
