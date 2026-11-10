@@ -21,7 +21,7 @@ import {
   PLUS_CENTER_X,
   menuTopFromComposerBottom,
 } from './constants';
-import { PanelMaterial } from './Glass';
+import { PanelMaterial } from './PanelMaterial';
 
 export interface PanelDrivers {
   open: SharedValue<number>;

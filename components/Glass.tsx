@@ -10,19 +10,20 @@ import React, {
 import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
-  type AnimatedProps,
   type SharedValue,
 } from 'react-native-reanimated';
-import { useTheme } from '../../../context/ThemeContext';
-import { isDarkTheme } from '../../../styles/colors';
-import { panelPalette } from './constants';
+import { useTheme } from '../context/ThemeContext';
+import { isDarkTheme } from '../styles/colors';
 
 export const LIQUID_GLASS = isLiquidGlassAvailable();
 
-type GlassSurfaceProps = ComponentProps<typeof GlassView> & {
+const DARK_SCHEME_SCRIM = 'rgba(0, 0, 0, 0.18)';
+const FALLBACK_BLUR_INTENSITY = 60;
+
+type NativeGlassProps = ComponentProps<typeof GlassView> & {
   borderRadius?: number;
 };
-const GlassSurface = GlassView as ComponentType<GlassSurfaceProps>;
+const NativeGlass = GlassView as ComponentType<NativeGlassProps>;
 
 export type GlassStyleName = 'regular' | 'none';
 
@@ -61,7 +62,7 @@ export function Glass({
 }: GlassProps) {
   const { theme } = useTheme();
   const dark = scheme === 'dark' || isDarkTheme(theme);
-  const palette = panelPalette(theme);
+  const schemeTint = scheme === 'dark' ? DARK_SCHEME_SCRIM : undefined;
   const glassEffectStyle = useGlassStyle(active ? 'regular' : 'none', duration);
   const scrimStyle = useAnimatedStyle(() => ({
     opacity: fade ? fade.get() : 1,
@@ -76,7 +77,7 @@ export function Glass({
             style={[StyleSheet.absoluteFill, scrimStyle]}
           >
             <BlurView
-              intensity={60}
+              intensity={FALLBACK_BLUR_INTENSITY}
               tint={
                 dark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'
               }
@@ -85,7 +86,10 @@ export function Glass({
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: fallbackTint ?? palette.controlScrim },
+                {
+                  backgroundColor:
+                    fallbackTint ?? schemeTint ?? theme.bg.glassFallback,
+                },
               ]}
             />
           </Animated.View>
@@ -96,43 +100,21 @@ export function Glass({
   }
 
   return (
-    <GlassSurface
+    <NativeGlass
       glassEffectStyle={glassEffectStyle}
       colorScheme={dark ? 'dark' : 'light'}
-      tintColor={scheme === 'dark' ? palette.controlScrim : undefined}
+      tintColor={schemeTint}
       isInteractive={interactive}
       borderRadius={radius}
       style={[shapeOf(radius), style]}
       {...rest}
     >
       {children}
-    </GlassSurface>
-  );
-}
-
-export function PanelMaterial({
-  variant,
-  style,
-}: {
-  variant: GlassStyleName;
-  style?: AnimatedProps<ViewProps>['style'];
-}) {
-  const { theme } = useTheme();
-  const palette = panelPalette(theme);
-
-  if (variant === 'none') return null;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[style, { backgroundColor: palette.materialFlat }]}
-    />
+    </NativeGlass>
   );
 }
 
 const styles = StyleSheet.create({
-  shape: {
-    borderCurve: 'continuous',
-  },
   clip: {
     overflow: 'hidden',
   },

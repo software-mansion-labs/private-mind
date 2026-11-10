@@ -68,7 +68,7 @@ import {
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
-import { Glass, LIQUID_GLASS } from './attachments/Glass';
+import { Glass, LIQUID_GLASS } from '../Glass';
 
 const SENT_ECHO_WINDOW_MS = 300;
 

@@ -13,7 +13,7 @@ import { isOnboardingComplete } from '../utils/onboardingStatus';
 import { Feedback } from '../utils/Feedback';
 import { pressedOpacity } from '../styles/pressable';
 import WhatsNewSheet from './bottomSheets/WhatsNewSheet';
-import { Glass } from './chat-screen/attachments/Glass';
+import { Glass } from './Glass';
 import ChevronRightIcon from '../assets/icons/chevron-right.svg';
 
 const BADGE_HEIGHT = 32;
