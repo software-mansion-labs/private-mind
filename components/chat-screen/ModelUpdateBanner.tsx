@@ -43,8 +43,17 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
     return MODEL_UPDATE_TEXT.newerVersionBanner(model.modelName);
   };
 
+  const actionLabel = () => {
+    if (updating) return `${Math.round(download.progress * 100)}%`;
+    if (replaces) return MODEL_UPDATE_TEXT.replacementBannerAction;
+    return MODEL_UPDATE_TEXT.chatBannerAction;
+  };
+
   return (
-    <View style={styles.banner} testID="model-update-banner">
+    <View
+      style={[styles.banner, !replaces && styles.floating]}
+      testID="model-update-banner"
+    >
       <Text style={styles.text}>{message()}</Text>
       <Pressable
         onPress={handleUpdate}
@@ -52,13 +61,7 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
         accessibilityRole="button"
         style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
       >
-        <Text style={styles.actionText}>
-          {updating
-            ? `${Math.round(download.progress * 100)}%`
-            : replaces
-              ? MODEL_UPDATE_TEXT.replacementBannerAction
-              : MODEL_UPDATE_TEXT.chatBannerAction}
-        </Text>
+        <Text style={styles.actionText}>{actionLabel()}</Text>
       </Pressable>
       {ConfirmElement}
     </View>
@@ -76,6 +79,19 @@ const createStyles = (theme: Theme) =>
       padding: space.three,
       borderRadius: radius.twelve,
       backgroundColor: theme.bg.softSecondary,
+    },
+    floating: {
+      width: '90%',
+      padding: space.four,
+      borderRadius: radius.eighteen,
+      backgroundColor: theme.bg.softSecondary,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border.soft,
+      shadowColor: theme.bg.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
     },
     text: {
       flex: 1,
