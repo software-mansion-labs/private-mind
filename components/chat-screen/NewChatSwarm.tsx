@@ -27,6 +27,12 @@ import { NEW_CHAT_REST_BOTTOM_FRACTION } from '../../constants/chat-screen';
 import { useSplashFinished } from '../../utils/splashState';
 import ParticleSwarm from '../swarm/ParticleSwarm';
 import { HEADING_OUTLINES } from '../swarm/headingOutlines';
+import {
+  DOTS_APPEAR_AT,
+  NO_HAPTIC_CUES,
+  SWARM_HAPTIC_CUES,
+  TEXT_LANDED_AT,
+} from '../swarm/swarmHaptics';
 import type { HeadingAnchor } from './useHeadingAnchor';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 
@@ -169,13 +175,17 @@ const NewChatSwarm = ({
     badgeReveal?.set(1);
   }, [badgeReveal, headingAnchor, headingReveal]);
 
+  const cues = skipped ? NO_HAPTIC_CUES : SWARM_HAPTIC_CUES;
+  const hapticsLive = useSharedValue(true);
+
   const handleKeyboardTookOver = useCallback(() => {
+    hapticsLive.set(false);
     progress.set(1);
     headingReveal?.set(1);
     badgeReveal?.set(1);
     setDotsDone(true);
     setBloomDone(true);
-  }, [badgeReveal, headingReveal, progress]);
+  }, [badgeReveal, hapticsLive, headingReveal, progress]);
 
   useAnimatedReaction(
     () => ({
@@ -203,6 +213,12 @@ const NewChatSwarm = ({
       }
       if (keyboard >= 1 && (previous?.keyboard ?? 0) < 1) {
         runOnJS(handleKeyboardTookOver)();
+      }
+      if (hapticsLive.get() && keyboard === 0 && previous) {
+        const crossed = (point: number) =>
+          previous.dots < point && dots >= point;
+        if (crossed(DOTS_APPEAR_AT)) cues.start?.();
+        if (formsText && crossed(TEXT_LANDED_AT)) cues.land?.();
       }
     }
   );
@@ -273,8 +289,9 @@ const NewChatSwarm = ({
     progress.set(1);
     headingReveal?.set(1);
     badgeReveal?.set(withTiming(1, { duration: BADGE_FADE_IN_MS }));
+    if (hapticsLive.get()) cues.badge?.();
     setDotsDone(true);
-  }, [badgeReveal, headingReveal, progress]);
+  }, [badgeReveal, cues, hapticsLive, headingReveal, progress]);
 
   if (skipped || (dotsDone && bloomDone)) return null;
 
