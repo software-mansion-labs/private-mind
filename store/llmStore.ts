@@ -31,7 +31,7 @@ import {
   BENCHMARK_TOKEN_TARGET,
 } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
-import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
+import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';

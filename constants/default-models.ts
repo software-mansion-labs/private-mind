@@ -6,56 +6,56 @@ import {
   getModelProfile,
   type ProfileTarget,
 } from './model-profiles';
-import {
-  QWEN3_0_6B_QUANTIZED as LEGACY_QWEN3_0_6B_QUANTIZED,
-  QWEN3_1_7B_QUANTIZED as LEGACY_QWEN3_1_7B_QUANTIZED,
-  LLAMA3_2_1B_SPINQUANT as LEGACY_LLAMA3_2_1B_SPINQUANT,
-  LLAMA3_2_3B_SPINQUANT as LEGACY_LLAMA3_2_3B_SPINQUANT,
-  QWEN2_5_0_5B_QUANTIZED as LEGACY_QWEN2_5_0_5B_QUANTIZED,
-  QWEN2_5_1_5B_QUANTIZED as LEGACY_QWEN2_5_1_5B_QUANTIZED,
-  QWEN2_5_3B_QUANTIZED as LEGACY_QWEN2_5_3B_QUANTIZED,
-  LFM2_5_1_2B_INSTRUCT_QUANTIZED as LEGACY_LFM2_5_1_2B_INSTRUCT_QUANTIZED,
-  LFM2_5_VL_1_6B_QUANTIZED as LEGACY_LFM2_5_VL_1_6B_QUANTIZED,
-  LFM2_5_VL_450M_QUANTIZED as LEGACY_LFM2_5_VL_450M_QUANTIZED,
-  BIELIK_V3_0_1_5B_QUANTIZED as LEGACY_BIELIK_V3_0_1_5B_QUANTIZED,
-  GEMMA4_E2B_MLX_MODEL,
-  GEMMA4_E2B_VULKAN_MODEL,
-  GEMMA4_E2B_MLX_MM,
-  GEMMA4_E2B_VULKAN_MM,
-  GEMMA4_E2B_TOKENIZER,
-  GEMMA4_E2B_TOKENIZER_CONFIG,
-} from 'react-native-executorch/legacy';
 import { onRne011 } from './model-sources';
 
-const QWEN3_0_6B_QUANTIZED = onRne011(LEGACY_QWEN3_0_6B_QUANTIZED);
-const QWEN3_1_7B_QUANTIZED = onRne011(LEGACY_QWEN3_1_7B_QUANTIZED);
-const LLAMA3_2_1B_SPINQUANT = onRne011(LEGACY_LLAMA3_2_1B_SPINQUANT);
-const LLAMA3_2_3B_SPINQUANT = onRne011(LEGACY_LLAMA3_2_3B_SPINQUANT);
-const QWEN2_5_0_5B_QUANTIZED = onRne011(LEGACY_QWEN2_5_0_5B_QUANTIZED);
-const QWEN2_5_1_5B_QUANTIZED = onRne011(LEGACY_QWEN2_5_1_5B_QUANTIZED);
-const QWEN2_5_3B_QUANTIZED = onRne011(LEGACY_QWEN2_5_3B_QUANTIZED);
-const LFM2_5_1_2B_INSTRUCT_QUANTIZED = onRne011(
-  LEGACY_LFM2_5_1_2B_INSTRUCT_QUANTIZED
-);
-const LFM2_5_VL_1_6B_QUANTIZED = onRne011(LEGACY_LFM2_5_VL_1_6B_QUANTIZED);
-const LFM2_5_VL_450M_QUANTIZED = onRne011(LEGACY_LFM2_5_VL_450M_QUANTIZED);
-const BIELIK_V3_0_1_5B_QUANTIZED = onRne011(LEGACY_BIELIK_V3_0_1_5B_QUANTIZED);
+const QWEN3_GENERATION_CONFIG = { temperature: 0.6, topP: 0.95 } as const;
+const LFM2_5_VL_GENERATION_CONFIG = {
+  temperature: 0.1,
+  minP: 0.15,
+  repetitionPenalty: 1.05,
+} as const;
 
-const GEMMA4_E2B = onRne011({
-  modelName: 'gemma4-e2b',
-  modelSource:
-    Platform.OS === 'android' ? GEMMA4_E2B_VULKAN_MODEL : GEMMA4_E2B_MLX_MODEL,
-  tokenizerSource: GEMMA4_E2B_TOKENIZER,
-  tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
+const QWEN3_0_6B_QUANTIZED = onRne011({
+  modelName: 'qwen3-0.6b-quantized',
+  generationConfig: QWEN3_GENERATION_CONFIG,
+} as const);
+const QWEN3_1_7B_QUANTIZED = onRne011({
+  modelName: 'qwen3-1.7b-quantized',
+  generationConfig: QWEN3_GENERATION_CONFIG,
+} as const);
+const LLAMA3_2_1B_SPINQUANT = onRne011({
+  modelName: 'llama-3.2-1b-spinquant',
+} as const);
+const LLAMA3_2_3B_SPINQUANT = onRne011({
+  modelName: 'llama-3.2-3b-spinquant',
+} as const);
+const QWEN2_5_0_5B_QUANTIZED = onRne011({
+  modelName: 'qwen2.5-0.5b-quantized',
+} as const);
+const QWEN2_5_1_5B_QUANTIZED = onRne011({
+  modelName: 'qwen2.5-1.5b-quantized',
+} as const);
+const QWEN2_5_3B_QUANTIZED = onRne011({
+  modelName: 'qwen2.5-3b-quantized',
+} as const);
+const LFM2_5_1_2B_INSTRUCT_QUANTIZED = onRne011({
+  modelName: 'lfm2.5-1.2b-instruct-quantized',
+} as const);
+const LFM2_5_VL_1_6B_QUANTIZED = onRne011({
+  modelName: 'lfm2.5-vl-1.6b-quantized',
+  generationConfig: LFM2_5_VL_GENERATION_CONFIG,
+} as const);
+const LFM2_5_VL_450M_QUANTIZED = onRne011({
+  modelName: 'lfm2.5-vl-450m-quantized',
+  generationConfig: LFM2_5_VL_GENERATION_CONFIG,
+} as const);
+const BIELIK_V3_0_1_5B_QUANTIZED = onRne011({
+  modelName: 'bielik-v3.0-1.5b-quantized',
 } as const);
 
-const GEMMA4_E2B_MM = onRne011({
-  modelName: 'gemma4-e2b-multimodal',
-  modelSource:
-    Platform.OS === 'android' ? GEMMA4_E2B_VULKAN_MM : GEMMA4_E2B_MLX_MM,
-  tokenizerSource: GEMMA4_E2B_TOKENIZER,
-  tokenizerConfigSource: GEMMA4_E2B_TOKENIZER_CONFIG,
-} as const);
+const GEMMA4_E2B = onRne011({ modelName: 'gemma4-e2b' } as const);
+
+const GEMMA4_E2B_MM = onRne011({ modelName: 'gemma4-e2b-multimodal' } as const);
 
 const LFM3_HF_BASE =
   'https://huggingface.co/software-mansion/LFM3-ExecuTorch/resolve/v1.0.0';
