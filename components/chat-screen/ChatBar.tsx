@@ -57,7 +57,6 @@ import PromptSuggestions from './PromptSuggestions';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import ModelUpdateBanner from './ModelUpdateBanner';
 import { useModelStore } from '../../store/modelStore';
-import { needsUpdate } from '../../utils/modelUpdate';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -670,9 +669,6 @@ const ChatBar = ({
                 paused={promptsPaused}
               />
             </Animated.View>
-          )}
-          {hasMessages && needsUpdate(model) && (
-            <ModelUpdateBanner model={model} />
           )}
           <View style={styles.inputContainer}>
             <Animated.View

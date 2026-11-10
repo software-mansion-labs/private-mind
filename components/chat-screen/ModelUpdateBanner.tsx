@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { radius, space } from '../../constants/design-system';
+import { radius, space, stroke } from '../../constants/design-system';
 import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
@@ -43,8 +43,17 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
     return MODEL_UPDATE_TEXT.newerVersionBanner(model.modelName);
   };
 
+  const actionLabel = () => {
+    if (updating) return `${Math.round(download.progress * 100)}%`;
+    if (replaces) return MODEL_UPDATE_TEXT.replacementBannerAction;
+    return MODEL_UPDATE_TEXT.chatBannerAction;
+  };
+
   return (
-    <View style={styles.banner} testID="model-update-banner">
+    <View
+      style={[styles.banner, !replaces && styles.floating]}
+      testID="model-update-banner"
+    >
       <Text style={styles.text}>{message()}</Text>
       <Pressable
         onPress={handleUpdate}
@@ -52,13 +61,7 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
         accessibilityRole="button"
         style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
       >
-        <Text style={styles.actionText}>
-          {updating
-            ? `${Math.round(download.progress * 100)}%`
-            : replaces
-              ? MODEL_UPDATE_TEXT.replacementBannerAction
-              : MODEL_UPDATE_TEXT.chatBannerAction}
-        </Text>
+        <Text style={styles.actionText}>{actionLabel()}</Text>
       </Pressable>
       {ConfirmElement}
     </View>
@@ -76,6 +79,19 @@ const createStyles = (theme: Theme) =>
       padding: space.three,
       borderRadius: radius.twelve,
       backgroundColor: theme.bg.softTertiary,
+    },
+    floating: {
+      width: '90%',
+      padding: space.four,
+      borderRadius: radius.eighteen,
+      backgroundColor: theme.bg.toast,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.toast,
+      shadowColor: theme.bg.shadow,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: theme.shadow.floatingOpacity,
+      shadowRadius: 20,
+      elevation: 12,
     },
     text: {
       flex: 1,
