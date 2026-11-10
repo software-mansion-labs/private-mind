@@ -163,7 +163,7 @@ describe('ChatSpeechInput when the transcript ends without a send', () => {
     mockSpeech.start.mockImplementationOnce(
       async () =>
         (async function* () {
-          yield { committed: { text: heard }, nonCommitted: { text: '' } };
+          yield { committed: heard, nonCommitted: '' };
           await new Promise<void>((resolve) => {
             endStream = resolve;
           });
@@ -266,12 +266,12 @@ describe('ChatSpeechInput sending what it shows', () => {
       async () =>
         (async function* () {
           yield {
-            committed: { text: 'in foreign' },
-            nonCommitted: { text: '' },
+            committed: 'in foreign',
+            nonCommitted: '',
           };
           yield {
-            committed: { text: '' },
-            nonCommitted: { text: 'and the rest of it' },
+            committed: 'in foreign',
+            nonCommitted: 'and the rest of it',
           };
           await new Promise<void>((resolve) => {
             endStream = resolve;
@@ -334,8 +334,8 @@ describe('ChatSpeechInput when the app goes to the background', () => {
       async () =>
         (async function* () {
           yield {
-            committed: { text: 'remind me to' },
-            nonCommitted: { text: 'buy milk' },
+            committed: 'remind me to',
+            nonCommitted: 'buy milk',
           };
           await new Promise<void>(() => {});
         })() as never
@@ -372,8 +372,8 @@ describe('ChatSpeechInput when the app goes to the background', () => {
       async () =>
         (async function* () {
           yield {
-            committed: { text: 'remind me to' },
-            nonCommitted: { text: 'buy milk' },
+            committed: 'remind me to',
+            nonCommitted: 'buy milk',
           };
           await new Promise<void>((resolve) => {
             endStream = resolve;

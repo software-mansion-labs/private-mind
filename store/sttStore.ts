@@ -1,8 +1,11 @@
 import {
-  SpeechToTextModule,
-  WHISPER_TINY_EN,
-} from 'react-native-executorch/legacy';
+  createWhisperSpeechToText,
+  type WhisperSpeechToText,
+} from 'react-native-executorch';
 import { create } from 'zustand';
+import { localWhisperModel } from '../utils/sttModelFiles';
+
+export type SpeechToTextModule = WhisperSpeechToText<'en'>;
 
 export interface STTStore {
   module: SpeechToTextModule | null;
@@ -42,7 +45,7 @@ export const useSTTStore = create<STTStore>((set, get) => {
         isLoading: false,
         loadProgress: 0,
       });
-      Promise.resolve(streamEnd).then(() => module?.delete());
+      Promise.resolve(streamEnd).then(() => module?.dispose());
     },
     claimAudioSession: () => {
       const claim = get().audioSessionOwner + 1;
@@ -63,13 +66,10 @@ export const useSTTStore = create<STTStore>((set, get) => {
         loadProgress: 0,
       });
 
-      return (modelLoadPromise = SpeechToTextModule.fromModelName(
-        WHISPER_TINY_EN,
-        undefined,
-        (progress) => {
-          set({ loadProgress: progress });
-        }
-      )
+      return (modelLoadPromise = localWhisperModel((progress) => {
+        set({ loadProgress: progress });
+      })
+        .then(createWhisperSpeechToText)
         .then((module) => {
           set({
             module,

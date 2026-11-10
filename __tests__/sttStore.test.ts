@@ -1,14 +1,20 @@
 import { useSTTStore } from '../store/sttStore';
-import { SpeechToTextModule } from 'react-native-executorch/legacy';
+import { createWhisperSpeechToText } from 'react-native-executorch';
+import { localWhisperModel } from '../utils/sttModelFiles';
 
-jest.mock('react-native-executorch/legacy', () => ({
-  SpeechToTextModule: {
-    fromModelName: jest.fn(),
-  },
-  WHISPER_TINY_EN: 'whisper-tiny-en',
+jest.mock('../utils/sttModelFiles', () => ({
+  localWhisperModel: jest.fn(async () => LOCAL_WHISPER),
 }));
 
-const mockFromModelName = SpeechToTextModule.fromModelName as jest.Mock;
+const LOCAL_WHISPER = {
+  modelPath: '/whisper.pte',
+  tokenizerPath: '/tokenizer.json',
+  supportedLanguages: ['en'],
+  vadModel: { modelPath: '/vad.pte', defaultOptions: {} },
+};
+
+const mockCreateWhisper = createWhisperSpeechToText as jest.Mock;
+const mockLocalWhisperModel = localWhisperModel as jest.Mock;
 
 const mockModule = {
   stream: jest.fn(),
@@ -29,7 +35,7 @@ beforeEach(() => {
 describe('ensureLoaded', () => {
   it('sets isLoading during load and isReady after success', async () => {
     let resolveLoad!: (m: typeof mockModule) => void;
-    mockFromModelName.mockReturnValue(
+    mockCreateWhisper.mockReturnValue(
       new Promise((res) => {
         resolveLoad = res;
       })
@@ -48,11 +54,12 @@ describe('ensureLoaded', () => {
   });
 
   it('reports progress callbacks', async () => {
-    mockFromModelName.mockImplementation((_name, _vad, onProgress) => {
+    mockLocalWhisperModel.mockImplementationOnce(async (onProgress) => {
       onProgress(0.5);
       onProgress(1.0);
-      return Promise.resolve(mockModule);
+      return LOCAL_WHISPER;
     });
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     await useSTTStore.getState().ensureLoaded();
 
@@ -60,16 +67,12 @@ describe('ensureLoaded', () => {
     expect(useSTTStore.getState().loadProgress).toBe(1);
   });
 
-  it('passes progress callback as the third argument for react-native-executorch 0.9+', async () => {
-    mockFromModelName.mockResolvedValue(mockModule);
+  it('builds the recognizer from the files on disk', async () => {
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     await useSTTStore.getState().ensureLoaded();
 
-    expect(mockFromModelName).toHaveBeenCalledWith(
-      'whisper-tiny-en',
-      undefined,
-      expect.any(Function)
-    );
+    expect(mockCreateWhisper).toHaveBeenCalledWith(LOCAL_WHISPER);
   });
 
   it('returns immediately when already ready', async () => {
@@ -77,11 +80,11 @@ describe('ensureLoaded', () => {
 
     await useSTTStore.getState().ensureLoaded();
 
-    expect(mockFromModelName).not.toHaveBeenCalled();
+    expect(mockCreateWhisper).not.toHaveBeenCalled();
   });
 
-  it('concurrent calls share the same load promise (fromModelName called once)', async () => {
-    mockFromModelName.mockResolvedValue(mockModule);
+  it('concurrent calls share the same load promise (the recognizer is built once)', async () => {
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     await Promise.all([
       useSTTStore.getState().ensureLoaded(),
@@ -89,11 +92,11 @@ describe('ensureLoaded', () => {
       useSTTStore.getState().ensureLoaded(),
     ]);
 
-    expect(mockFromModelName).toHaveBeenCalledTimes(1);
+    expect(mockCreateWhisper).toHaveBeenCalledTimes(1);
   });
 
   it('resets state on load failure', async () => {
-    mockFromModelName.mockRejectedValue(new Error('load failed'));
+    mockCreateWhisper.mockRejectedValue(new Error('load failed'));
 
     await expect(useSTTStore.getState().ensureLoaded()).rejects.toThrow(
       'load failed'
@@ -106,7 +109,7 @@ describe('ensureLoaded', () => {
   });
 
   it('allows retrying after a failed load', async () => {
-    mockFromModelName
+    mockCreateWhisper
       .mockRejectedValueOnce(new Error('first attempt failed'))
       .mockResolvedValueOnce(mockModule);
 
