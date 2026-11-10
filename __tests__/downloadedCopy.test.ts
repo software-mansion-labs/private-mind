@@ -1,4 +1,5 @@
-import { TextEmbeddingsModule } from 'react-native-executorch/legacy';
+import { createTextEmbedder } from 'react-native-executorch';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { existingFiles } from '../__mocks__/expo-file-system';
 import {
   downloadedCopyUri,
@@ -12,12 +13,13 @@ const MODEL_URL =
 const MODEL_FILE_URI =
   'file:///documents/react-native-executorch/huggingface.co_software-mansion_react-native-executorch-llama-3.2_resolve_v0.4.0_llama-3.2-1B_QLoRA_llama3_2_qat_lora.pte';
 
-const mockFromCustomModel = TextEmbeddingsModule.fromCustomModel as jest.Mock;
+const mockCreateTextEmbedder = createTextEmbedder as jest.Mock;
+const mockFetch = ResourceFetcher.fetch as jest.Mock;
 
 beforeEach(() => {
   existingFiles.clear();
-  mockFromCustomModel.mockReset();
-  mockFromCustomModel.mockResolvedValue({ delete: jest.fn() });
+  mockCreateTextEmbedder.mockClear();
+  mockFetch.mockReset();
 });
 
 describe('downloadedCopyUri', () => {
@@ -69,23 +71,44 @@ describe('LFMEmbeddings.load', () => {
       tokenizerSource: TOKENIZER_URL,
     }).load();
 
-    expect(mockFromCustomModel).toHaveBeenCalledWith(
-      MODEL_FILE_URI,
-      TOKENIZER_FILE_URI,
-      expect.any(Function)
-    );
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockCreateTextEmbedder).toHaveBeenCalledWith({
+      modelPath: MODEL_FILE_URI.replace('file://', ''),
+      tokenizerPath: TOKENIZER_FILE_URI.replace('file://', ''),
+    });
   });
 
-  it('hands the urls over when the embedding model is not downloaded', async () => {
+  it('downloads the embedding model first when it is not on disk', async () => {
+    mockFetch.mockResolvedValue([
+      'file:///downloaded/model.pte',
+      'file:///downloaded/tokenizer.json',
+    ]);
+
     await new LFMEmbeddings({
       modelSource: MODEL_URL,
       tokenizerSource: TOKENIZER_URL,
     }).load();
 
-    expect(mockFromCustomModel).toHaveBeenCalledWith(
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(Function),
       MODEL_URL,
-      TOKENIZER_URL,
-      expect.any(Function)
+      TOKENIZER_URL
     );
+    expect(mockCreateTextEmbedder).toHaveBeenCalledWith({
+      modelPath: '/downloaded/model.pte',
+      tokenizerPath: '/downloaded/tokenizer.json',
+    });
+  });
+
+  it('refuses to load when the download is cancelled', async () => {
+    mockFetch.mockResolvedValue(null);
+
+    await expect(
+      new LFMEmbeddings({
+        modelSource: MODEL_URL,
+        tokenizerSource: TOKENIZER_URL,
+      }).load()
+    ).rejects.toThrow('did not finish');
+    expect(mockCreateTextEmbedder).not.toHaveBeenCalled();
   });
 });
