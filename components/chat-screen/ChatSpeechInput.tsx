@@ -117,8 +117,8 @@ const ChatSpeechInput: React.FC<Props> = ({
         let pendingText = '';
         for await (const { committed, nonCommitted } of streamGenerator) {
           if (unmountedRef.current) break;
-          text = text + committed.text;
-          pendingText = nonCommitted.text;
+          text = committed;
+          pendingText = nonCommitted;
           heardSoFarRef.current = {
             committed: text,
             nonCommitted: pendingText,

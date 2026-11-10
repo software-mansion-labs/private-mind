@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { SpeechToTextModule } from 'react-native-executorch/legacy';
+import { createWhisperSpeechToText } from 'react-native-executorch';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { useSTTStore } from '../store/sttStore';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 import * as audioApi from 'react-native-audio-api';
@@ -19,7 +20,7 @@ const makeModule = () => {
       await module.finishing;
     }),
     streamStop: jest.fn(() => requestStop()),
-    delete: jest.fn(),
+    dispose: jest.fn(),
   };
   return module;
 };
@@ -33,7 +34,12 @@ const readAll = async (transcript: AsyncGenerator<unknown>) => {
 beforeEach(() => {
   jest.clearAllMocks();
   sttModule = makeModule();
-  (SpeechToTextModule.fromModelName as jest.Mock).mockResolvedValue(sttModule);
+  (createWhisperSpeechToText as jest.Mock).mockResolvedValue(sttModule);
+  (ResourceFetcher.fetch as jest.Mock).mockResolvedValue([
+    'file:///whisper.pte',
+    'file:///tokenizer.json',
+    'file:///vad.pte',
+  ]);
   useSTTStore.setState({
     module: null,
     isReady: false,
@@ -77,7 +83,7 @@ describe('speech input after a transcript is abandoned', () => {
 
     expect(useSTTStore.getState().module).toBeNull();
     expect(useSTTStore.getState().isReady).toBe(false);
-    expect(sttModule.delete).toHaveBeenCalledTimes(1);
+    expect(sttModule.dispose).toHaveBeenCalledTimes(1);
   });
 
   it('releases a given-up module only after its stream has ended', async () => {
@@ -91,10 +97,10 @@ describe('speech input after a transcript is abandoned', () => {
 
     useSTTStore.getState().discardModule();
     await Promise.resolve();
-    expect(sttModule.delete).not.toHaveBeenCalled();
+    expect(sttModule.dispose).not.toHaveBeenCalled();
 
     endStream();
-    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sttModule.dispose).toHaveBeenCalledTimes(1));
   });
 
   it('leaves no stream marked open once the recorder is abandoned', async () => {
@@ -151,7 +157,7 @@ describe('the speech model after dictation', () => {
       await result.current.stop();
     });
 
-    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sttModule.dispose).toHaveBeenCalledTimes(1));
     expect(useSTTStore.getState().module).toBeNull();
     expect(useSTTStore.getState().isReady).toBe(false);
   });
@@ -166,7 +172,7 @@ describe('the speech model after dictation', () => {
       await transcript.return();
     });
 
-    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sttModule.dispose).toHaveBeenCalledTimes(1));
     expect(useSTTStore.getState().module).toBeNull();
   });
 
@@ -178,13 +184,13 @@ describe('the speech model after dictation', () => {
     await act(async () => {
       await result.current.stop();
     });
-    await waitFor(() => expect(sttModule.delete).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(sttModule.dispose).toHaveBeenCalledTimes(1));
 
     await act(async () => {
       await result.current.start();
     });
 
-    expect(SpeechToTextModule.fromModelName).toHaveBeenCalledTimes(2);
+    expect(createWhisperSpeechToText).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -226,7 +232,7 @@ describe('the audio session dictation turns on', () => {
 
   it('is turned off again when dictation is cancelled while the model loads', async () => {
     let finishLoading!: (module: typeof sttModule) => void;
-    (SpeechToTextModule.fromModelName as jest.Mock).mockImplementationOnce(
+    (createWhisperSpeechToText as jest.Mock).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           finishLoading = resolve;
@@ -250,7 +256,7 @@ describe('the audio session dictation turns on', () => {
 
   it('stays on for a dictation reopened while a cancelled one waited for the model', async () => {
     let finishLoading!: (module: typeof sttModule) => void;
-    (SpeechToTextModule.fromModelName as jest.Mock).mockImplementationOnce(
+    (createWhisperSpeechToText as jest.Mock).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           finishLoading = resolve;
@@ -326,7 +332,7 @@ describe('the audio session dictation turns on', () => {
   });
 
   it('is turned off when the speech model fails to load', async () => {
-    (SpeechToTextModule.fromModelName as jest.Mock).mockRejectedValueOnce(
+    (createWhisperSpeechToText as jest.Mock).mockRejectedValueOnce(
       new Error('download failed')
     );
     const { result } = renderHook(() => useSpeechInput());

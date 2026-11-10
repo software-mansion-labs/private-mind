@@ -1,9 +1,10 @@
 import { useSTTStore } from '../store/sttStore';
-import { SpeechToTextModule } from 'react-native-executorch/legacy';
+import { createWhisperSpeechToText } from 'react-native-executorch';
 import {
   cancelWhisperFetch,
   fetchWhisperFiles,
   isWhisperDownloaded,
+  localWhisperModel,
 } from '../utils/sttModelFiles';
 import { pauseModelDownloadsWhile } from '../store/modelStore';
 
@@ -11,7 +12,15 @@ jest.mock('../utils/sttModelFiles', () => ({
   isWhisperDownloaded: jest.fn(async () => true),
   fetchWhisperFiles: jest.fn(async () => true),
   cancelWhisperFetch: jest.fn(async () => undefined),
+  localWhisperModel: jest.fn(async () => LOCAL_WHISPER),
 }));
+
+const LOCAL_WHISPER = {
+  modelPath: '/whisper.pte',
+  tokenizerPath: '/tokenizer.json',
+  supportedLanguages: ['en'],
+  vadModel: { modelPath: '/vad.pte', defaultOptions: {} },
+};
 
 jest.mock('../store/modelStore', () => ({
   pauseModelDownloadsWhile: jest.fn(async (work: () => Promise<unknown>) =>
@@ -19,14 +28,8 @@ jest.mock('../store/modelStore', () => ({
   ),
 }));
 
-jest.mock('react-native-executorch/legacy', () => ({
-  SpeechToTextModule: {
-    fromModelName: jest.fn(),
-  },
-  WHISPER_TINY_EN: 'whisper-tiny-en',
-}));
-
-const mockFromModelName = SpeechToTextModule.fromModelName as jest.Mock;
+const mockCreateWhisper = createWhisperSpeechToText as jest.Mock;
+const mockLocalWhisperModel = localWhisperModel as jest.Mock;
 
 const deferredFetch = () => {
   let finish!: (fetched: boolean) => void;
@@ -61,7 +64,7 @@ beforeEach(() => {
 describe('ensureLoaded', () => {
   it('sets isLoading during load and isReady after success', async () => {
     let resolveLoad!: (m: typeof mockModule) => void;
-    mockFromModelName.mockReturnValue(
+    mockCreateWhisper.mockReturnValue(
       new Promise((res) => {
         resolveLoad = res;
       })
@@ -80,11 +83,12 @@ describe('ensureLoaded', () => {
   });
 
   it('reports progress callbacks', async () => {
-    mockFromModelName.mockImplementation((_name, _vad, onProgress) => {
+    mockLocalWhisperModel.mockImplementationOnce(async (onProgress) => {
       onProgress(0.5);
       onProgress(1.0);
-      return Promise.resolve(mockModule);
+      return LOCAL_WHISPER;
     });
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     await useSTTStore.getState().ensureLoaded();
 
@@ -92,16 +96,12 @@ describe('ensureLoaded', () => {
     expect(useSTTStore.getState().loadProgress).toBe(1);
   });
 
-  it('passes progress callback as the third argument for react-native-executorch 0.9+', async () => {
-    mockFromModelName.mockResolvedValue(mockModule);
+  it('builds the recognizer from the files on disk', async () => {
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     await useSTTStore.getState().ensureLoaded();
 
-    expect(mockFromModelName).toHaveBeenCalledWith(
-      'whisper-tiny-en',
-      undefined,
-      expect.any(Function)
-    );
+    expect(mockCreateWhisper).toHaveBeenCalledWith(LOCAL_WHISPER);
   });
 
   it('returns immediately when already ready', async () => {
@@ -109,11 +109,11 @@ describe('ensureLoaded', () => {
 
     await useSTTStore.getState().ensureLoaded();
 
-    expect(mockFromModelName).not.toHaveBeenCalled();
+    expect(mockCreateWhisper).not.toHaveBeenCalled();
   });
 
-  it('concurrent calls share the same load promise (fromModelName called once)', async () => {
-    mockFromModelName.mockResolvedValue(mockModule);
+  it('concurrent calls share the same load promise (the recognizer is built once)', async () => {
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     await Promise.all([
       useSTTStore.getState().ensureLoaded(),
@@ -121,11 +121,11 @@ describe('ensureLoaded', () => {
       useSTTStore.getState().ensureLoaded(),
     ]);
 
-    expect(mockFromModelName).toHaveBeenCalledTimes(1);
+    expect(mockCreateWhisper).toHaveBeenCalledTimes(1);
   });
 
   it('resets state on load failure', async () => {
-    mockFromModelName.mockRejectedValue(new Error('load failed'));
+    mockCreateWhisper.mockRejectedValue(new Error('load failed'));
 
     await expect(useSTTStore.getState().ensureLoaded()).rejects.toThrow(
       'load failed'
@@ -138,7 +138,7 @@ describe('ensureLoaded', () => {
   });
 
   it('allows retrying after a failed load', async () => {
-    mockFromModelName
+    mockCreateWhisper
       .mockRejectedValueOnce(new Error('first attempt failed'))
       .mockResolvedValueOnce(mockModule);
 
@@ -156,7 +156,7 @@ describe('the first dictation, when the model still has to be downloaded', () =>
   it('holds the other model downloads while Whisper downloads, then releases them', async () => {
     (isWhisperDownloaded as jest.Mock).mockResolvedValue(false);
     let resolveLoad!: (m: typeof mockModule) => void;
-    mockFromModelName.mockReturnValue(
+    mockCreateWhisper.mockReturnValue(
       new Promise((res) => {
         resolveLoad = res;
       })
@@ -185,7 +185,7 @@ describe('the first dictation, when the model still has to be downloaded', () =>
 
   it('stops reporting a download when it fails', async () => {
     (isWhisperDownloaded as jest.Mock).mockResolvedValue(false);
-    mockFromModelName.mockRejectedValue(new Error('offline'));
+    mockCreateWhisper.mockRejectedValue(new Error('offline'));
 
     await expect(useSTTStore.getState().ensureLoaded()).rejects.toThrow(
       'offline'
@@ -201,7 +201,7 @@ describe('fetching Whisper ahead of the first dictation', () => {
     const fetched = await useSTTStore.getState().fetchFiles();
 
     expect(fetched).toBe(true);
-    expect(mockFromModelName).not.toHaveBeenCalled();
+    expect(mockCreateWhisper).not.toHaveBeenCalled();
     expect(useSTTStore.getState()).toMatchObject({
       isFetchingFiles: false,
       filesProgress: 1,
@@ -237,7 +237,7 @@ describe('fetching Whisper ahead of the first dictation', () => {
         finishFetch = resolve;
       })
     );
-    mockFromModelName.mockResolvedValue(mockModule);
+    mockCreateWhisper.mockResolvedValue(mockModule);
 
     const fetching = useSTTStore.getState().fetchFiles();
     const loading = useSTTStore.getState().ensureLoaded();

@@ -92,6 +92,31 @@ export const SpeechToTextModule = {
   fromModelName: jest.fn(),
 };
 
+export const createWhisperSpeechToText = jest.fn();
+
+const whisperVariant = (backend: string) => ({
+  modelPath: `https://huggingface.co/mock/whisper-tiny.en/${backend}/whisper.pte`,
+  tokenizerPath: 'https://huggingface.co/mock/whisper-tiny.en/tokenizer.json',
+  supportedLanguages: ['en'],
+  vadModel: {
+    modelPath: 'https://huggingface.co/mock/fsmn-vad/vad.pte',
+    defaultOptions: { speechThreshold: 0.6 },
+  },
+});
+
+export const models = {
+  speechToText: {
+    WHISPER: {
+      EN: {
+        TINY: {
+          COREML_FP16: whisperVariant('coreml'),
+          XNNPACK_FP32: whisperVariant('xnnpack'),
+        },
+      },
+    },
+  },
+};
+
 export const TextEmbeddingsModule = {
   fromCustomModel: jest.fn(),
 };
