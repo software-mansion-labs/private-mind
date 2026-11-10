@@ -14,9 +14,10 @@ import {
   type Modality,
   type Prompt,
 } from 'react-native-executorch/llm';
-import type { Message as ExecutorchMessage } from 'react-native-executorch/legacy';
+import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import { scheduleOnRN } from 'react-native-worklets';
 import { decodeImageRgba } from '../modules/image-pixels';
+import { toLocalPath } from './localPath';
 
 export interface LLMEngineSources {
   modelSource: string;
@@ -93,9 +94,6 @@ const generateTurnWorklet = (
 };
 
 const generateTurn = wrapAsync(generateTurnWorklet);
-
-const toLocalPath = (source: string) =>
-  decodeURIComponent(source.replace(/^file:\/\//, ''));
 
 const tokenString = (value: unknown): string | undefined => {
   if (typeof value === 'string') return value;

@@ -96,6 +96,12 @@ export const TextEmbeddingsModule = {
   fromCustomModel: jest.fn(),
 };
 
+export const createTextEmbedder = jest.fn(async () => ({
+  embed: jest.fn(async () => new Float32Array([0.1, 0.2, 0.3])),
+  embedWorklet: jest.fn(),
+  dispose: jest.fn(),
+}));
+
 export const ResourceFetcher = {
   fetch: jest.fn(),
 };
