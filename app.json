@@ -8,6 +8,7 @@
     "icon": "./assets/icons/icon.png",
     "userInterfaceStyle": "automatic",
     "plugins": [
+      "react-native-webgpu",
       [
         "expo-splash-screen",
         {

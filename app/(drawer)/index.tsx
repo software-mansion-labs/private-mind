@@ -12,8 +12,8 @@ import NewChatHeaderButton from '../../components/NewChatHeaderButton';
 import { Model } from '../../database/modelRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, View } from 'react-native';
+import { NewChatBackground } from '../../components/chat-screen/NewChatBackground';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useImportChat } from '../../hooks/useImportChat';
 import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
@@ -32,7 +32,7 @@ configureReanimatedLogger({
 });
 
 export default function App() {
-  useOnboardingRedirect();
+  const onboardingRedirect = useOnboardingRedirect();
 
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
@@ -43,7 +43,7 @@ export default function App() {
   const db = useSQLiteContext();
   useDefaultHeader({ glass: true });
 
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
 
   const handleSetModel = async (model: Model, replace = false) => {
     await setLastUsedModelId(model.id);
@@ -86,6 +86,21 @@ export default function App() {
     }, [db, downloadedModels])
   );
 
+  const [isFocused, setIsFocused] = useState(false);
+  const [hasLeftScreen, setHasLeftScreen] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => {
+        setIsFocused(false);
+        setHasLeftScreen(true);
+      };
+    }, [])
+  );
+  const welcomeIsUncovered =
+    onboardingRedirect === 'stayed' ||
+    (onboardingRedirect === 'redirected' && hasLeftScreen);
+
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 
   useLayoutEffect(() => {
@@ -97,17 +112,16 @@ export default function App() {
 
   return (
     <>
-      <LinearGradient
-        colors={[theme.bg.softPrimary, theme.bg.main]}
-        style={styles.container}
-      >
+      <View style={styles.container}>
+        <NewChatBackground />
         {!willRedirect && (
           <NoModelWelcome
             onChooseModel={() => bottomSheetModalRef.current?.present()}
             onImportChat={handleImport}
+            playSwarm={isFocused && welcomeIsUncovered}
           />
         )}
-      </LinearGradient>
+      </View>
       <ModelSelectSheet
         bottomSheetModalRef={bottomSheetModalRef}
         onModelPicked={pickModel}

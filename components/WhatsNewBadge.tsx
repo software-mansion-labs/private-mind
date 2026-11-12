@@ -126,7 +126,7 @@ const createStyles = (theme: Theme) =>
       gap: space.two,
       paddingHorizontal: space.three,
       borderRadius: radius.full,
-      backgroundColor: theme.bg.accentSoft,
+      backgroundColor: theme.bg.chatBar,
     },
     label: {
       fontFamily: fontFamily.bold,

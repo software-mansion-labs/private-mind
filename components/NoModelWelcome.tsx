@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { space, textStyles } from '../constants/design-system';
@@ -8,6 +13,12 @@ import { CAPPED_TEXT_MAX_SCALE } from '../constants/font-scale';
 import PrimaryButton from './PrimaryButton';
 import TextButton from './TextButton';
 import WhatsNewBadge from './WhatsNewBadge';
+import { useHeadingAnchor } from './chat-screen/useHeadingAnchor';
+
+const WELCOME_HEADING = 'Welcome!';
+import NewChatSwarm, {
+  SWARM_CLEARANCE_WITH_DESCRIPTION,
+} from './chat-screen/NewChatSwarm';
 
 const IMPORT_BUTTON_HEIGHT = 44;
 const ACTIONS_GAP = 9;
@@ -17,40 +28,71 @@ const DESCRIPTION_GUTTER = space.twelve;
 interface Props {
   onChooseModel: () => void;
   onImportChat: () => void;
+  playSwarm: boolean;
 }
 
-const NoModelWelcome = ({ onChooseModel, onImportChat }: Props) => {
+const NoModelWelcome = ({ onChooseModel, onImportChat, playSwarm }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const [screenHeight, setScreenHeight] = useState(0);
+  const containerRef = useRef<View>(null);
+  const heading = useHeadingAnchor(containerRef, screenHeight);
+  const opacityBeforeSwarm = useReducedMotion() ? 1 : 0;
+  const headingReveal = useSharedValue(opacityBeforeSwarm);
+  const badgeReveal = useSharedValue(opacityBeforeSwarm);
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: headingReveal.get(),
+  }));
+  const badgeStyle = useAnimatedStyle(() => ({
+    opacity: badgeReveal.get(),
+  }));
   const restBottom = screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION;
 
   return (
     <View
+      ref={containerRef}
       style={styles.container}
       testID="no-model-welcome"
       onLayout={(event) => setScreenHeight(event.nativeEvent.layout.height)}
     >
       {screenHeight > 0 && (
         <>
+          {playSwarm && (
+            <NewChatSwarm
+              screenHeight={screenHeight}
+              headingClearance={SWARM_CLEARANCE_WITH_DESCRIPTION}
+              heading={WELCOME_HEADING}
+              headingAnchor={heading.anchor}
+              headingReveal={headingReveal}
+              badgeReveal={badgeReveal}
+            />
+          )}
           <View
             style={[styles.hero, { bottom: screenHeight - restBottom }]}
             pointerEvents="box-none"
           >
-            <WhatsNewBadge />
-            <Text
-              style={styles.heading}
+            <Animated.View style={badgeStyle}>
+              <WhatsNewBadge />
+            </Animated.View>
+            <Animated.Text
+              ref={heading.textRef}
+              style={[styles.heading, revealStyle]}
               accessibilityRole="header"
               maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              onTextLayout={heading.onTextLayout}
             >
-              Welcome!
-            </Text>
+              {WELCOME_HEADING}
+            </Animated.Text>
           </View>
-          <Text
-            style={[styles.description, { top: restBottom + space.two }]}
+          <Animated.Text
+            style={[
+              styles.description,
+              { top: restBottom + space.two },
+              badgeStyle,
+            ]}
             maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
           >
             Choose a model to get started with Private Mind
-          </Text>
+          </Animated.Text>
         </>
       )}
       <View style={styles.actions}>
