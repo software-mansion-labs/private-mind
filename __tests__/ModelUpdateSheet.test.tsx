@@ -9,11 +9,12 @@ import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
 const mockPresent = jest.fn();
 const mockDismiss = jest.fn();
 
-jest.mock('../components/bottomSheets/BackDismissibleSheetModal', () => {
+jest.mock('@gorhom/bottom-sheet', () => {
+  const actual = jest.requireActual('../__mocks__/@gorhom/bottom-sheet');
   const { forwardRef, useImperativeHandle } = require('react');
   return {
-    __esModule: true,
-    default: forwardRef(
+    ...actual,
+    BottomSheetModal: forwardRef(
       ({ children }: { children: React.ReactNode }, ref: unknown) => {
         useImperativeHandle(ref, () => ({
           present: mockPresent,
