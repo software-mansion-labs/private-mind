@@ -9,6 +9,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useNoticeStore } from '../../store/noticeStore';
+import { radius } from '../../constants/design-system';
 
 const STACK_GAP = 8;
 
@@ -82,7 +83,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'flex-start',
       gap: 12,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: radius.eighteen,
       borderWidth: 1,
       borderColor: theme.border.soft,
       backgroundColor: theme.bg.cardSurface,
