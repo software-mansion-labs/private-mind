@@ -2,7 +2,9 @@ import React from 'react';
 import {
   type AccessibilityActionEvent,
   type AccessibilityActionInfo,
+  Pressable,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -11,14 +13,20 @@ import {
   type WifiWarningSheetRef,
 } from '../../hooks/useModelDownload';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
+import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
 import { Theme } from '../../styles/colors';
-import { dimmedOpacity } from '../../styles/pressable';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { radius, space, stroke } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
-import { ModelState } from '../../store/modelStore';
+import { ModelState, useModelStore } from '../../store/modelStore';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import { getModelFamily } from '../../utils/modelFamily';
 import { formatModelMeta } from '../../utils/modelMeta';
+import { needsUpdate } from '../../utils/modelUpdate';
+import { Feedback } from '../../utils/Feedback';
 import CircleButton, { CIRCLE_BUTTON_SIZE } from '../CircleButton';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelRow from './ModelRow';
@@ -41,6 +49,7 @@ const CHECKBOX_RADIUS = 7;
 const CHECKBOX_BORDER_WIDTH = 1.5;
 const CHECKBOX_ICON_SIZE = 14;
 const LOCKED_OPACITY = 0.4;
+const UPDATE_HIT_SLOP = 8;
 
 export interface ModelSelection {
   selected: boolean;
@@ -75,12 +84,21 @@ const ModelDownloadRow = ({
   const { status, progress, rate, startDownload, stopDownload } =
     useModelDownload(model, wifiWarningSheetRef);
   const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
+  const updateOutdatedModel = useModelStore(
+    (state) => state.updateOutdatedModel
+  );
+  const rememberUpdateConsent = useModelStore(
+    (state) => state.rememberUpdateConsent
+  );
+  const { canDownload: canDownloadUpdate, ConfirmElement: UpdateConfirm } =
+    useUpdateNetworkCheck();
 
   const isCompatible = isModelCompatible(model);
   const isDownloaded = status === ModelState.Downloaded;
   const isDownloading = status === ModelState.Downloading;
   const canDownload = status === ModelState.NotStarted && isCompatible;
   const canDelete = isDownloaded && model.source !== 'local';
+  const canUpdate = isDownloaded && !selection && needsUpdate(model);
   const showsCheckbox = selection && !(selection.selected && selection.locked);
   const disabled = selection
     ? !isCompatible || selection.locked
@@ -95,12 +113,23 @@ const ModelDownloadRow = ({
     if (await deleteModelFiles(model)) onDeleted?.(model);
   };
 
+  const update = async () => {
+    const network = await canDownloadUpdate(model.modelSize ?? 0);
+    if (!network) return;
+    await rememberUpdateConsent([model.modelName], network === 'mobile-data');
+    Feedback.downloadStart();
+    await updateOutdatedModel(model);
+  };
+
   const accessibilityActions: AccessibilityActionInfo[] = [
     ...(canDownload && !selection
       ? [{ name: 'download', label: 'Download' }]
       : []),
     ...(isDownloading
       ? [{ name: 'cancelDownload', label: 'Cancel download' }]
+      : []),
+    ...(canUpdate
+      ? [{ name: 'update', label: MODEL_UPDATE_TEXT.chatBannerAction }]
       : []),
     ...(canDelete ? [{ name: 'delete', label: 'Delete model files' }] : []),
   ];
@@ -110,6 +139,7 @@ const ModelDownloadRow = ({
   }: AccessibilityActionEvent) => {
     if (nativeEvent.actionName === 'download') startDownload();
     if (nativeEvent.actionName === 'cancelDownload') cancel();
+    if (nativeEvent.actionName === 'update') update();
     if (nativeEvent.actionName === 'delete') remove();
   };
 
@@ -148,6 +178,24 @@ const ModelDownloadRow = ({
       testID="model-download-row-download"
     />
   ) : null;
+
+  const updateButton = canUpdate && (
+    <Pressable
+      onPress={update}
+      hitSlop={UPDATE_HIT_SLOP}
+      style={({ pressed }) => [styles.updateButton, pressed && pressedOpacity]}
+      accessibilityRole="button"
+      accessibilityLabel={`Update ${model.modelName}`}
+      testID="model-download-row-update"
+    >
+      <Text
+        style={styles.updateButtonText}
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
+        {MODEL_UPDATE_TEXT.chatBannerAction}
+      </Text>
+    </Pressable>
+  );
 
   const checkbox = selection && (
     <View style={styles.checkbox} testID="model-download-row-checkbox">
@@ -218,10 +266,16 @@ const ModelDownloadRow = ({
           <View style={styles.trailing}>
             {showsCheckbox ? checkbox : action}
           </View>
+        ) : updateButton ? (
+          <View style={styles.actions}>
+            {updateButton}
+            {action}
+          </View>
         ) : (
           action
         )}
         {ConfirmElement}
+        {UpdateConfirm}
       </ModelRow>
     </View>
   );
@@ -283,6 +337,23 @@ const createStyles = (theme: Theme, selected: boolean) => {
     },
     lockedSelection: {
       opacity: LOCKED_OPACITY,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.two,
+    },
+    updateButton: {
+      minHeight: CIRCLE_BUTTON_SIZE,
+      justifyContent: 'center',
+      paddingHorizontal: space.three,
+      borderRadius: radius.full,
+      backgroundColor: theme.bg.accentSoft,
+    },
+    updateButtonText: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      color: theme.text.accent,
     },
   });
 };
