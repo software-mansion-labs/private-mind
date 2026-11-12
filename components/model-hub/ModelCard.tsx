@@ -110,10 +110,14 @@ const ModelCard = ({
   const { canDownload: canDownloadUpdate, ConfirmElement: UpdateConfirm } =
     useUpdateNetworkCheck();
 
-  const downloadState = trackedDownload ?? {
+  const filesOnDisk = {
     progress: model.isDownloaded ? 1 : 0,
     status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
   };
+  const downloadState =
+    !trackedDownload || trackedDownload.status === ModelState.NotStarted
+      ? filesOnDisk
+      : trackedDownload;
 
   const modelState = downloadState.status;
   const isDownloading = modelState === ModelState.Downloading;

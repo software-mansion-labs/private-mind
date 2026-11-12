@@ -540,6 +540,13 @@ describe('update action', () => {
     expect(rememberUpdateConsent).toHaveBeenCalledWith(['Llama-3B'], false);
   });
 
+  it('still offers the update after a cancelled one, the old files are on disk', () => {
+    withDownloadStates({ 1: { status: ModelState.NotStarted, progress: 0 } });
+    renderCard(outdatedModel);
+    expect(screen.getByTestId('model-card-update')).toBeTruthy();
+    expect(screen.queryByTestId('circle-btn')).toBeNull();
+  });
+
   it('does not start the update offline', async () => {
     mockNetInfoFetch.mockResolvedValue({ isConnected: false });
     const updateOutdatedModel = jest.fn();
