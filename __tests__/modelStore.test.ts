@@ -13,9 +13,11 @@ import {
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import Toast from 'react-native-toast-message';
 import { Paths } from 'expo-file-system';
+import NetInfo from '@react-native-community/netinfo';
 import { existingFiles } from '../__mocks__/expo-file-system';
 import { downloadedCopyUri } from '../utils/downloadedCopy';
 import { waitUntilOnlineAndActive } from '../utils/downloadReconnect';
+import { getModelUpdateConsent } from '../utils/modelUpdateConsent';
 
 jest.mock('../database/modelRepository');
 jest.mock('@react-native-community/netinfo', () => ({
@@ -56,6 +58,7 @@ beforeEach(() => {
     models: [],
     downloadedModels: [],
     downloadStates: {},
+    updateConsent: { modelNames: [], overMobileData: false },
   });
   resetDownloadAttempts();
   jest.clearAllMocks();
@@ -563,5 +566,277 @@ describe('a second download for the same model must not start while one is in fl
     await flushMicrotasks();
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('updating a model the catalog moved to a newer export', () => {
+  const mockSyncPaths = modelRepository.syncBuiltInModelPaths as jest.Mock;
+  const outdated = (
+    id: number,
+    outdatedSources: string[]
+  ): modelRepository.Model => ({
+    ...baseModel,
+    id,
+    modelName: `Model ${id}`,
+    source: 'built-in',
+    isDownloaded: true,
+    modelPath: `https://hf.example/v0.11.0/${id}/model.pte`,
+    tokenizerPath: `https://hf.example/v0.11.0/${id}/tokenizer.json`,
+    tokenizerConfigPath: `https://hf.example/v0.11.0/${id}/tokenizer_config.json`,
+    outdatedSources,
+    updateRequired: true,
+  });
+
+  it('downloads the new export, records its paths and deletes the old files', async () => {
+    const model = outdated(1, ['old/model.pte', 'old/tokenizer.json']);
+    mockFetch.mockResolvedValue(['/local/file']);
+
+    await useModelStore.getState().updateOutdatedModel(model);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(Function),
+      model.modelPath
+    );
+    expect(mockSyncPaths).toHaveBeenCalledWith(mockDb, 1, 'Model 1');
+    expect(mockDeleteResources).toHaveBeenCalledWith(
+      'old/model.pte',
+      'old/tokenizer.json'
+    );
+  });
+
+  it('keeps the old files when the new export fails to download', async () => {
+    mockFetch.mockRejectedValue(new Error('network error'));
+
+    await useModelStore
+      .getState()
+      .updateOutdatedModel(outdated(1, ['old/model.pte']));
+
+    expect(mockSyncPaths).not.toHaveBeenCalled();
+    expect(mockDeleteResources).not.toHaveBeenCalled();
+  });
+
+  it('keeps an old file that a model still waiting for its update shares', async () => {
+    const waiting = outdated(2, ['old/shared-tokenizer.json']);
+    mockGetAllModels.mockResolvedValue([waiting]);
+    useModelStore.setState({ models: [waiting] });
+    mockFetch.mockResolvedValue(['/local/file']);
+
+    await useModelStore
+      .getState()
+      .updateOutdatedModel(
+        outdated(1, ['old/model.pte', 'old/shared-tokenizer.json'])
+      );
+
+    expect(mockDeleteResources).toHaveBeenCalledWith('old/model.pte');
+  });
+
+  it('updates every outdated model one after another', async () => {
+    const first = outdated(1, ['old/1.pte']);
+    const second = outdated(2, ['old/2.pte']);
+    const upToDate = { ...outdated(3, []), outdatedSources: undefined };
+    const models = [first, second, upToDate];
+    mockGetAllModels.mockResolvedValue(models);
+    useModelStore.setState({ models });
+    const started: string[] = [];
+    mockFetch.mockImplementation(async (_onProgress, source: string) => {
+      started.push(source);
+      return ['/local/file'];
+    });
+
+    await useModelStore.getState().updateOutdatedModels();
+
+    expect(started.filter((s) => s.endsWith('model.pte'))).toEqual([
+      first.modelPath,
+      second.modelPath,
+    ]);
+    expect(mockSyncPaths.mock.calls.map(([, id]) => id)).toEqual([1, 2]);
+  });
+});
+
+describe('a downloaded model the catalog retired', () => {
+  const spinQuant: modelRepository.Model = {
+    ...baseModel,
+    id: 8,
+    modelName: 'LLaMA 3.2 - 1B - SpinQuant',
+    source: 'built-in',
+    isDownloaded: false,
+    modelPath: 'https://hf.example/v0.11.0/spinquant.pte',
+  };
+  const retired = {
+    modelName: 'LLaMA 3.2 - 1B - QLoRa',
+    replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+    sources: ['https://hf.example/v0.8.0/qlora.pte'],
+  };
+
+  it('has its files deleted and is remembered for the update notice', async () => {
+    useModelStore.setState({ retiredModels: [] });
+
+    await useModelStore.getState().discardRetiredModels([retired]);
+
+    expect(mockDeleteResources).toHaveBeenCalledWith(retired.sources[0]);
+    expect(useModelStore.getState().retiredModels).toEqual([
+      {
+        modelName: 'LLaMA 3.2 - 1B - QLoRa',
+        replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+      },
+    ]);
+  });
+
+  it('is still remembered on the next start, after the migration that removed it', async () => {
+    useModelStore.setState({ retiredModels: [] });
+    await useModelStore.getState().discardRetiredModels([retired]);
+    useModelStore.setState({ retiredModels: [] });
+
+    await useModelStore.getState().discardRetiredModels([]);
+
+    expect(useModelStore.getState().retiredModels).toEqual([
+      {
+        modelName: 'LLaMA 3.2 - 1B - QLoRa',
+        replacement: 'LLaMA 3.2 - 1B - SpinQuant',
+      },
+    ]);
+  });
+
+  it('gets its replacement downloaded by the update', async () => {
+    useModelStore.setState({
+      models: [spinQuant],
+      retiredModels: [
+        {
+          modelName: retired.modelName,
+          replacement: retired.replacement,
+        },
+      ],
+    });
+    mockGetAllModels.mockResolvedValue([{ ...spinQuant, isDownloaded: true }]);
+    mockFetch.mockResolvedValue(['/local/file']);
+
+    await useModelStore.getState().updateOutdatedModels();
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(Function),
+      spinQuant.modelPath
+    );
+  });
+});
+
+describe('a model update the user agreed to', () => {
+  const mockNetwork = NetInfo.fetch as jest.Mock;
+  const outdated: modelRepository.Model = {
+    ...baseModel,
+    id: 5,
+    modelName: 'Qwen 2.5 - 0.5B',
+    source: 'built-in',
+    isDownloaded: true,
+    modelPath: 'https://hf.example/v0.11.0/qwen.pte',
+    outdatedSources: ['https://hf.example/v0.9.0/qwen.pte'],
+    updateRequired: true,
+  };
+
+  beforeEach(() => {
+    mockGetAllModels.mockResolvedValue([outdated]);
+    useModelStore.setState({ models: [outdated] });
+    mockFetch.mockResolvedValue(['/local/file']);
+  });
+
+  it('is remembered across starts', async () => {
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], false);
+
+    expect((await getModelUpdateConsent()).modelNames).toEqual([
+      outdated.modelName,
+    ]);
+  });
+
+  it('is forgotten once the model is updated', async () => {
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], false);
+
+    await useModelStore.getState().updateOutdatedModel(outdated);
+
+    expect(useModelStore.getState().updateConsent.modelNames).toEqual([]);
+  });
+
+  it('is forgotten when the user cancels the download', async () => {
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], false);
+
+    await useModelStore.getState().cancelDownload(outdated);
+
+    expect(useModelStore.getState().updateConsent.modelNames).toEqual([]);
+  });
+
+  it('resumes by itself on the next start over Wi-Fi', async () => {
+    mockNetwork.mockResolvedValue({ isConnected: true, type: 'wifi' });
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], false);
+
+    const resumed = await useModelStore.getState().resumeConsentedUpdates();
+    await flushMicrotasks();
+
+    expect(resumed).toBe(true);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(Function),
+      outdated.modelPath
+    );
+  });
+
+  it('waits on mobile data unless the user agreed to use it', async () => {
+    mockNetwork.mockResolvedValue({ isConnected: true, type: 'cellular' });
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], false);
+
+    expect(await useModelStore.getState().resumeConsentedUpdates()).toBe(false);
+
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], true);
+
+    expect(await useModelStore.getState().resumeConsentedUpdates()).toBe(true);
+  });
+
+  it('does not resume offline', async () => {
+    mockNetwork.mockResolvedValue({ isConnected: false, type: 'none' });
+    await useModelStore
+      .getState()
+      .rememberUpdateConsent([outdated.modelName], true);
+
+    expect(await useModelStore.getState().resumeConsentedUpdates()).toBe(false);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('a newer export of a model that still loads its old one', () => {
+  it('downloads the newer export, not the files already on disk', async () => {
+    const model: modelRepository.Model = {
+      ...baseModel,
+      id: 6,
+      modelName: 'Model 6',
+      source: 'built-in',
+      isDownloaded: true,
+      modelPath: 'https://hf.example/v0.11.0/old/model.pte',
+      outdatedSources: ['https://hf.example/v0.11.0/old/model.pte'],
+      updateRequired: false,
+      latestSources: {
+        modelPath: 'https://hf.example/v0.12.0/model.pte',
+        tokenizerPath: baseModel.tokenizerPath,
+        tokenizerConfigPath: baseModel.tokenizerConfigPath,
+      },
+    };
+    mockFetch.mockResolvedValue(['/local/file']);
+
+    await useModelStore.getState().updateOutdatedModel(model);
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.any(Function),
+      'https://hf.example/v0.12.0/model.pte'
+    );
+    expect(mockDeleteResources).toHaveBeenCalledWith(
+      'https://hf.example/v0.11.0/old/model.pte'
+    );
   });
 });

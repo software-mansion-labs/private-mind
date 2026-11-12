@@ -1,5 +1,6 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
 import { getActiveCatalog } from '../utils/modelCatalogState';
+import { runnerCanLoad } from '../constants/model-exports';
 
 export type Model = {
   id: number;
@@ -18,7 +19,15 @@ export type Model = {
   parameters?: number;
   modelSize?: number;
   systemPrompt?: string | null;
+  outdatedSources?: string[];
+  updateRequired?: boolean;
+  latestSources?: ModelSources;
 };
+
+export type ModelSources = Pick<
+  Model,
+  'modelPath' | 'tokenizerPath' | 'tokenizerConfigPath'
+>;
 
 export const addModel = async (
   db: SQLiteDatabase,
@@ -137,18 +146,55 @@ const parseLabels = (raw: string | null): string[] | undefined => {
   }
 };
 
+const sourcesTheCatalogReplaced = (
+  model: RawModel,
+  defaults: Pick<
+    Model,
+    'modelPath' | 'tokenizerPath' | 'tokenizerConfigPath'
+  > | null
+): string[] => {
+  if (!defaults || model.isDownloaded !== 1) return [];
+  const pairs: [string, string][] = [
+    [model.modelPath, defaults.modelPath],
+    [model.tokenizerPath, defaults.tokenizerPath],
+    [model.tokenizerConfigPath, defaults.tokenizerConfigPath],
+  ];
+  return pairs
+    .filter(([stored, current]) => stored !== current)
+    .map(([stored]) => stored);
+};
+
 const hydrateModel = (model: RawModel): Model => {
   const defaults =
     model.source === 'built-in'
       ? getActiveCatalog().find((m) => m.modelName === model.modelName)
       : undefined;
-
-  return {
-    ...model,
+  const outdatedSources = sourcesTheCatalogReplaced(model, defaults ?? null);
+  const updateRequired = outdatedSources.some(
+    (source) => !runnerCanLoad(source)
+  );
+  const stored: ModelSources = {
+    modelPath: model.modelPath,
+    tokenizerPath: model.tokenizerPath,
+    tokenizerConfigPath: model.tokenizerConfigPath,
+  };
+  const latest: ModelSources = {
     modelPath: defaults?.modelPath ?? model.modelPath,
     tokenizerPath: defaults?.tokenizerPath ?? model.tokenizerPath,
     tokenizerConfigPath:
       defaults?.tokenizerConfigPath ?? model.tokenizerConfigPath,
+  };
+  const keepsStoredFiles = outdatedSources.length > 0 && !updateRequired;
+
+  return {
+    ...model,
+    ...(outdatedSources.length > 0 && {
+      outdatedSources,
+      updateRequired,
+      latestSources: latest,
+    }),
+    ...(keepsStoredFiles ? stored : latest),
+    modelSize: defaults?.modelSize ?? model.modelSize,
     family: defaults?.family ?? model.family ?? undefined,
     isDownloaded: model.isDownloaded === 1,
     featured: model.featured === 1,

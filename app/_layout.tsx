@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SQLiteProvider } from 'expo-sqlite';
 import { initDatabase } from '../database/db';
+import ModelUpdateSheet from '../components/bottomSheets/ModelUpdateSheet';
 import {
   useFonts,
   DMSans_400Regular,
@@ -151,6 +152,7 @@ export default function Layout() {
               <KeyboardProvider>
                 <BottomSheetModalProvider>
                   <RootNavigator />
+                  <ModelUpdateSheet />
                   {Platform.OS === 'android' && <ThemedStatusBar />}
                 </BottomSheetModalProvider>
                 <AppToast />

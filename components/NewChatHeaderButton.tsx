@@ -6,6 +6,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Feedback } from '../utils/Feedback';
 import { startPhantomChat } from '../utils/startPhantomChat';
 import { useChatStore } from '../store/chatStore';
+import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
 import { pressedOpacity } from '../styles/pressable';
 import { useTurnInFlight } from '../hooks/useTurnInFlight';
 import { useSteadyFlag } from '../hooks/useSteadyFlag';
@@ -33,6 +34,7 @@ const NewChatHeaderButton = ({ noOp = false, glass = false }: Props) => {
       return;
     }
     Feedback.newChat();
+    useModelUpdateSheetStore.getState().enterNewChat();
     if (noOp) {
       useChatStore.getState().startBlankChat();
       return;

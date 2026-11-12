@@ -1,11 +1,13 @@
 import type { Embeddings, ResourceSource } from 'react-native-rag';
-import { TextEmbeddingsModule } from 'react-native-executorch/legacy';
+import { createTextEmbedder, type TextEmbedder } from 'react-native-executorch';
+import { ResourceFetcher } from 'react-native-executorch/legacy';
 import {
   EMBEDDING_DOCUMENT_PREFIX,
   EMBEDDING_QUERY_PREFIX,
 } from '../constants/embedding-model';
 import { truncateToTokenBudget } from './textChunking';
 import { preferDownloadedCopy } from './downloadedCopy';
+import { toLocalPath } from './localPath';
 
 interface LFMEmbeddingsParams {
   modelSource: ResourceSource;
@@ -16,8 +18,11 @@ interface LFMEmbeddingsParams {
 const ignoreOutcome = () => undefined;
 const ignoreProgress = () => {};
 
+const isLocal = (source: unknown): source is string =>
+  typeof source === 'string' && !/^https?:\/\//.test(source);
+
 export class LFMEmbeddings implements Embeddings {
-  private module: TextEmbeddingsModule | null = null;
+  private embedder: TextEmbedder | null = null;
   private operationChain: Promise<void> = Promise.resolve();
   private readonly modelSource: ResourceSource;
   private readonly tokenizerSource: ResourceSource;
@@ -33,27 +38,42 @@ export class LFMEmbeddings implements Embeddings {
     this.onDownloadProgress = onDownloadProgress;
   }
 
+  private async localFiles(): Promise<[string, string]> {
+    const model = preferDownloadedCopy(this.modelSource);
+    const tokenizer = preferDownloadedCopy(this.tokenizerSource);
+    if (isLocal(model) && isLocal(tokenizer)) return [model, tokenizer];
+    const paths = await ResourceFetcher.fetch(
+      this.onDownloadProgress,
+      model,
+      tokenizer
+    );
+    if (!paths || paths.length < 2) {
+      throw new Error('The embedding model download did not finish.');
+    }
+    return [paths[0], paths[1]];
+  }
+
   async load(): Promise<this> {
-    if (!this.module) {
-      this.module = await TextEmbeddingsModule.fromCustomModel(
-        preferDownloadedCopy(this.modelSource),
-        preferDownloadedCopy(this.tokenizerSource),
-        this.onDownloadProgress
-      );
+    if (!this.embedder) {
+      const [modelPath, tokenizerPath] = await this.localFiles();
+      this.embedder = await createTextEmbedder({
+        modelPath: toLocalPath(modelPath),
+        tokenizerPath: toLocalPath(tokenizerPath),
+      });
     }
     return this;
   }
 
   async unload(): Promise<void> {
-    this.module?.delete();
-    this.module = null;
+    this.embedder?.dispose();
+    this.embedder = null;
   }
 
   async embed(text: string): Promise<number[]> {
-    if (!this.module) {
-      throw new Error('TextEmbeddingsModule not loaded. Call load() first.');
+    if (!this.embedder) {
+      throw new Error('The embedding model is not loaded. Call load() first.');
     }
-    return Array.from(await this.module.forward(text));
+    return Array.from(await this.embedder.embed(text));
   }
 
   runWithLoadedModel<T>(operation: () => Promise<T>): Promise<T> {

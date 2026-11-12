@@ -9,7 +9,7 @@ import {
   withTemplateThinkOpener,
 } from '../utils/thinking';
 import { create } from 'zustand';
-import { LLMModule } from 'react-native-executorch/legacy';
+import { LLMEngine } from '../utils/llmEngine';
 import { preferDownloadedCopy } from '../utils/downloadedCopy';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
@@ -32,10 +32,11 @@ import {
   BENCHMARK_TOKEN_TARGET,
 } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
-import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
+import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
+import { needsUpdate, requiresUpdate } from '../utils/modelUpdate';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
@@ -156,7 +157,7 @@ export interface LLMStore {
   refreshActiveChatMessages: () => Promise<void>;
 }
 
-let llmInstance: LLMModule | null = null;
+let llmInstance: LLMEngine | null = null;
 let instanceRunsOnMlx = false;
 let modelOffloadChain: Promise<void> = Promise.resolve();
 let modelLoadChain: Promise<void> = Promise.resolve();
@@ -185,7 +186,7 @@ type LLMGenerationConfig = ReturnType<typeof getGenerationConfigForModel>;
 let appliedGenerationConfig: string | null = null;
 
 const applyGenerationConfig = (
-  instance: LLMModule,
+  instance: LLMEngine,
   generationConfig: LLMGenerationConfig | undefined
 ) => {
   if (!generationConfig) return;
@@ -206,7 +207,7 @@ type FailedGenerationRequest = {
 };
 
 let failedGenerationRequest: FailedGenerationRequest | null = null;
-let instanceBehindFailedTurn: LLMModule | null = null;
+let instanceBehindFailedTurn: LLMEngine | null = null;
 
 let appIsAway = false;
 let appIsInBackground = false;
@@ -259,7 +260,7 @@ let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
-let warmingUp: LLMModule | null = null;
+let warmingUp: LLMEngine | null = null;
 let warmupStopRequested = false;
 let modelWarmup: Promise<void> = Promise.resolve();
 let sendAbortController: AbortController | null = null;
@@ -378,7 +379,7 @@ const unloadLLM = () => {
   return true;
 };
 
-const interruptQuietly = (instance: LLMModule) => {
+const interruptQuietly = (instance: LLMEngine) => {
   try {
     instance.interrupt();
   } catch (error) {
@@ -417,7 +418,7 @@ const WARMUP_MESSAGES: ExecutorchMessage[] = [
   { role: 'user', content: 'hi' },
 ];
 
-const warmUpModel = (instance: LLMModule): Promise<void> => {
+const warmUpModel = (instance: LLMEngine): Promise<void> => {
   if (appIsInBackground) return Promise.resolve();
   const generation = withExclusiveRunner(async (isCancelled) => {
     if (llmInstance !== instance || isCancelled()) return;
@@ -460,6 +461,9 @@ const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
 
 export const modelLoadFailedCopy = (modelName: string) =>
   `${modelName} could not be loaded. Try again or pick another model.`;
+
+export const modelNeedsUpdateCopy = (modelName: string) =>
+  `${modelName} needs a one-time update. Connect to the internet and tap Update at the top of the chat.`;
 
 const loadModelInstance = async (
   model: Model,
@@ -519,17 +523,13 @@ const loadModelInstance = async (
 
   try {
     instanceRunsOnMlx = runsOnMlxDelegate(model);
-    llmInstance = await LLMModule.fromModelName(
+    llmInstance = await LLMEngine.load(
       {
-        modelName: 'custom' as Parameters<
-          typeof LLMModule.fromModelName
-        >[0]['modelName'],
         modelSource: fromDisk(model.modelPath),
         tokenizerSource: fromDisk(model.tokenizerPath),
         tokenizerConfigSource: fromDisk(model.tokenizerConfigPath),
-        capabilities: model.vision ? (['vision'] as const) : undefined,
+        vision: model.vision,
       },
-      () => {},
       (token) => {
         if (warmingUp) {
           if (!warmupStopRequested) {
@@ -586,7 +586,9 @@ const loadModelInstance = async (
     set({ isLoading: false, model: null });
     Toast.show({
       type: 'defaultToast',
-      text1: modelLoadFailedCopy(model.modelName),
+      text1: needsUpdate(model)
+        ? modelNeedsUpdateCopy(model.modelName)
+        : modelLoadFailedCopy(model.modelName),
     });
   }
 };
@@ -789,7 +791,7 @@ const tidyVisibleAnswer = (response: string): string =>
   );
 
 const runUtilityGeneration = (
-  instance: LLMModule,
+  instance: LLMEngine,
   messages: ExecutorchMessage[],
   model: Model | null
 ): Promise<string> => {
@@ -899,17 +901,6 @@ const generateLLMResponse = (
 ): Promise<LLMGenerationResult> => {
   const instance = llmInstance;
   if (!instance) return Promise.resolve(NO_LLM_RESPONSE);
-  const preparedMessages = messages.map((msg) =>
-    msg.mediaPath
-      ? {
-          ...msg,
-          content: [
-            { type: 'image' },
-            { type: 'text', text: msg.content as string },
-          ] as unknown as string,
-        }
-      : msg
-  );
 
   return withExclusiveRunner<LLMGenerationResult>(async (isCancelled) => {
     if (llmInstance !== instance || isCancelled()) return NO_LLM_RESPONSE;
@@ -929,7 +920,7 @@ const generateLLMResponse = (
     const startTime = performance.now();
     let finalResponse: Awaited<ReturnType<typeof instance.generate>>;
     try {
-      finalResponse = await instance.generate(preparedMessages);
+      finalResponse = await instance.generate(messages);
     } finally {
       clearTimeout(firstTokenWatchdog);
     }
@@ -1060,6 +1051,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     if (model.id === currentModel?.id && llmInstance && !hardReload) {
       return;
     }
+    if (requiresUpdate(model)) return;
     const result = modelLoadChain.then(async () => {
       // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
       if (await cpuLacksLseAtomics()) {

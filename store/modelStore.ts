@@ -9,6 +9,7 @@ import {
   updateModel,
   syncBuiltInModelPaths,
 } from '../database/modelRepository';
+import { type RetiredModel } from '../database/db';
 import Toast from 'react-native-toast-message';
 import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
@@ -19,6 +20,21 @@ import {
   type DownloadPhase,
 } from '../utils/downloadDiagnostics';
 import { RateSample, nextProgressRate } from '../utils/downloadEta';
+import NetInfo from '@react-native-community/netinfo';
+import {
+  needsUpdate,
+  requiredUpdates,
+  type RetiredModelNotice,
+} from '../utils/modelUpdate';
+import {
+  getModelUpdateConsent,
+  setModelUpdateConsent,
+  type ModelUpdateConsent,
+} from '../utils/modelUpdateConsent';
+import {
+  getRetiredModelNotices,
+  setRetiredModelNotices,
+} from '../utils/retiredModelNotices';
 import {
   isOutOfSpaceError,
   showNotEnoughStorage,
@@ -197,6 +213,18 @@ interface ModelStore {
   cancelDownload: (model: Model) => Promise<void>;
   removeModel: (modelId: number) => Promise<void>;
   removeModelFiles: (modelId: number) => Promise<void>;
+  retiredModels: RetiredModelNotice[];
+  discardRetiredModels: (retired: RetiredModel[]) => Promise<void>;
+  updateOutdatedModel: (model: Model) => Promise<void>;
+  updateOutdatedModels: (models?: Model[]) => Promise<void>;
+  updateConsent: ModelUpdateConsent;
+  loadUpdateConsent: () => Promise<void>;
+  rememberUpdateConsent: (
+    modelNames: string[],
+    overMobileData: boolean
+  ) => Promise<void>;
+  forgetUpdateConsent: (modelName: string) => Promise<void>;
+  resumeConsentedUpdates: () => Promise<boolean>;
   editModel: (
     modelId: number,
     localTokenizerPath: string,
@@ -359,6 +387,21 @@ const sourcesNoOtherModelNeeds = (
   );
   return sources.filter((source) => !needed.has(source));
 };
+
+const outdatedSourcesNoOtherModelNeeds = (model: Model): string[] => {
+  const needed = new Set(
+    useModelStore
+      .getState()
+      .models.filter((other) => other.id !== model.id)
+      .flatMap((other) => [
+        ...(other.isDownloaded ? sourcesOf(other) : []),
+        ...(other.outdatedSources ?? []),
+      ])
+  );
+  return (model.outdatedSources ?? []).filter((source) => !needed.has(source));
+};
+
+let updatingOutdatedModels: Promise<void> | null = null;
 
 const runDownload = async (model: Model, attempt: DownloadAttempt) => {
   const isCurrent = () =>
@@ -526,6 +569,8 @@ export const useModelStore = create<ModelStore>((set, get) => ({
   models: [],
   downloadedModels: [],
   downloadStates: {},
+  retiredModels: [],
+  updateConsent: { modelNames: [], overMobileData: false },
 
   setDB: (db) => set({ db }),
 
@@ -604,11 +649,16 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         [model.id]: { progress: 0, status: ModelState.NotStarted },
       },
     }));
+    const forgotten = get().forgetUpdateConsent(model.modelName);
 
-    if (!attempt) return;
+    if (!attempt) {
+      await forgotten;
+      return;
+    }
     attempt.cancelled = true;
     attempt.signalCancelled();
     await stopFetching(model, attempt);
+    await forgotten;
   },
 
   removeModelFiles: async (modelId: number) => {
@@ -640,6 +690,110 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     } catch (err) {
       console.error('Failed to remove model files:', err);
     }
+  },
+
+  discardRetiredModels: async (retired: RetiredModel[]) => {
+    const remembered = await getRetiredModelNotices();
+    if (retired.length === 0) {
+      set({ retiredModels: remembered });
+      return;
+    }
+    await deleteRemoteResources(...retired.flatMap((model) => model.sources));
+    const fresh = retired.map(({ modelName, replacement }) => ({
+      modelName,
+      replacement,
+    }));
+    const notices = [
+      ...remembered.filter(
+        (notice) => !fresh.some((f) => f.modelName === notice.modelName)
+      ),
+      ...fresh,
+    ];
+    await setRetiredModelNotices(notices);
+    set({ retiredModels: notices });
+  },
+
+  updateOutdatedModel: async (model: Model) => {
+    if (!needsUpdate(model)) return;
+
+    await get().downloadModel(
+      model.latestSources ? { ...model, ...model.latestSources } : model
+    );
+    const db = get().db;
+    if (!db) return;
+    if (get().downloadStates[model.id]?.status !== ModelState.Downloaded)
+      return;
+
+    const replaced = outdatedSourcesNoOtherModelNeeds(model);
+    await syncBuiltInModelPaths(db, model.id, model.modelName);
+    await get().loadModels();
+    await deleteRemoteResources(...replaced);
+    await get().forgetUpdateConsent(model.modelName);
+  },
+
+  updateOutdatedModels: (models?: Model[]) => {
+    if (updatingOutdatedModels) return updatingOutdatedModels;
+    const queue = (
+      models ?? requiredUpdates(get().models, get().retiredModels)
+    ).map(({ id }) => id);
+    updatingOutdatedModels = (async () => {
+      try {
+        for (const id of queue) {
+          const model = get().getModelById(id);
+          if (!model) continue;
+          if (needsUpdate(model)) {
+            await get().updateOutdatedModel(model);
+          } else if (!model.isDownloaded) {
+            await get().downloadModel(model);
+            if (get().getModelById(id)?.isDownloaded)
+              await get().forgetUpdateConsent(model.modelName);
+          }
+        }
+      } finally {
+        updatingOutdatedModels = null;
+      }
+    })();
+    return updatingOutdatedModels;
+  },
+
+  loadUpdateConsent: async () => {
+    set({ updateConsent: await getModelUpdateConsent() });
+  },
+
+  rememberUpdateConsent: async (modelNames, overMobileData) => {
+    const current = get().updateConsent;
+    const consent = {
+      modelNames: [...new Set([...current.modelNames, ...modelNames])],
+      overMobileData,
+    };
+    set({ updateConsent: consent });
+    await setModelUpdateConsent(consent);
+  },
+
+  forgetUpdateConsent: async (modelName) => {
+    const current = get().updateConsent;
+    if (!current.modelNames.includes(modelName)) return;
+    const consent = {
+      ...current,
+      modelNames: current.modelNames.filter((name) => name !== modelName),
+    };
+    set({ updateConsent: consent });
+    await setModelUpdateConsent(consent);
+  },
+
+  resumeConsentedUpdates: async () => {
+    const { modelNames, overMobileData } = get().updateConsent;
+    const consented = get().models.filter(
+      (model) =>
+        modelNames.includes(model.modelName) &&
+        (needsUpdate(model) || !model.isDownloaded)
+    );
+    if (consented.length === 0) return false;
+    const network = await NetInfo.fetch();
+    if (!network.isConnected) return false;
+    if (network.type !== 'wifi' && !overMobileData) return false;
+    get().updateOutdatedModels(consented);
+    return true;
   },
 
   removeModel: async (modelId: number) => {

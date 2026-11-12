@@ -4,7 +4,7 @@ import {
   useLLMStore,
   FIRST_TOKEN_TIMEOUT_MS,
 } from '../store/llmStore';
-import { LLMModule } from 'react-native-executorch/legacy';
+import { LLMEngine } from '../utils/llmEngine';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { Model } from '../database/modelRepository';
@@ -29,6 +29,7 @@ jest.mock('../modules/memory-probe', () => ({
 }));
 
 jest.mock('../database/chatRepository');
+jest.mock('../utils/llmEngine', () => ({ LLMEngine: { load: jest.fn() } }));
 jest.mock('../utils/Feedback', () => ({
   Feedback: { firstToken: jest.fn() },
 }));
@@ -60,7 +61,7 @@ jest.mock('@react-native-community/netinfo', () => ({
   default: { fetch: jest.fn().mockResolvedValue({ isConnected: true }) },
 }));
 
-const mockLLMModule = LLMModule as jest.Mocked<typeof LLMModule>;
+const mockLLMEngine = LLMEngine as jest.Mocked<typeof LLMEngine>;
 const mockPersistMessage = chatRepository.persistMessage as jest.Mock;
 const mockMarkMessageStopped = chatRepository.markMessageStopped as jest.Mock;
 const mockGetChatMessages = chatRepository.getChatMessages as jest.Mock;
@@ -110,12 +111,10 @@ beforeEach(() => {
   capturedTokenCallback = null;
   mockInstance = makeMockInstance();
 
-  mockLLMModule.fromModelName.mockImplementation(
-    async (_namedSources, _onProgress, onToken) => {
-      capturedTokenCallback = onToken;
-      return mockInstance as unknown as LLMModule;
-    }
-  );
+  mockLLMEngine.load.mockImplementation(async (_namedSources, onToken) => {
+    capturedTokenCallback = onToken;
+    return mockInstance as unknown as LLMEngine;
+  });
 
   useLLMStore.setState({
     isLoading: false,
@@ -139,13 +138,11 @@ beforeEach(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-  // Re-apply the fromModelName mock after clearAllMocks
-  mockLLMModule.fromModelName.mockImplementation(
-    async (_namedSources, _onProgress, onToken) => {
-      capturedTokenCallback = onToken;
-      return mockInstance as unknown as LLMModule;
-    }
-  );
+  // Re-apply the load mock after clearAllMocks
+  mockLLMEngine.load.mockImplementation(async (_namedSources, onToken) => {
+    capturedTokenCallback = onToken;
+    return mockInstance as unknown as LLMEngine;
+  });
 });
 
 afterEach(async () => {
@@ -168,10 +165,10 @@ const flushFrame = () =>
 describe('loadModel', () => {
   it('sets isLoading during load then clears it', async () => {
     let wasLoading = false;
-    mockLLMModule.fromModelName.mockImplementation(async (...args) => {
+    mockLLMEngine.load.mockImplementation(async (...args) => {
       wasLoading = useLLMStore.getState().isLoading;
-      capturedTokenCallback = args[2];
-      return mockInstance as unknown as LLMModule;
+      capturedTokenCallback = args[1];
+      return mockInstance as unknown as LLMEngine;
     });
 
     await useLLMStore.getState().loadModel(baseModel);
@@ -183,13 +180,23 @@ describe('loadModel', () => {
   it('skips reload for the same model id without hardReload', async () => {
     useLLMStore.setState({ model: baseModel });
     await useLLMStore.getState().loadModel(baseModel);
-    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
+    expect(mockLLMEngine.load).not.toHaveBeenCalled();
+  });
+
+  it('leaves a model that needs its update unloaded, so the runner never gets a missing file', async () => {
+    await useLLMStore.getState().loadModel({
+      ...baseModel,
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.9.0/model.pte'],
+      updateRequired: true,
+    });
+    expect(mockLLMEngine.load).not.toHaveBeenCalled();
   });
 
   it('reloads same model when hardReload=true', async () => {
     useLLMStore.setState({ model: baseModel });
     await useLLMStore.getState().loadModel(baseModel, true);
-    expect(mockLLMModule.fromModelName).toHaveBeenCalled();
+    expect(mockLLMEngine.load).toHaveBeenCalled();
   });
 
   describe('sources handed to the library', () => {
@@ -202,7 +209,7 @@ describe('loadModel', () => {
     };
 
     const loadedSources = () => {
-      const [namedSources] = mockLLMModule.fromModelName.mock.calls[0];
+      const [namedSources] = mockLLMEngine.load.mock.calls[0];
       return {
         model: namedSources.modelSource,
         tokenizer: namedSources.tokenizerSource,
@@ -254,9 +261,9 @@ describe('loadModel', () => {
 
     // Load a different model
     mockInstance = makeMockInstance();
-    mockLLMModule.fromModelName.mockImplementation(async (...args) => {
-      capturedTokenCallback = args[2];
-      return mockInstance as unknown as LLMModule;
+    mockLLMEngine.load.mockImplementation(async (...args) => {
+      capturedTokenCallback = args[1];
+      return mockInstance as unknown as LLMEngine;
     });
     await useLLMStore.getState().loadModel({ ...baseModel, id: 2 });
 
@@ -270,12 +277,12 @@ describe('loadModel', () => {
     } finally {
       cpu.lacksLseAtomics = false;
     }
-    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
+    expect(mockLLMEngine.load).not.toHaveBeenCalled();
     expect(useLLMStore.getState().model).toBeNull();
   });
 
   it('clears model and isLoading on load failure', async () => {
-    mockLLMModule.fromModelName.mockRejectedValue(new Error('load failed'));
+    mockLLMEngine.load.mockRejectedValue(new Error('load failed'));
     await useLLMStore.getState().loadModel(baseModel);
     expect(useLLMStore.getState().isLoading).toBe(false);
     expect(useLLMStore.getState().model).toBeNull();
@@ -286,23 +293,23 @@ describe('loadModel', () => {
     const loadGate = new Promise<void>((resolve) => {
       finishLoad = resolve;
     });
-    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
-      capturedTokenCallback = args[2];
+    mockLLMEngine.load.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[1];
       await loadGate;
-      return mockInstance as unknown as LLMModule;
+      return mockInstance as unknown as LLMEngine;
     });
 
     const first = useLLMStore.getState().loadModel(baseModel);
     const second = useLLMStore.getState().loadModel(baseModel);
     // The load chain hops through several awaits before reaching
-    // fromModelName; a single microtask flush is not enough.
+    // load; a single microtask flush is not enough.
     await flushFrame();
 
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
     finishLoad();
     await Promise.all([first, second]);
 
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -317,7 +324,7 @@ describe('runWithModelOffloaded', () => {
 
     expect(mockInstance.delete).toHaveBeenCalledTimes(1);
     expect(operation).toHaveBeenCalledTimes(1);
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(2);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(2);
     expect(useLLMStore.getState().model).toEqual(baseModel);
     expect(useLLMStore.getState().isLoading).toBe(false);
   });
@@ -332,7 +339,7 @@ describe('runWithModelOffloaded', () => {
     ).rejects.toThrow('embedding failed');
 
     expect(mockInstance.delete).toHaveBeenCalledTimes(1);
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(2);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(2);
     expect(useLLMStore.getState().model).toEqual(baseModel);
   });
 
@@ -366,7 +373,7 @@ describe('runWithModelOffloaded', () => {
 
     expect(order).toEqual(['first-start', 'first-end', 'second']);
     expect(mockInstance.delete).toHaveBeenCalledTimes(2);
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(3);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(3);
   });
 
   it('can leave the LLM unloaded until generation needs it', async () => {
@@ -377,10 +384,10 @@ describe('runWithModelOffloaded', () => {
       .runWithModelOffloaded(async () => {}, { restore: false });
 
     expect(mockInstance.delete).toHaveBeenCalledTimes(1);
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
 
     await useLLMStore.getState().loadModel(baseModel);
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(2);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -1174,10 +1181,10 @@ describe('sendChatMessage', () => {
     const loadGate = new Promise<void>((resolve) => {
       finishLoad = resolve;
     });
-    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
-      capturedTokenCallback = args[2];
+    mockLLMEngine.load.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[1];
       await loadGate;
-      return mockInstance as unknown as LLMModule;
+      return mockInstance as unknown as LLMEngine;
     });
 
     useLLMStore.setState({
@@ -1217,10 +1224,10 @@ describe('sendChatMessage', () => {
     const loadGate = new Promise<void>((resolve) => {
       finishLoad = resolve;
     });
-    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
-      capturedTokenCallback = args[2];
+    mockLLMEngine.load.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[1];
       await loadGate;
-      return mockInstance as unknown as LLMModule;
+      return mockInstance as unknown as LLMEngine;
     });
 
     useLLMStore.setState({
@@ -1251,10 +1258,10 @@ describe('sendChatMessage', () => {
     const loadGate = new Promise<void>((resolve) => {
       finishLoad = resolve;
     });
-    mockLLMModule.fromModelName.mockImplementationOnce(async (...args) => {
-      capturedTokenCallback = args[2];
+    mockLLMEngine.load.mockImplementationOnce(async (...args) => {
+      capturedTokenCallback = args[1];
       await loadGate;
-      return mockInstance as unknown as LLMModule;
+      return mockInstance as unknown as LLMEngine;
     });
 
     useLLMStore.setState({
@@ -3011,10 +3018,9 @@ describe('sendChatMessage imagePath', () => {
       );
 
     const calledMessages = mockInstance.generate.mock.calls[0][0];
-    expect(calledMessages[calledMessages.length - 1].content).toEqual([
-      { type: 'image' },
-      { type: 'text', text: 'What is this?' },
-    ]);
+    expect(calledMessages[calledMessages.length - 1].content).toBe(
+      'What is this?'
+    );
   });
 });
 
@@ -3347,13 +3353,11 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
 
   it('shows the message and the stop state while a model switch is still loading', async () => {
     let releaseLoad!: () => void;
-    mockLLMModule.fromModelName.mockImplementationOnce(
-      async (_sources, _progress, onToken) => {
-        capturedTokenCallback = onToken;
-        await new Promise<void>((resolve) => (releaseLoad = resolve));
-        return mockInstance as unknown as LLMModule;
-      }
-    );
+    mockLLMEngine.load.mockImplementationOnce(async (_sources, onToken) => {
+      capturedTokenCallback = onToken;
+      await new Promise<void>((resolve) => (releaseLoad = resolve));
+      return mockInstance as unknown as LLMEngine;
+    });
     const otherModel = { ...baseModel, id: 2, modelName: 'Second LLM' };
     useLLMStore.getState().loadModel(otherModel);
     await nextTick();
@@ -3379,24 +3383,24 @@ describe('one turn at a time (S20 FE: sends lost or doubled while a turn was sti
   it('loads an already downloaded model without asking the network', async () => {
     const NetInfo = require('@react-native-community/netinfo').default;
     NetInfo.fetch.mockClear();
-    const loads = mockLLMModule.fromModelName.mock.calls.length;
+    const loads = mockLLMEngine.load.mock.calls.length;
 
     await useLLMStore.getState().loadModel({ ...baseModel, id: 3 });
 
     expect(NetInfo.fetch).not.toHaveBeenCalled();
-    expect(mockLLMModule.fromModelName.mock.calls.length).toBe(loads + 1);
+    expect(mockLLMEngine.load.mock.calls.length).toBe(loads + 1);
   });
 
   it('still refuses a model that is not on the device while offline', async () => {
     const NetInfo = require('@react-native-community/netinfo').default;
     NetInfo.fetch.mockResolvedValueOnce({ isConnected: false });
-    const loads = mockLLMModule.fromModelName.mock.calls.length;
+    const loads = mockLLMEngine.load.mock.calls.length;
 
     await useLLMStore
       .getState()
       .loadModel({ ...baseModel, id: 3, isDownloaded: false });
 
-    expect(mockLLMModule.fromModelName.mock.calls.length).toBe(loads);
+    expect(mockLLMEngine.load.mock.calls.length).toBe(loads);
   });
 
   it('keeps the model loaded when the answer came back empty', async () => {
@@ -3899,7 +3903,7 @@ describe('the model in the background', () => {
     useLLMStore.getState().appReturnedToForeground();
     await loadModel();
     mockInstance.delete.mockClear();
-    mockLLMModule.fromModelName.mockClear();
+    mockLLMEngine.load.mockClear();
     mockPersistMessage.mockResolvedValue(42);
     useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
     jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
@@ -3972,7 +3976,7 @@ describe('the model in the background', () => {
     await jest.advanceTimersByTimeAsync(1000);
     await turn;
 
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
     expect(mockInstance.generate).toHaveBeenCalled();
   });
 
@@ -4010,7 +4014,7 @@ describe('the model in the background', () => {
 
     await useLLMStore.getState().loadModel(baseModel, true);
 
-    expect(mockLLMModule.fromModelName).toHaveBeenCalledTimes(1);
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
     expect(mockInstance.generate).not.toHaveBeenCalled();
   });
 });
@@ -4183,10 +4187,10 @@ describe('warming the model up right after it loads', () => {
       const firstTokenCallback = capturedTokenCallback!;
 
       const secondInstance = makeMockInstance();
-      mockLLMModule.fromModelName.mockImplementationOnce(
-        async (_namedSources, _onProgress, onToken) => {
+      mockLLMEngine.load.mockImplementationOnce(
+        async (_namedSources, onToken) => {
           capturedTokenCallback = onToken;
-          return secondInstance as unknown as LLMModule;
+          return secondInstance as unknown as LLMEngine;
         }
       );
       const otherModel = { ...baseModel, id: 2, modelName: 'Other LLM' };

@@ -55,6 +55,8 @@ import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
+import ModelUpdateBanner from './ModelUpdateBanner';
+import { useModelStore } from '../../store/modelStore';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -80,6 +82,8 @@ const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'image-not-saved': null,
   'image-unsupported':
     "This model can't see images. Remove the photo or pick a model with Vision.",
+  'model-needs-update':
+    'This model needs a one-time update first. Tap Update at the top of the chat.',
 };
 
 interface Props {
@@ -137,6 +141,12 @@ const ChatBar = ({
   modelSwitching = false,
   onAttachmentSheetStateChange,
 }: Props) => {
+  const retiredBy = useModelStore(
+    (state) =>
+      state.retiredModels.find(
+        (retired) => retired.replacement === model?.modelName
+      )?.modelName
+  );
   const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
     () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
@@ -279,10 +289,10 @@ const ChatBar = ({
     else markPanelOpen();
   }, [panel.mode, markPanelClosed, markPanelOpen]);
 
-  const { dismiss: dismissPanel } = panel;
+  const { dismissWithoutRefocus: dismissPanelWithoutRefocus } = panel;
   const dismissPanelIfOpen = useCallback(() => {
-    if (panelOpenRef.current) dismissPanel();
-  }, [dismissPanel]);
+    if (panelOpenRef.current) dismissPanelWithoutRefocus();
+  }, [dismissPanelWithoutRefocus]);
 
   useEffect(() => {
     onAttachmentSheetStateChange?.(panel.mode !== 'closed');
@@ -618,6 +628,14 @@ const ChatBar = ({
             });
           }}
         />
+      </View>
+    );
+  }
+
+  if (chatId && model && retiredBy && !model.isDownloaded) {
+    return (
+      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
+        <ModelUpdateBanner model={model} replaces={retiredBy} />
       </View>
     );
   }
