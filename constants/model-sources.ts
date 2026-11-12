@@ -77,7 +77,7 @@ export const RNE_0_11_SOURCES: Record<string, ModelSources> = {
   'gemma4-e2b-multimodal': {
     modelSource: {
       ios: `${HF}gemma-4-E2B-it-ExecuTorch/resolve/v0.11.0/e2b/mlx/gemma_4_e2b_mlx_int4.pte`,
-      android: `${HF}gemma-4-E2B-it-ExecuTorch/resolve/v0.11.0/e2b/vulkan/gemma_4_e2b_vulkan_8da4w.pte`,
+      android: `${HF}gemma-4-E2B-it-ExecuTorch/resolve/v1.0.0/e2b/vulkan/gemma_4_e2b_vulkan_8da4w.pte`,
     },
     tokenizerSource: `${HF}gemma-4-E2B-it-ExecuTorch/resolve/v0.11.0/e2b/tokenizer.json`,
     tokenizerConfigSource: `${HF}gemma-4-E2B-it-ExecuTorch/resolve/v0.11.0/e2b/tokenizer_config.json`,
