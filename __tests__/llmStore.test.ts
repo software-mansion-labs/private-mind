@@ -15,6 +15,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import { existingFiles } from '../__mocks__/expo-file-system';
+import { announceModelFilesReplaced } from '../utils/modelFilesReplaced';
 
 const memoryProbe = { samples: [] as number[], available: false };
 jest.mock('../modules/memory-probe', () => ({
@@ -190,6 +191,54 @@ describe('loadModel', () => {
       outdatedSources: ['https://example.com/v0.9.0/model.pte'],
       updateRequired: true,
     });
+    expect(mockLLMEngine.load).not.toHaveBeenCalled();
+  });
+
+  it('reloads a model whose files changed under it, after an update to a newer export', async () => {
+    await useLLMStore.getState().loadModel(baseModel);
+    mockLLMEngine.load.mockClear();
+
+    await useLLMStore.getState().loadModel({
+      ...baseModel,
+      modelPath: 'https://example.com/v1.0.0/model.pte',
+    });
+
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads the new files for the next message once an update replaced them', async () => {
+    await useLLMStore.getState().loadModel(baseModel);
+    mockLLMEngine.load.mockClear();
+
+    announceModelFilesReplaced({
+      ...baseModel,
+      modelPath: 'https://example.com/v1.0.0/model.pte',
+    });
+    const heldModel = useLLMStore.getState().model!;
+    await useLLMStore.getState().loadModel(heldModel);
+
+    expect(heldModel.modelPath).toBe('https://example.com/v1.0.0/model.pte');
+    expect(mockLLMEngine.load).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores an update of a model other than the one in use', async () => {
+    await useLLMStore.getState().loadModel(baseModel);
+
+    announceModelFilesReplaced({
+      ...baseModel,
+      id: baseModel.id + 1,
+      modelPath: 'https://example.com/v1.0.0/other.pte',
+    });
+
+    expect(useLLMStore.getState().model).toBe(baseModel);
+  });
+
+  it('keeps the loaded model when it is asked for again with the same files', async () => {
+    await useLLMStore.getState().loadModel(baseModel);
+    mockLLMEngine.load.mockClear();
+
+    await useLLMStore.getState().loadModel({ ...baseModel });
+
     expect(mockLLMEngine.load).not.toHaveBeenCalled();
   });
 

@@ -36,6 +36,7 @@ import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { needsUpdate, requiresUpdate } from '../utils/modelUpdate';
+import { onModelFilesReplaced } from '../utils/modelFilesReplaced';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
@@ -367,11 +368,20 @@ type StoreSet = (
   partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
 ) => void;
 
+let instanceFiles: Model | null = null;
+
+const sameFiles = (model: Model, loaded: Model | null) =>
+  !!loaded &&
+  model.modelPath === loaded.modelPath &&
+  model.tokenizerPath === loaded.tokenizerPath &&
+  model.tokenizerConfigPath === loaded.tokenizerConfigPath;
+
 const unloadLLM = () => {
   appliedGenerationConfig = null;
   if (!llmInstance) return false;
   llmInstance.delete();
   llmInstance = null;
+  instanceFiles = null;
   if (instanceRunsOnMlx) releaseMlxCache();
   instanceRunsOnMlx = false;
   return true;
@@ -470,7 +480,12 @@ const loadModelInstance = async (
   get: () => LLMStore
 ) => {
   const { model: currentModel } = get();
-  if (model.id === currentModel?.id && llmInstance && !hardReload) {
+  if (
+    model.id === currentModel?.id &&
+    sameFiles(model, instanceFiles) &&
+    llmInstance &&
+    !hardReload
+  ) {
     return;
   }
   await unloadLLMWhenIdle();
@@ -521,6 +536,7 @@ const loadModelInstance = async (
 
   try {
     instanceRunsOnMlx = runsOnMlxDelegate(model);
+    instanceFiles = model;
     llmInstance = await LLMEngine.load(
       {
         modelSource: fromDisk(model.modelPath),
@@ -1046,7 +1062,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
   loadModel: async (model, hardReload: boolean = false) => {
     const { model: currentModel } = get();
-    if (model.id === currentModel?.id && llmInstance && !hardReload) {
+    if (
+      model.id === currentModel?.id &&
+      sameFiles(model, instanceFiles) &&
+      llmInstance &&
+      !hardReload
+    ) {
       return;
     }
     if (requiresUpdate(model)) return;
@@ -2264,3 +2285,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ activeChatMessages: messageHistory });
   },
 }));
+
+onModelFilesReplaced((updated) => {
+  if (useLLMStore.getState().model?.id === updated.id) {
+    useLLMStore.setState({ model: updated });
+  }
+});
