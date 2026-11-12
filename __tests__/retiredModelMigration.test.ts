@@ -16,11 +16,6 @@ jest.mock('../database/modelRepository', () => ({ addModel: jest.fn() }));
 jest.mock('../utils/sourceLinkingBoundary', () => ({
   initSourceLinkingBoundary: jest.fn(),
 }));
-jest.mock('../database/catalogSync', () => ({
-  updateCatalogRows: jest.fn(),
-  insertCatalogModels: jest.fn(),
-  applyCatalogWhenItArrives: jest.fn(),
-}));
 
 import { runMigrations } from '../database/db';
 
