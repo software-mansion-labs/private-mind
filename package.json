@@ -47,12 +47,13 @@
       "**/__tests__/**/*.test.tsx"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|react-native-gesture-handler|react-native-reanimated|react-native-keyboard-controller|zustand)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|react-native-gesture-handler|react-native-reanimated|react-native-keyboard-controller|zustand|typegpu|tinyest|typed-binary|tsover-runtime)"
     ],
     "setupFiles": [
       "<rootDir>/jest.setup.js"
     ],
     "moduleNameMapper": {
+      "^tsover-runtime$": "<rootDir>/node_modules/tsover-runtime/dist/index.js",
       "\\.svg$": "<rootDir>/__mocks__/svgMock.tsx",
       "^react-native-device-info$": "<rootDir>/__mocks__/react-native-device-info.ts",
       "^@react-native-async-storage/async-storage$": "<rootDir>/__mocks__/async-storage.ts",

@@ -9,7 +9,8 @@ import {
 import { Canvas, installWebGPU, type CanvasRef } from 'react-native-webgpu';
 import tgpu, { type TgpuRoot } from 'typegpu';
 import {
-  buildSwarm,
+  prepareSwarm,
+  SWARM_CLOCK_FLOATS,
   SWARM_DOT_COUNT,
   SWARM_QUAD_VERTICES,
   SWARM_WORKGROUPS,
@@ -20,6 +21,7 @@ const MS_PER_SECOND = 1000;
 const ANGLE_SPEED = 0.5;
 const DESIGNED_DURATION_SECONDS = 2;
 const MIN_FRAME_INTERVAL_MS = 10;
+const clockValues = new Float32Array(SWARM_CLOCK_FLOATS);
 
 let sharedRoot: Promise<TgpuRoot> | null = null;
 const getRoot = () => {
@@ -30,22 +32,7 @@ const getRoot = () => {
   return sharedRoot;
 };
 
-const builtSwarms = new Map<string, ReturnType<typeof buildSwarm>>();
-
-const getSwarm = (
-  root: TgpuRoot,
-  look: SwarmLook,
-  format: GPUTextureFormat
-) => {
-  const key = `${format}:${JSON.stringify(look)}`;
-  const cached = builtSwarms.get(key);
-  if (cached) return cached;
-  const swarm = buildSwarm(root, look, format);
-  builtSwarms.set(key, swarm);
-  return swarm;
-};
-
-type Built = ReturnType<typeof buildSwarm> & {
+type Built = ReturnType<typeof prepareSwarm> & {
   context: NonNullable<ReturnType<CanvasRef['getContext']>>;
   format: GPUTextureFormat;
 };
@@ -97,7 +84,7 @@ const ParticleSwarm = ({
           return;
         }
         const format = navigator.gpu.getPreferredCanvasFormat();
-        const swarm = getSwarm(
+        const swarm = prepareSwarm(
           root,
           { ...look, pixelScale: surface.width / surface.clientWidth },
           format
@@ -143,15 +130,10 @@ const ParticleSwarm = ({
       return;
     }
 
-    built.device.queue.writeBuffer(
-      built.clockBuffer,
-      0,
-      new Float32Array([
-        motionTime,
-        progress,
-        startAngle + motionTime * ANGLE_SPEED,
-      ])
-    );
+    clockValues[0] = motionTime;
+    clockValues[1] = progress;
+    clockValues[2] = startAngle + motionTime * ANGLE_SPEED;
+    built.device.queue.writeBuffer(built.clockBuffer, 0, clockValues);
     const encoder = built.device.createCommandEncoder();
     const compute = encoder.beginComputePass();
     compute.setPipeline(built.computePipeline);

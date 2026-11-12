@@ -6,6 +6,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useIsFocused } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
@@ -311,7 +312,11 @@ export default function ChatScreen({
     !!model?.isDownloaded &&
     !speechInputOpen &&
     rootFrame.height > 0;
-  const playSwarm = useSwarmOncePerNewChat(showHero, phantomChatOpens);
+  const isFocused = useIsFocused();
+  const playSwarm = useSwarmOncePerNewChat(
+    showHero && isFocused,
+    phantomChatOpens
+  );
   const heading = useHeadingAnchor(rootRef, rootFrame.height);
   const heroOpacityBeforeSwarm = useReducedMotion() ? 1 : 0;
   const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
@@ -418,7 +423,7 @@ export default function ChatScreen({
         />
       </Animated.View>
 
-      {showGradient && (
+      {showGradient && !isEmpty && (
         <Animated.View
           style={[
             styles.topFadeOverlay,

@@ -345,9 +345,15 @@ const glyphsFor = (
   return glyphs;
 };
 
+let sampledLogo: ReturnType<typeof sampleLogo> | null = null;
+const logoPoints = () => {
+  sampledLogo ??= sampleLogo(SWARM_DOT_COUNT, SOURCE_SEED);
+  return sampledLogo;
+};
+
 const logoSources = (heading: string | null) => {
   const random = seededRandom(SOURCE_SEED);
-  const logo = sampleLogo(SWARM_DOT_COUNT, SOURCE_SEED);
+  const logo = logoPoints();
   const glyphs = glyphsFor(logo, heading);
   return logo.map(([x, y], index) => {
     const angle = random() * 2 * Math.PI;
@@ -367,44 +373,36 @@ const logoSources = (heading: string | null) => {
   });
 };
 
-export const SWARM_CLOCK_BYTES = 12;
+export const SWARM_CLOCK_FLOATS = 3;
 
-export const buildSwarm = (
+const NO_HEADING = '';
+
+const drawnHeading = (look: SwarmLook) =>
+  look.text && HEADING_OUTLINES[look.text.heading]
+    ? look.text.heading
+    : NO_HEADING;
+
+const lookUniform = (look: SwarmLook) => ({
+  viewSize: d.vec2f(look.width, look.height),
+  center: d.vec2f(look.width / 2, look.centerY),
+  radius: look.radius,
+  dotSize: look.dotSize,
+  drift: look.drift,
+  pixelScale: look.pixelScale,
+  backAlpha: look.backAlpha,
+  backColor: d.vec3f(...look.backColor),
+  frontColor: d.vec3f(...look.frontColor),
+  highlightColor: d.vec3f(...look.highlightColor),
+  textOrigin: d.vec2f(look.text?.left ?? 0, look.text?.baseline ?? 0),
+  textEm: look.text && drawnHeading(look) !== NO_HEADING ? look.text.em : 0,
+});
+
+const createRenderPipeline = (
   root: TgpuRoot,
-  look: SwarmLook,
-  format: GPUTextureFormat
-) => {
-  const sources = root
-    .createBuffer(
-      d.arrayOf(Source, SWARM_DOT_COUNT),
-      logoSources(look.text?.heading ?? null)
-    )
-    .$usage('storage');
-  const dots = root
-    .createBuffer(d.arrayOf(Dot, SWARM_DOT_COUNT))
-    .$usage('storage');
-  const clock = root.createBuffer(Clock).$usage('uniform');
-  const lookBuffer = root
-    .createBuffer(Look, {
-      viewSize: d.vec2f(look.width, look.height),
-      center: d.vec2f(look.width / 2, look.centerY),
-      radius: look.radius,
-      dotSize: look.dotSize,
-      drift: look.drift,
-      pixelScale: look.pixelScale,
-      backAlpha: look.backAlpha,
-      backColor: d.vec3f(...look.backColor),
-      frontColor: d.vec3f(...look.frontColor),
-      highlightColor: d.vec3f(...look.highlightColor),
-      textOrigin: d.vec2f(look.text?.left ?? 0, look.text?.baseline ?? 0),
-      textEm:
-        look.text && HEADING_OUTLINES[look.text.heading] ? look.text.em : 0,
-    })
-    .$usage('uniform');
-
-  const computePipeline = root.createComputePipeline({ compute: updateDots });
-
-  const renderPipeline = root.createRenderPipeline({
+  format: GPUTextureFormat,
+  additive: boolean
+) =>
+  root.createRenderPipeline({
     vertex: ({ $vertexIndex, $instanceIndex }) => {
       'use gpu';
       const dot = renderLayout.$.dots[$instanceIndex];
@@ -437,12 +435,12 @@ export const buildSwarm = (
       blend: {
         color: {
           srcFactor: 'one',
-          dstFactor: look.additive ? 'one' : 'one-minus-src-alpha',
+          dstFactor: additive ? 'one' : 'one-minus-src-alpha',
           operation: 'add',
         },
         alpha: {
           srcFactor: 'one',
-          dstFactor: look.additive ? 'one' : 'one-minus-src-alpha',
+          dstFactor: additive ? 'one' : 'one-minus-src-alpha',
           operation: 'add',
         },
       },
@@ -450,23 +448,86 @@ export const buildSwarm = (
     primitive: { topology: 'triangle-strip' },
   });
 
-  const computeGroup = root.createBindGroup(computeLayout, {
-    sources,
+const createRig = (root: TgpuRoot) => {
+  const dots = root
+    .createBuffer(d.arrayOf(Dot, SWARM_DOT_COUNT))
+    .$usage('storage');
+  const clock = root.createBuffer(Clock).$usage('uniform');
+  const look = root.createBuffer(Look).$usage('uniform');
+  return {
+    root,
     dots,
     clock,
-    look: lookBuffer,
-  });
-  const renderGroup = root.createBindGroup(renderLayout, {
-    dots,
-    look: lookBuffer,
-  });
+    look,
+    computePipeline: root.unwrap(
+      root.createComputePipeline({ compute: updateDots })
+    ),
+    renderGroup: root.unwrap(
+      root.createBindGroup(renderLayout, { dots, look })
+    ),
+    clockBuffer: root.unwrap(clock),
+    renderPipelines: new Map<string, GPURenderPipeline>(),
+    computeGroups: new Map<string, GPUBindGroup>(),
+  };
+};
 
+type Rig = ReturnType<typeof createRig>;
+
+let sharedRig: Rig | null = null;
+const rigFor = (root: TgpuRoot) => {
+  if (sharedRig?.root !== root) sharedRig = createRig(root);
+  return sharedRig;
+};
+
+const renderPipelineFor = (
+  rig: Rig,
+  format: GPUTextureFormat,
+  additive: boolean
+) => {
+  const key = `${format}:${additive}`;
+  const compiled = rig.renderPipelines.get(key);
+  if (compiled) return compiled;
+  const pipeline = rig.root.unwrap(
+    createRenderPipeline(rig.root, format, additive)
+  );
+  rig.renderPipelines.set(key, pipeline);
+  return pipeline;
+};
+
+const computeGroupFor = (rig: Rig, heading: string) => {
+  const bound = rig.computeGroups.get(heading);
+  if (bound) return bound;
+  const sources = rig.root
+    .createBuffer(
+      d.arrayOf(Source, SWARM_DOT_COUNT),
+      logoSources(heading === NO_HEADING ? null : heading)
+    )
+    .$usage('storage');
+  const group = rig.root.unwrap(
+    rig.root.createBindGroup(computeLayout, {
+      sources,
+      dots: rig.dots,
+      clock: rig.clock,
+      look: rig.look,
+    })
+  );
+  rig.computeGroups.set(heading, group);
+  return group;
+};
+
+export const prepareSwarm = (
+  root: TgpuRoot,
+  look: SwarmLook,
+  format: GPUTextureFormat
+) => {
+  const rig = rigFor(root);
+  rig.look.write(lookUniform(look));
   return {
     device: root.device,
-    computePipeline: root.unwrap(computePipeline),
-    renderPipeline: root.unwrap(renderPipeline),
-    computeGroup: root.unwrap(computeGroup),
-    renderGroup: root.unwrap(renderGroup),
-    clockBuffer: root.unwrap(clock),
+    computePipeline: rig.computePipeline,
+    renderPipeline: renderPipelineFor(rig, format, look.additive),
+    computeGroup: computeGroupFor(rig, drawnHeading(look)),
+    renderGroup: rig.renderGroup,
+    clockBuffer: rig.clockBuffer,
   };
 };
