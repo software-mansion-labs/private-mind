@@ -3,7 +3,12 @@ import {
   type QueryRewriteMessage,
 } from './web/buildSearchQuery';
 import { namedEntitiesIn } from './web/conversationSubject';
-import { parseThinkingContent, stripThinkBlocks } from './thinking';
+import {
+  hasUnclosedThink,
+  outsideThinkSegments,
+  parseThinkingContent,
+  stripThinkBlocks,
+} from './thinking';
 import { foldForMatching } from './queryTerms';
 
 export const DIGEST_MAX_CHARS = 200;
@@ -33,6 +38,26 @@ export const buildDigestPrompt = (
       'Updated topic:',
   },
 ];
+
+const TOPIC_LABEL = /^\s*(?:updated\s+)?topic\s*:\s*/i;
+const DIGEST_STOP_VISIBLE_CHARS = DIGEST_MAX_CHARS * 2;
+export const DIGEST_STOP_RAW_CHARS = 1500;
+
+const topicOf = (line: string): string => line.replace(TOPIC_LABEL, '').trim();
+
+export const firstTopicLine = (text: string): string =>
+  text.split('\n').map(topicOf).find(Boolean) ?? '';
+
+export const digestReplyIsComplete = (raw: string): boolean => {
+  if (raw.length >= DIGEST_STOP_RAW_CHARS) return true;
+  if (hasUnclosedThink(raw)) return false;
+  const visible = outsideThinkSegments(raw).join('');
+  if (visible.length >= DIGEST_STOP_VISIBLE_CHARS) return true;
+  return visible
+    .split('\n')
+    .slice(0, -1)
+    .some((line) => !!topicOf(line));
+};
 
 const ECHO_LEAD_WORDS = 8;
 const ECHO_COVERAGE_RATIO = 0.6;
@@ -119,7 +144,7 @@ export const updateConversationDigest = async (
     const raw = await generate(
       buildDigestPrompt(previousDigest, question, answer)
     );
-    const trimmed = visibleDigestText(raw);
+    const trimmed = firstTopicLine(visibleDigestText(raw));
     if (!trimmed) return previousDigest ?? '';
     const summary = clampDigest(stripMetaFrame(trimmed));
     if (
