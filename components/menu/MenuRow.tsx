@@ -17,12 +17,12 @@ import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 export const MENU_ROW = {
   regular: {
-    height: 76,
+    height: 52,
     paddingHorizontal: space.two,
-    gap: space.four,
-    well: 44,
+    gap: space.three,
+    well: 32,
     wellRadius: radius.twelve,
-    icon: 24,
+    icon: 18,
   },
   compact: {
     height: 42,
@@ -140,8 +140,8 @@ const createStyles = (theme: Theme, variant: MenuRowVariant) => {
       flexGrow: 1,
       flexShrink: 1,
       fontFamily: fontFamily.medium,
-      fontSize: variant === 'compact' ? fontSizes.sm : fontSizes.md,
-      lineHeight: variant === 'compact' ? lineHeights.sm : lineHeights.md,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
     },
   });
 };

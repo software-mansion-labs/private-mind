@@ -45,6 +45,8 @@ interface Props extends PanelDrivers {
   grid: ReactNode;
 }
 
+const OPEN_START_SCALE = COMPOSER.plusWell / MENU.width;
+
 const AttachmentPanel = ({
   gridWidth,
   gridHeight,
@@ -68,7 +70,6 @@ const AttachmentPanel = ({
 
   const rect = useDerivedValue(() => {
     const bottom = composerBottom.get();
-    const plusCenter = bottom - PLUS_CENTER_ABOVE_BOTTOM;
 
     const menuTop = Math.min(
       menuTopFromComposerBottom(bottom, menuHeight),
@@ -76,25 +77,17 @@ const AttachmentPanel = ({
     );
 
     const m = morph.get();
-    let x = GUTTER;
-    let y = mix(m, menuTop, sheetTop);
-    let w = mix(m, MENU.width, gridWidth);
-    let h = mix(m, menuHeight, sheetHeight);
-    let r = mix(m, MENU.radius, GRID.panelRadius);
-
-    const o = open.get();
-    const well = COMPOSER.plusWell;
-    x = mix(o, PLUS_CENTER_X - well / 2, x);
-    y = mix(o, plusCenter - well / 2, y);
-    w = mix(o, well, w);
-    h = mix(o, well, h);
-    r = mix(o, well / 2, r);
-
-    return { x, y, w, h, r };
+    return {
+      x: GUTTER,
+      y: mix(m, menuTop, sheetTop),
+      w: mix(m, MENU.width, gridWidth),
+      h: mix(m, menuHeight, sheetHeight),
+      r: mix(m, MENU.radius, GRID.panelRadius),
+    };
   });
 
   const openFade = useDerivedValue(() =>
-    interpolate(open.get(), [0.12, 0.6], [0, 1], Extrapolation.CLAMP)
+    interpolate(open.get(), [0, 0.4], [0, 1], Extrapolation.CLAMP)
   );
 
   const panelStyle = useAnimatedStyle(() => {
@@ -102,24 +95,31 @@ const AttachmentPanel = ({
     return { left: x, top: y, width: w, height: h };
   });
 
-  const radius = useDerivedValue(() => rect.get().r);
-  const clipShape = useAnimatedStyle(() => ({ borderRadius: radius.get() }));
+  const clipShape = useAnimatedStyle(() => {
+    const { x, y, r } = rect.get();
+    const plusCenterY = composerBottom.get() - PLUS_CENTER_ABOVE_BOTTOM;
+    return {
+      borderRadius: r,
+      opacity: openFade.get(),
+      transformOrigin: [PLUS_CENTER_X - x, plusCenterY - y, 0],
+      transform: [{ scale: mix(open.get(), OPEN_START_SCALE, 1) }],
+    };
+  });
 
   const menuStyle = useAnimatedStyle(() => ({
     opacity:
       menuOpacity.get() *
-      openFade.get() *
       interpolate(morph.get(), [0, 0.35], [1, 0], Extrapolation.CLAMP),
     transform: [{ scale: rect.get().w / MENU.width }],
   }));
 
   const gridStyle = useAnimatedStyle(() => ({
-    opacity: gridOpacity.get() * openFade.get(),
+    opacity: gridOpacity.get(),
     transform: [{ scale: rect.get().w / gridWidth }],
   }));
 
   const blurStyle = useAnimatedStyle(() => ({
-    opacity: blur.get() * 0.85 * openFade.get(),
+    opacity: blur.get() * 0.85,
   }));
 
   return (

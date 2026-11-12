@@ -14,6 +14,8 @@ interface Props {
   borderColor?: string;
   color: string;
   onPress?: () => void;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
   disabled?: boolean;
   dimmed?: boolean;
   busy?: boolean;
@@ -27,6 +29,8 @@ const CircleButton = ({
   borderColor,
   color,
   onPress,
+  onPressIn,
+  onPressOut,
   disabled = false,
   dimmed = false,
   busy = false,
@@ -40,6 +44,8 @@ const CircleButton = ({
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
+      onPressIn={disabled ? undefined : onPressIn}
+      onPressOut={disabled ? undefined : onPressOut}
       style={({ pressed }) => [
         styles.circle,
         (disabled || dimmed) && dimmedOpacity,

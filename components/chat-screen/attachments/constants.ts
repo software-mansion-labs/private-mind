@@ -35,10 +35,10 @@ export const COMPOSER_STRIP_HEIGHT =
   COMPOSER.stripPaddingTop + COMPOSER.thumbSize + COMPOSER.stripGap;
 
 export const MENU = {
-  width: 280,
+  width: 240,
   itemHeight: MENU_ROW.regular.height,
   paddingVertical: 8,
-  paddingHorizontal: 16,
+  paddingHorizontal: 8,
   radius: radius.eighteen,
   centerOffset: 7,
   dividerThickness: 1,
