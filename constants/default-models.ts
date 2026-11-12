@@ -379,7 +379,7 @@ export const DEFAULT_MODELS: Omit<Model, 'id' | 'isDownloaded'>[] = [
     tokenizerConfigPath: GEMMA4_E2B_MM.tokenizerConfigSource,
     source: 'remote',
     parameters: 2.0,
-    modelSize: Platform.OS === 'android' ? 3.84 : 2.76,
+    modelSize: Platform.OS === 'android' ? 4.04 : 2.76,
     featured: true,
     thinking: false,
     vision: true,
