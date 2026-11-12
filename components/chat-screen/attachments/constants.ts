@@ -7,7 +7,7 @@ import { MENU_ROW } from '../../menu/MenuRow';
 export const GUTTER = 16;
 
 export const COMPOSER = {
-  barPaddingBottom: 16,
+  keyboardGap: 8,
   cardPadding: 16,
   cardPaddingTop: 8,
   inputGapBelow: 2,

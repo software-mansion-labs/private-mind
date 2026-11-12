@@ -71,7 +71,12 @@ import {
   useBarGrowth,
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  bottomBarPadding,
+  radius,
+  space,
+  stroke,
+} from '../../constants/design-system';
 import { Glass } from '../Glass';
 
 const SENT_ECHO_WINDOW_MS = 300;
@@ -144,7 +149,10 @@ const ChatBar = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
-    () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
+    () => [
+      styles.container,
+      { paddingBottom: bottomBarPadding(theme.insets.bottom) },
+    ],
     [styles.container, theme.insets.bottom]
   );
 

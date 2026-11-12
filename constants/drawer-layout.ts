@@ -1,3 +1,5 @@
+import { bottomBarPadding } from './design-system';
+
 export const DRAWER_EDGE_INSET = 56;
 export const DRAWER_ENTRANCE_DRIFT_RATIO = 0.5;
 export const DRAWER_ENTRANCE_SCALE = 0.8;
@@ -45,8 +47,7 @@ export const getDrawerWidth = (screenWidth: number) =>
 export const getDrawerTopPadding = (topInset: number) =>
   topInset + DRAWER_TOP_SPACING;
 
-export const getDrawerFooterBottomPadding = (bottomInset: number) =>
-  Math.max(bottomInset, DRAWER_FOOTER_EDGE_GAP);
+export const getDrawerFooterBottomPadding = bottomBarPadding;
 
 export const getDrawerFooterHeight = (bottomInset: number) =>
   DRAWER_FOOTER_TOP_PADDING +
