@@ -4402,3 +4402,37 @@ describe('the conversation digest never holds up the next message', () => {
     expect(digest).toBe('joke, scarecrow joke\n');
   });
 });
+
+describe('time to first token is measured from the moment the message was sent', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const WAIT_BEFORE_GENERATION_MS = 60;
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  it('counts the wait before generation starts, which the runner alone never sees', async () => {
+    let now = 1_000;
+    jest.spyOn(performance, 'now').mockImplementation(() => now);
+    const onToken = capturedTokenCallback!;
+    mockInstance.generate.mockImplementation(async () => {
+      onToken('Hi');
+      return 'Hi there.';
+    });
+    const slowSources = async () => {
+      now += WAIT_BEFORE_GENERATION_MS;
+      return noSources();
+    };
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('What is two plus two?', 1, slowSources, settings);
+
+    const answer = mockPersistMessage.mock.calls
+      .map(([, message]) => message as Message)
+      .find((message) => message.role === 'assistant');
+    expect(answer?.timeToFirstToken).toBe(WAIT_BEFORE_GENERATION_MS);
+  });
+});
