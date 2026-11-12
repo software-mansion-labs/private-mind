@@ -18,10 +18,12 @@ export const useModelDownload = (
   const downloadModel = useModelStore((state) => state.downloadModel);
   const cancelDownload = useModelStore((state) => state.cancelDownload);
 
-  const status =
-    tracked?.status ??
-    (model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted);
-  const progress = tracked?.progress ?? (model.isDownloaded ? 1 : 0);
+  const onDisk = {
+    status: model.isDownloaded ? ModelState.Downloaded : ModelState.NotStarted,
+    progress: model.isDownloaded ? 1 : 0,
+  };
+  const { status, progress } =
+    !tracked || tracked.status === ModelState.NotStarted ? onDisk : tracked;
 
   const startDownload = async () => {
     const networkState = await NetInfo.fetch();
