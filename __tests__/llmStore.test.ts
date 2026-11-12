@@ -4237,3 +4237,119 @@ describe('warming the model up right after it loads', () => {
     });
   });
 });
+
+describe('the conversation digest never holds up the next message', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const digestOptions = {
+    background: true,
+    isComplete: (text: string) => text.includes('\n'),
+  };
+
+  const ticks = async (ready: () => boolean) => {
+    for (let tick = 0; tick < 50 && !ready(); tick++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    return ready();
+  };
+
+  beforeEach(async () => {
+    await loadModel();
+    mockPersistMessage.mockResolvedValue(42);
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  it('interrupts a digest still running when the user sends the next message, and keeps nothing from it', async () => {
+    let finishDigest!: (text: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finishDigest = resolve;
+      })
+    );
+    mockInstance.interrupt.mockImplementation(() =>
+      finishDigest('joke\n\nUser: Another one')
+    );
+    const digest = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'topic?' }], digestOptions);
+    expect(
+      await ticks(() => mockInstance.generate.mock.calls.length === 1)
+    ).toBe(true);
+
+    mockInstance.generate.mockResolvedValue('Another joke.');
+    await useLLMStore
+      .getState()
+      .sendChatMessage('Another one', 1, noSources, settings);
+
+    expect(mockInstance.interrupt).toHaveBeenCalled();
+    expect(await digest).toBe('');
+    expect(mockInstance.generate.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('drops a digest that was still queued when the next message arrived without ever running it', async () => {
+    const callsBefore = mockInstance.generate.mock.calls.length;
+    mockInstance.generate.mockResolvedValue('Answer.');
+    const digest = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'topic?' }], digestOptions);
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('next', 1, noSources, settings);
+
+    expect(await digest).toBe('');
+    await turn;
+    const prompts = mockInstance.generate.mock.calls
+      .slice(callsBefore)
+      .map(([messages]) => JSON.stringify(messages));
+    expect(prompts.some((prompt) => prompt.includes('topic?'))).toBe(false);
+  });
+
+  it('still holds the turn for a search planner, which belongs to that turn', async () => {
+    let finishPlanner!: (text: string) => void;
+    mockInstance.generate.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finishPlanner = resolve;
+      })
+    );
+    const planning = useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'plan' }]);
+    await ticks(() => mockInstance.generate.mock.calls.length === 1);
+
+    mockInstance.generate.mockResolvedValue('The answer.');
+    const turn = useLLMStore
+      .getState()
+      .sendChatMessage('question', 1, noSources, settings);
+
+    expect(await ticks(() => mockInstance.generate.mock.calls.length > 1)).toBe(
+      false
+    );
+    expect(mockInstance.interrupt).not.toHaveBeenCalled();
+    finishPlanner('');
+    await planning;
+    await turn;
+  });
+
+  it('stops a digest as soon as its topic line is complete, instead of letting the model write on', async () => {
+    const onToken = capturedTokenCallback!;
+    let finishDigest!: (text: string) => void;
+    mockInstance.generate.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          finishDigest = resolve;
+          for (const token of ['joke, scarecrow', ' joke', '\n', '\nUser:']) {
+            onToken(token);
+          }
+        })
+    );
+    mockInstance.interrupt.mockImplementation(() =>
+      finishDigest('joke, scarecrow joke\n\nUser:')
+    );
+
+    const digest = await useLLMStore
+      .getState()
+      .generateUtility([{ role: 'user', content: 'topic?' }], digestOptions);
+
+    expect(mockInstance.interrupt).toHaveBeenCalledTimes(1);
+    expect(digest).toBe('joke, scarecrow joke\n');
+  });
+});

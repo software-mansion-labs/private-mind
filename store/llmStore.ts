@@ -75,7 +75,10 @@ import {
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
-import { updateConversationDigest } from '../utils/conversationDigest';
+import {
+  digestReplyIsComplete,
+  updateConversationDigest,
+} from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import { openingWelcomeFor } from '../utils/openingGreeting';
@@ -151,7 +154,10 @@ export interface LLMStore {
   appWentToBackground: () => void;
   appReturnedToForeground: () => void;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
-  generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
+  generateUtility: (
+    messages: ExecutorchMessage[],
+    options?: UtilityOptions
+  ) => Promise<string>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
   refreshActiveChatMessages: () => Promise<void>;
@@ -260,6 +266,47 @@ let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
+
+export interface UtilityOptions {
+  background?: boolean;
+  isComplete?: (text: string) => boolean;
+}
+
+interface UtilityRun extends UtilityOptions {
+  text: string;
+  completed: boolean;
+  abandoned: boolean;
+  interruptSent: boolean;
+  settled: boolean;
+}
+
+const startUtilityRun = (options: UtilityOptions = {}): UtilityRun => ({
+  ...options,
+  text: '',
+  completed: false,
+  abandoned: false,
+  interruptSent: false,
+  settled: false,
+});
+
+let latestUtilityRun: UtilityRun | null = null;
+let streamingUtilityRun: UtilityRun | null = null;
+
+const utilityRunShouldStop = (run: UtilityRun, token: string): boolean => {
+  if (!run.completed && !run.abandoned) {
+    run.text += token;
+    run.completed = !!run.isComplete?.(run.text);
+  }
+  if (!(run.completed || run.abandoned) || run.interruptSent) return false;
+  run.interruptSent = true;
+  return true;
+};
+
+const utilityRunResult = (run: UtilityRun, result: unknown): string => {
+  if (run.abandoned) return '';
+  if (run.completed) return run.text;
+  return typeof result === 'string' ? result : '';
+};
 let warmingUp: LLMEngine | null = null;
 let warmupStopRequested = false;
 let modelWarmup: Promise<void> = Promise.resolve();
@@ -539,6 +586,12 @@ const loadModelInstance = async (
           return;
         }
         generationSawToken = true;
+        if (streamingUtilityRun) {
+          if (utilityRunShouldStop(streamingUtilityRun, token) && llmInstance) {
+            interruptQuietly(llmInstance);
+          }
+          return;
+        }
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -793,15 +846,18 @@ const tidyVisibleAnswer = (response: string): string =>
 const runUtilityGeneration = (
   instance: LLMEngine,
   messages: ExecutorchMessage[],
-  model: Model | null
+  model: Model | null,
+  run: UtilityRun
 ): Promise<string> => {
   utilityGenerating = true;
   return withExclusiveRunner(async (isCancelled) => {
-    if (llmInstance !== instance || isCancelled()) {
+    if (llmInstance !== instance || isCancelled() || run.abandoned) {
       utilityGenerating = false;
+      run.settled = true;
       return '';
     }
     suppressUtilityStreaming = true;
+    streamingUtilityRun = run;
     try {
       const prepared =
         model?.thinking && !usesTemplateThinkingSwitch(model)
@@ -816,18 +872,30 @@ const runUtilityGeneration = (
       instance.setChatTemplateFlags(chatTemplateFlagsFor(model, false));
       const result = await instance.generate(prepared);
       reportPromptEstimateAccuracy(prepared, instance, 'utility');
-      return typeof result === 'string' ? result : '';
+      return utilityRunResult(run, result);
     } catch (error) {
+      if (run.abandoned || run.completed) return utilityRunResult(run, '');
       console.warn('generateUtility failed', error);
       return '';
     } finally {
       if (model) {
         applyGenerationConfig(instance, getGenerationConfigForModel(model));
       }
+      streamingUtilityRun = null;
       suppressUtilityStreaming = false;
       utilityGenerating = false;
+      run.settled = true;
     }
   });
+};
+
+const abandonBackgroundUtility = () => {
+  const run = latestUtilityRun;
+  if (!run?.background || run.settled || run.abandoned) return;
+  run.abandoned = true;
+  if (streamingUtilityRun === run && llmInstance) {
+    interruptQuietly(llmInstance);
+  }
 };
 
 const GENERATION_FAILED = 'Failed to generate a response.';
@@ -1151,6 +1219,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.warn('A turn is already in flight, rejecting the send');
       return false;
     }
+    abandonBackgroundUtility();
     const activeChatMessages = isRetry
       ? withoutAbandonedAnswer(get().activeChatMessages, chatId)
       : get().activeChatMessages;
@@ -2011,7 +2080,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         if (!stoppedByUser && !openingWelcome) {
           const previousDigest = digestForChat(get, chatId);
           updateConversationDigest(
-            (messages) => get().generateUtility(messages),
+            (messages) =>
+              get().generateUtility(messages, {
+                background: true,
+                isComplete: digestReplyIsComplete,
+              }),
             previousDigest,
             currentQuestion ?? '',
             humanizedResponse
@@ -2210,7 +2283,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  generateUtility: (messages) => {
+  generateUtility: (messages, options) => {
     if (
       !llmInstance ||
       get().isLoading ||
@@ -2220,7 +2293,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     ) {
       return Promise.resolve('');
     }
-    const run = runUtilityGeneration(llmInstance, messages, get().model);
+    latestUtilityRun = startUtilityRun(options);
+    const run = runUtilityGeneration(
+      llmInstance,
+      messages,
+      get().model,
+      latestUtilityRun
+    );
     utilityChain = run.then(
       () => undefined,
       () => undefined
