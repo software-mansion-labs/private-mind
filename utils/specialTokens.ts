@@ -8,6 +8,7 @@ const SENTINEL_NOTATIONS = [
   /<0x[0-9A-Fa-f]{2}>/,
   /<\/?(?:start_of_turn|end_of_turn|end_of_text|begin_of_text)>/,
   /<\/?(?:pad|eos|bos|unk|mask|sep|cls)>/,
+  /<\/?answer>/,
 ];
 
 const SENTINEL_RUN = new RegExp(
