@@ -17,6 +17,7 @@ import Animated, {
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useStableCallback } from '../../hooks/useStableCallback';
+import { withoutNonSpeechNotes } from '../../utils/whisperTranscript';
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -36,15 +37,8 @@ const ACTION_NOTES: Record<Phase, string> = {
   ended: 'Dictation stopped',
 };
 
-const BRACKETED_ANNOTATION_ONLY = /^[([][^)\]]*[)\]]$/;
-
-const isAnnotationOnly = (transcript: string): boolean =>
-  BRACKETED_ANNOTATION_ONLY.test(transcript);
-
-const shownTranscript = (committed: string, nonCommitted: string) => {
-  const heard = (committed.trim() + ' ' + nonCommitted.trim()).trim();
-  return isAnnotationOnly(heard) ? '' : heard;
-};
+const shownTranscript = (committed: string, nonCommitted: string) =>
+  withoutNonSpeechNotes(committed + ' ' + nonCommitted);
 
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
