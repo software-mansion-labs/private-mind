@@ -18,6 +18,7 @@ import { existingFiles } from '../__mocks__/expo-file-system';
 import { downloadedCopyUri } from '../utils/downloadedCopy';
 import { waitUntilOnlineAndActive } from '../utils/downloadReconnect';
 import { getModelUpdateConsent } from '../utils/modelUpdateConsent';
+import { onModelFilesReplaced } from '../utils/modelFilesReplaced';
 
 jest.mock('../database/modelRepository');
 jest.mock('@react-native-community/netinfo', () => ({
@@ -613,6 +614,34 @@ describe('updating a model the catalog moved to a newer export', () => {
 
     expect(mockSyncPaths).not.toHaveBeenCalled();
     expect(mockDeleteResources).not.toHaveBeenCalled();
+  });
+
+  it('tells the loaded engine about the new files once they are in place', async () => {
+    const updated = { ...outdated(1, []), outdatedSources: [] };
+    mockGetAllModels.mockResolvedValue([updated]);
+    mockFetch.mockResolvedValue(['/local/file']);
+    const heard = jest.fn();
+    const stopListening = onModelFilesReplaced(heard);
+
+    await useModelStore
+      .getState()
+      .updateOutdatedModel(outdated(1, ['old/model.pte']));
+    stopListening();
+
+    expect(heard).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+
+  it('says nothing about new files when the update did not arrive', async () => {
+    mockFetch.mockRejectedValue(new Error('network error'));
+    const heard = jest.fn();
+    const stopListening = onModelFilesReplaced(heard);
+
+    await useModelStore
+      .getState()
+      .updateOutdatedModel(outdated(1, ['old/model.pte']));
+    stopListening();
+
+    expect(heard).not.toHaveBeenCalled();
   });
 
   it('keeps an old file that a model still waiting for its update shares', async () => {
