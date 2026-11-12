@@ -55,6 +55,7 @@ import {
   isNotFetchingYet,
   wait,
 } from '../utils/cancelFetching';
+import { announceModelFilesReplaced } from '../utils/modelFilesReplaced';
 
 export enum ModelState {
   Downloaded = 'downloaded',
@@ -727,6 +728,8 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     const replaced = outdatedSourcesNoOtherModelNeeds(model);
     await syncBuiltInModelPaths(db, model.id, model.modelName);
     await get().loadModels();
+    const updated = get().getModelById(model.id);
+    if (updated) announceModelFilesReplaced(updated);
     await deleteRemoteResources(...replaced);
     await get().forgetUpdateConsent(model.modelName);
   },
