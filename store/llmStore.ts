@@ -33,7 +33,10 @@ import {
 } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
 import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
-import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
+import {
+  calculatePerformanceMetrics,
+  timeToFirstTokenSince,
+} from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 import { needsUpdate, requiresUpdate } from '../utils/modelUpdate';
@@ -1219,6 +1222,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.warn('A turn is already in flight, rejecting the send');
       return false;
     }
+    const turnStartedAt = performance.now();
     abandonBackgroundUtility();
     const activeChatMessages = isRetry
       ? withoutAbandonedAnswer(get().activeChatMessages, chatId)
@@ -1670,6 +1674,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled)
         );
       }
+      generation = {
+        ...generation,
+        performance: {
+          ...generation.performance,
+          timeToFirstToken: timeToFirstTokenSince(
+            turnStartedAt,
+            streamFirstTokenTime,
+            generation.performance.timeToFirstToken
+          ),
+        },
+      };
       const userStoppedTurn = !get().isGenerating;
       const stallCameFromMemory =
         generation.stalled && !userStoppedTurn && !appWasAwayDuringTurn;
@@ -1961,7 +1976,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             finalResponse,
             continuationResponse.trim()
           );
-          responsePerformance = continuationGeneration.performance;
+          responsePerformance = {
+            ...continuationGeneration.performance,
+            timeToFirstToken: responsePerformance.timeToFirstToken,
+          };
         }
       }
 
