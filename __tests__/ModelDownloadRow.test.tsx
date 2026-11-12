@@ -82,6 +82,7 @@ import {
   type DownloadState,
 } from '../store/modelStore';
 import { isModelCompatible } from '../utils/modelCompatibility';
+import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 
@@ -90,6 +91,8 @@ type ModelStoreMockState = {
   downloadModel: jest.Mock;
   cancelDownload: jest.Mock;
   removeModelFiles: jest.Mock;
+  updateOutdatedModel: jest.Mock;
+  rememberUpdateConsent: jest.Mock;
 };
 
 const withDownloadStates = (
@@ -103,6 +106,8 @@ const withDownloadStates = (
         downloadModel: jest.fn(),
         cancelDownload: jest.fn(),
         removeModelFiles: jest.fn(),
+        updateOutdatedModel: jest.fn(),
+        rememberUpdateConsent: jest.fn(),
         ...actions,
       };
       return selector ? selector(state) : state;
@@ -125,6 +130,8 @@ const baseModel: {
   thinking: boolean;
   vision?: boolean;
   labels: string[];
+  outdatedSources?: string[];
+  updateRequired?: boolean;
 } = {
   id: 1,
   modelName: 'Llama-3B',
@@ -510,5 +517,55 @@ describe('selection', () => {
     fireEvent.press(screen.getByTestId('model-download-row-delete'));
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
     expect(removeModelFiles).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('update action', () => {
+  const outdatedModel = {
+    isDownloaded: true,
+    modelPath: 'https://hf.example/v0.9.0/model.pte',
+    outdatedSources: ['https://hf.example/v0.9.0/model.pte'],
+    updateRequired: true,
+  };
+
+  it('offers an update on a downloaded model whose files predate the engine', () => {
+    renderRow(outdatedModel);
+    expect(screen.getByTestId('model-download-row-update')).toBeTruthy();
+  });
+
+  it('offers no update for a model already on the current files', () => {
+    renderRow({
+      isDownloaded: true,
+      modelPath: 'https://hf.example/v0.11.0/model.pte',
+    });
+    expect(screen.queryByTestId('model-download-row-update')).toBeNull();
+  });
+
+  it('updates the model on wifi and remembers the consent', async () => {
+    const updateOutdatedModel = jest.fn().mockResolvedValue(undefined);
+    const rememberUpdateConsent = jest.fn().mockResolvedValue(undefined);
+    withDownloadStates({}, { updateOutdatedModel, rememberUpdateConsent });
+    renderRow(outdatedModel);
+    fireEvent.press(screen.getByTestId('model-download-row-update'));
+    await waitFor(() =>
+      expect(updateOutdatedModel).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 })
+      )
+    );
+    expect(rememberUpdateConsent).toHaveBeenCalledWith(['Llama-3B'], false);
+  });
+
+  it('does not start the update offline', async () => {
+    mockNetInfoFetch.mockResolvedValue({ isConnected: false });
+    const updateOutdatedModel = jest.fn();
+    withDownloadStates({}, { updateOutdatedModel });
+    renderRow(outdatedModel);
+    fireEvent.press(screen.getByTestId('model-download-row-update'));
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ text1: MODEL_UPDATE_TEXT.offline })
+      )
+    );
+    expect(updateOutdatedModel).not.toHaveBeenCalled();
   });
 });
