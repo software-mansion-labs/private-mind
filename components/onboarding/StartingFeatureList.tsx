@@ -32,13 +32,13 @@ import ModelRow from '../model-hub/ModelRow';
 import ModelRowText from '../model-hub/ModelRowText';
 import SourceIcon from '../../assets/icons/source.svg';
 import SoundwaveIcon from '../../assets/icons/soundwave.svg';
-import PlusIcon from '../../assets/icons/plus.svg';
+import PuzzleIcon from '../../assets/icons/puzzle.svg';
 import CheckIcon from '../../assets/icons/check.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 
 const ICON_TILE_SIZE = 40;
 const ICON_SIZE = 24;
-const SECTION_ICON_SIZE = 18;
+const SECTION_ICON_SIZE = 22;
 const CHECKBOX_SIZE = 24;
 const CHECKBOX_RADIUS = 7;
 const CHECKBOX_BORDER_WIDTH = 1.5;
@@ -48,6 +48,7 @@ const MIXED_MARK_HEIGHT = 2;
 const CHECKBOX_HIT_SLOP = space.three;
 const CANCEL_ICON_SIZE = 13.33;
 const LOCKED_OPACITY = 0.4;
+const NESTED_INDENT = space.four + ICON_TILE_SIZE + space.three;
 const SECTION_TITLE = 'Additional features';
 
 const FEATURE_ICONS: Record<StartingFeatureKey, SvgComponent> = {
@@ -172,7 +173,11 @@ const StartingFeatureRow = ({
       align="top"
       onPress={() => onToggle(key)}
       disabled={disabled}
-      style={[styles.row, locked && !selected && !downloaded && styles.locked]}
+      style={[
+        styles.row,
+        styles.nestedRow,
+        locked && !selected && !downloaded && styles.locked,
+      ]}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected || downloaded, disabled }}
       accessibilityActions={accessibilityActions}
@@ -315,7 +320,7 @@ const SectionHeaderRow = ({
         testID="starting-features-expand"
       >
         <View style={styles.iconTile}>
-          <PlusIcon
+          <PuzzleIcon
             width={SECTION_ICON_SIZE}
             height={SECTION_ICON_SIZE}
             color={theme.text.primary}
@@ -383,7 +388,7 @@ const StartingFeatureList = ({
       {expanded &&
         features.map((feature) => (
           <React.Fragment key={feature.key}>
-            <View style={styles.divider} />
+            <View style={[styles.divider, styles.nestedDivider]} />
             <StartingFeatureRow
               feature={feature}
               selected={selectedKeys.includes(feature.key)}
@@ -425,6 +430,12 @@ const createStyles = (theme: Theme) =>
     divider: {
       height: stroke.soft,
       backgroundColor: theme.border.soft,
+    },
+    nestedRow: {
+      paddingLeft: NESTED_INDENT,
+    },
+    nestedDivider: {
+      marginLeft: NESTED_INDENT,
     },
     locked: {
       opacity: LOCKED_OPACITY,
