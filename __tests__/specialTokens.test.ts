@@ -73,6 +73,25 @@ describe('stripSpecialTokens', () => {
     expect(stripSpecialTokens(text)).toBe(text);
   });
 
+  it('unwraps the answer tags LFM 3 VL puts around its reply', () => {
+    expect(
+      stripSpecialTokens('<answer>The Eiffel Tower is in Paris.</answer>')
+    ).toBe('The Eiffel Tower is in Paris.');
+    expect(stripSpecialTokens('<answer>\nSummary.\n</answer>')).toBe(
+      'Summary.'
+    );
+  });
+
+  it('keeps the sources tag a reply quotes, so a cited block stays readable', () => {
+    const text = 'The <sources> block lists [1] and [2].';
+    expect(stripSpecialTokens(text)).toBe(text);
+  });
+
+  it('keeps answer tags the reply is explaining inside code', () => {
+    const inline = 'Wrap it in `<answer>` tags.';
+    expect(stripSpecialTokens(inline)).toBe(inline);
+  });
+
   it('leaves markup that a reader legitimately writes', () => {
     const text = 'Use <h1> for a heading, and <s>struck</s> for strikethrough.';
     expect(stripSpecialTokens(text)).toBe(text);
