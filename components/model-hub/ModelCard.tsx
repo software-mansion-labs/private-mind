@@ -24,6 +24,7 @@ import {
   familyInitial,
 } from '../../constants/model-families';
 import { useConfirm } from '../../hooks/useConfirm';
+import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
 import CircleButton from '../CircleButton';
 import ModelBadge from './ModelBadge';
 import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
@@ -99,7 +100,15 @@ const ModelCard = ({
   const downloadModel = useModelStore((state) => state.downloadModel);
   const cancelDownload = useModelStore((state) => state.cancelDownload);
   const removeModelFiles = useModelStore((state) => state.removeModelFiles);
+  const updateOutdatedModel = useModelStore(
+    (state) => state.updateOutdatedModel
+  );
+  const rememberUpdateConsent = useModelStore(
+    (state) => state.rememberUpdateConsent
+  );
   const { confirm, ConfirmElement } = useConfirm();
+  const { canDownload: canDownloadUpdate, ConfirmElement: UpdateConfirm } =
+    useUpdateNetworkCheck();
 
   const downloadState = trackedDownload ?? {
     progress: model.isDownloaded ? 1 : 0,
@@ -145,6 +154,14 @@ const ModelCard = ({
 
     Feedback.downloadStart();
     await downloadModel(model);
+  };
+
+  const handleUpdate = async () => {
+    const network = await canDownloadUpdate(model.modelSize ?? 0);
+    if (!network) return;
+    await rememberUpdateConsent([model.modelName], network === 'mobile-data');
+    Feedback.downloadStart();
+    await updateOutdatedModel(model);
   };
 
   const handleDelete = async () => {
@@ -198,6 +215,8 @@ const ModelCard = ({
     isCompatible;
   const canCancelDownload =
     (showDownloadControls && isDownloading) || isPickedDownloadRunning;
+  const canUpdate =
+    showDownloadControls && modelState === ModelState.Downloaded && isOutdated;
   const canDelete =
     model.source !== 'local' &&
     (isDone ||
@@ -209,6 +228,9 @@ const ModelCard = ({
     ...(canDownload ? [{ name: 'download', label: 'Download' }] : []),
     ...(canCancelDownload
       ? [{ name: 'cancelDownload', label: 'Cancel download' }]
+      : []),
+    ...(canUpdate
+      ? [{ name: 'update', label: MODEL_UPDATE_TEXT.chatBannerAction }]
       : []),
     ...(canDelete ? [{ name: 'delete', label: 'Delete model files' }] : []),
   ];
@@ -232,6 +254,9 @@ const ModelCard = ({
         return;
       case 'cancelDownload':
         handleCancelDownload();
+        return;
+      case 'update':
+        handleUpdate();
         return;
       case 'delete':
         handleDelete();
@@ -344,6 +369,24 @@ const ModelCard = ({
             />
           )}
 
+          {canUpdate && (
+            <Pressable
+              onPress={handleUpdate}
+              hitSlop={PROGRESS_ACTION_HIT_SLOP}
+              style={({ pressed }) => [
+                styles.updateButton,
+                pressed && pressedOpacity,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Update ${model.modelName}`}
+              testID="model-card-update"
+            >
+              <Text style={styles.updateButtonText}>
+                {MODEL_UPDATE_TEXT.chatBannerAction}
+              </Text>
+            </Pressable>
+          )}
+
           {showDownloadControls &&
             showDeleteButton &&
             modelState === ModelState.Downloaded &&
@@ -402,6 +445,7 @@ const ModelCard = ({
         )}
 
         {(showDeleteButton || checkable) && ConfirmElement}
+        {canUpdate && UpdateConfirm}
       </Pressable>
     </View>
   );
@@ -507,6 +551,18 @@ const createStyles = (theme: Theme, selected: boolean) => {
     },
     progressActionIcon: {
       color: theme.text.defaultSecondary,
+    },
+    updateButton: {
+      paddingVertical: space.two,
+      paddingHorizontal: space.three,
+      borderRadius: radius.full,
+      backgroundColor: theme.bg.main,
+    },
+    updateButtonText: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.onBrand,
     },
     dimmedCard: {
       opacity: LOCKED_CARD_OPACITY,
