@@ -9,6 +9,8 @@ jest.mock('../context/ThemeContext', () => ({
 const mockDb = {};
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: () => mockDb }));
 
+jest.mock('expo-router', () => ({ useIsFocused: () => true }));
+
 jest.mock('expo-router/react-navigation', () => ({
   useHeaderHeight: () => 103,
 }));
