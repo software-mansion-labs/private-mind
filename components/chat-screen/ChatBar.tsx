@@ -835,11 +835,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     input: {
-      fontSize: fontSizes.md,
+      fontSize: fontSizes.lg,
       // lineHeight on Android causes typed text to be taller than the
       // placeholder, making the ChatBar jump on first keystroke.
       ...(Platform.OS === 'ios'
-        ? { lineHeight: lineHeights.md }
+        ? { lineHeight: lineHeights.lg }
         : { includeFontPadding: false }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
