@@ -13,10 +13,14 @@ const SENTINEL_NOTATIONS = [
 
 const PROMPT_SCAFFOLDING = [
   /<\/?sources?\b[^<>\n]{0,40}>/,
-  /--- (?:End of )?Source \d+(?:: [^\n]{0,160}?)? ---/,
+  /--- (?:End of )?(?:Current Attachment )?Source(?: \d+)?(?:: [^\n]{0,160}?)? ---/,
   /--- End of [^\n]{1,120}? ---/,
   /\(Answer in [^()\n]{1,60}\.\)/,
+  /\[Verified product data\]/,
 ];
+
+const MAY_CARRY_HIDDEN_NOTATION =
+  /<|--- |\(Answer in |\[Verified product data\]/i;
 
 const HIDDEN_NOTATIONS = [...SENTINEL_NOTATIONS, ...PROMPT_SCAFFOLDING];
 
@@ -48,7 +52,7 @@ const withoutSentinels = (text: string): string =>
     );
 
 export const stripSpecialTokens = (text: string): string => {
-  if (!text || !text.includes('<')) return text;
+  if (!text || !MAY_CARRY_HIDDEN_NOTATION.test(text)) return text;
 
   let out = '';
   let cursor = 0;
