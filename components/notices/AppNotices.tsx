@@ -10,6 +10,7 @@ import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useNoticeStore } from '../../store/noticeStore';
 import { radius } from '../../constants/design-system';
+import { Glass } from '../Glass';
 
 const STACK_GAP = 8;
 const HEADER_CLEARANCE = 16;
@@ -19,7 +20,7 @@ interface Props {
 }
 
 const AppNotices = ({ children }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   const notices = useNoticeStore((state) => state.notices);
   const insets = useSafeAreaInsets();
   const hasNotices = notices.length > 0;
@@ -46,8 +47,11 @@ const AppNotices = ({ children }: Props) => {
           testID="notice-stack"
         >
           {notices.map((notice) => (
-            <View
+            <Glass
               key={notice.id}
+              radius={radius.eighteen}
+              interactive={false}
+              fallbackTint={theme.bg.toast}
               style={styles.card}
               accessibilityRole="alert"
               accessibilityLiveRegion="polite"
@@ -66,7 +70,7 @@ const AppNotices = ({ children }: Props) => {
                   <Text style={styles.message}>{notice.message}</Text>
                 )}
               </View>
-            </View>
+            </Glass>
           ))}
         </View>
       )}
@@ -96,10 +100,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'flex-start',
       gap: 12,
       padding: 12,
-      borderRadius: radius.eighteen,
-      borderWidth: 1,
-      borderColor: theme.border.toast,
-      backgroundColor: theme.bg.toast,
     },
     badge: {
       width: 28,
