@@ -83,7 +83,12 @@ export const NewChatBackground = React.memo(() => {
   const { styles } = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.paint} pointerEvents="none">
+    <View
+      style={styles.paint}
+      pointerEvents="none"
+      renderToHardwareTextureAndroid
+      shouldRasterizeIOS
+    >
       {supportsSoftLightBlend && (
         <Image source={GRAIN} resizeMode="repeat" style={styles.grain} />
       )}
