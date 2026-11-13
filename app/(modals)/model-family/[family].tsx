@@ -37,6 +37,8 @@ import {
 import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
 import { space } from '../../../constants/design-system';
 
+const HEADER_ICON_SIZE = 16;
+
 const FamilyScreen = () => {
   const router = useRouter();
   const headerHeight = useGlassScreenHeaderHeight(true);
@@ -138,7 +140,13 @@ const FamilyScreen = () => {
         )}
         <GlassScreenHeader
           title={familyName}
-          titleIcon={<ModelFamilyTile family={familyName} size="row" />}
+          titleIcon={
+            <ModelFamilyTile
+              family={familyName}
+              size="row"
+              bareIconSize={HEADER_ICON_SIZE}
+            />
+          }
           onBack={() => router.back()}
           sheet
         />
