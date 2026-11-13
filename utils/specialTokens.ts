@@ -15,7 +15,7 @@ const PROMPT_SCAFFOLDING = [
   /<\/?sources?\b[^<>\n]{0,40}>/,
   /--- (?:End of )?(?:Current Attachment )?Source(?: \d+)?(?:: [^\n]{0,160}?)? ---/,
   /--- End of [^\n]{1,120}? ---/,
-  /\(Answer in [^()\n]{1,60}\.\)/,
+  /\(Answer in [^()\n]{1,60}?\.?\)/,
   /\[Verified product data\]/,
 ];
 
