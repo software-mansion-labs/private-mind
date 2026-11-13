@@ -21,6 +21,8 @@ import AttachmentIcon from '../../assets/icons/attachment.svg';
 import { Attachment } from '../../hooks/useAttachment';
 import { ATTACHMENT_PROGRESS_TRACK_WIDTH } from '../../constants/chat';
 import { pressedOpacity } from '../../styles/pressable';
+import { stroke } from '../../constants/design-system';
+import { COMPOSER_THUMB_RADIUS } from './attachments/constants';
 
 interface Props {
   attachment: Attachment;
@@ -132,7 +134,9 @@ const createStyles = (theme: Theme) =>
     thumbnail: {
       width: 72,
       height: 72,
-      borderRadius: 8,
+      borderRadius: COMPOSER_THUMB_RADIUS,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.chatBar,
     },
     imageLoading: {
       position: 'absolute',
@@ -145,7 +149,9 @@ const createStyles = (theme: Theme) =>
     placeholder: {
       width: 72,
       height: 72,
-      borderRadius: 8,
+      borderRadius: COMPOSER_THUMB_RADIUS,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.chatBar,
       backgroundColor: theme.bg.softPrimary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -153,7 +159,9 @@ const createStyles = (theme: Theme) =>
     docThumbnail: {
       width: 72,
       height: 72,
-      borderRadius: 8,
+      borderRadius: COMPOSER_THUMB_RADIUS,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.chatBar,
       backgroundColor: theme.bg.softPrimary,
       justifyContent: 'center',
       alignItems: 'center',

@@ -57,11 +57,11 @@ const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     button: {
       height: 48,
-      paddingHorizontal: space.twoHalf,
+      paddingHorizontal: space.four,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: stroke.soft,
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       borderColor: theme.bg.strongPrimary,
       opacity: disabled ? DIMMED_OPACITY : 1,
       flexDirection: 'row',

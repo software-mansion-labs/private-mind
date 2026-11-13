@@ -45,7 +45,7 @@ describe('the no-model screen', () => {
     ).toBeTruthy();
   });
 
-  it('opens the model picker from its main button', () => {
+  it('asks to choose a model from its main button', () => {
     const { onChooseModel } = renderWelcome();
 
     fireEvent.press(screen.getByText('Choose a model'));

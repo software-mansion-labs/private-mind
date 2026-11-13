@@ -25,6 +25,7 @@ import { WHISPER_DOWNLOAD_SIZE_BYTES } from '../../utils/sttModelFiles';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
 import { radius, space } from '../../constants/design-system';
+import { COMPOSER_CARD_RADIUS } from './attachments/constants';
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -380,7 +381,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       backgroundColor: theme.bg.main,
-      borderRadius: radius.eighteen,
+      borderRadius: COMPOSER_CARD_RADIUS,
       padding: space.four,
       gap: space.four,
     },
@@ -399,7 +400,7 @@ const createStyles = (theme: Theme) =>
     recordingRow: {
       backgroundColor: theme.bg.voiceModeSurface,
       height: 40,
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       flexDirection: 'row',
       paddingHorizontal: space.three,
       paddingVertical: space.two,

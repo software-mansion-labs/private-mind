@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -14,6 +13,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import OnboardingIntroPanel from '../../components/onboarding/OnboardingIntroPanel';
 import OnboardingCarousel from '../../components/onboarding/OnboardingCarousel';
+import { NewChatBackground } from '../../components/chat-screen/NewChatBackground';
 import { markOnboardingComplete } from '../../utils/onboardingStatus';
 import { useSettingsStore } from '../../store/settingsStore';
 import { currentAppVersion } from '../../utils/appVersion';
@@ -25,7 +25,7 @@ const INTRO_EASING = Easing.bezier(...EMPHASIZED_DECELERATE);
 
 function OnboardingScreen() {
   const router = useRouter();
-  const { styles, theme } = useThemedStyles(createStyles);
+  const { styles } = useThemedStyles(createStyles);
   const [showCarousel, setShowCarousel] = useState(false);
   const introProgress = useSharedValue(1);
 
@@ -78,10 +78,7 @@ function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[theme.bg.softPrimary, theme.bg.main]}
-        style={StyleSheet.absoluteFill}
-      />
+      <NewChatBackground />
 
       {!showCarousel && (
         <Animated.View style={[StyleSheet.absoluteFill, introStyle]}>

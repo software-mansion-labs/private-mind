@@ -18,7 +18,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
-import GlassSurface from '../GlassSurface';
+import { Glass } from '../Glass';
 import SearchField, {
   SEARCH_ICON_SIZE,
   SearchFieldIcon,
@@ -130,7 +130,7 @@ export const DrawerTopBar = ({
     return (
       <View style={styles.bar}>
         <Animated.View style={[styles.pillSlot, pillStyle]}>
-          <GlassSurface interactive style={styles.glass}>
+          <Glass radius={DRAWER_SEARCH_BAR_HEIGHT / 2} style={styles.glass}>
             <Pressable
               onPress={onOpenSearch}
               testID="drawer-search-open"
@@ -149,7 +149,7 @@ export const DrawerTopBar = ({
                 </Text>
               </SearchFieldSurface>
             </Pressable>
-          </GlassSurface>
+          </Glass>
         </Animated.View>
       </View>
     );
@@ -158,7 +158,7 @@ export const DrawerTopBar = ({
   return (
     <View style={styles.bar}>
       <Animated.View style={[styles.pillSlot, pillStyle]}>
-        <GlassSurface interactive style={styles.glass}>
+        <Glass radius={DRAWER_SEARCH_BAR_HEIGHT / 2} style={styles.glass}>
           <SearchField
             surfaceStyle={styles.clearSurface}
             maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
@@ -195,7 +195,7 @@ export const DrawerTopBar = ({
               </Pressable>
             }
           />
-        </GlassSurface>
+        </Glass>
       </Animated.View>
     </View>
   );
@@ -215,7 +215,6 @@ const createStyles = (theme: Theme) =>
     glass: {
       flex: 1,
       height: DRAWER_SEARCH_BAR_HEIGHT,
-      borderRadius: DRAWER_SEARCH_BAR_HEIGHT / 2,
     },
     clearSurface: {
       backgroundColor: 'transparent',

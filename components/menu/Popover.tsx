@@ -14,14 +14,13 @@ import { OverKeyboardView } from 'react-native-keyboard-controller';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useBackToDismiss } from '../../hooks/useBackToDismiss';
-import { radius, stroke } from '../../constants/design-system';
+import { MENU } from '../chat-screen/attachments/constants';
 import { Theme } from '../../styles/colors';
+import { Glass, LIQUID_GLASS } from '../Glass';
 
 export const POPOVER_WIDTH = 300;
 const FADE_IN_MS = 150;
-const SHADOW_RADIUS = 20;
-const SHADOW_OFFSET_Y = 12;
-const ANDROID_ELEVATION = 8;
+const GLASS_APPEAR_MS = 250;
 
 export interface PopoverAnchor {
   top?: number;
@@ -57,7 +56,7 @@ const Popover = ({
   onLayout,
   children,
 }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   useBackToDismiss(visible, onClose);
 
   const content = visible ? (
@@ -75,19 +74,29 @@ const Popover = ({
         />
       </Animated.View>
       <Animated.View
-        entering={FadeIn.duration(FADE_IN_MS)}
-        style={[styles.shadow, anchor]}
+        entering={LIQUID_GLASS ? undefined : FadeIn.duration(FADE_IN_MS)}
+        style={[styles.position, anchor]}
         onLayout={onLayout}
       >
-        <View
-          style={[styles.card, contentStyle]}
+        <Glass
+          radius={MENU.radius}
+          interactive={false}
+          duration={GLASS_APPEAR_MS / 1000}
+          fallbackTint={theme.bg.popover}
           accessibilityRole={accessibilityRole}
           accessibilityViewIsModal
           accessibilityLabel={accessibilityLabel}
           testID={testID}
         >
-          {children}
-        </View>
+          <Animated.View
+            entering={
+              LIQUID_GLASS ? FadeIn.duration(GLASS_APPEAR_MS) : undefined
+            }
+            style={[styles.card, contentStyle]}
+          >
+            {children}
+          </Animated.View>
+        </Glass>
       </Animated.View>
     </View>
   ) : null;
@@ -117,21 +126,13 @@ const createStyles = (theme: Theme) =>
     scrim: {
       backgroundColor: theme.bg.popoverScrim,
     },
-    shadow: {
+    position: {
       position: 'absolute',
       width: POPOVER_WIDTH,
-      borderRadius: radius.eighteen,
-      shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: SHADOW_OFFSET_Y },
-      shadowOpacity: theme.shadow.floatingOpacity,
-      shadowRadius: SHADOW_RADIUS,
-      elevation: ANDROID_ELEVATION,
     },
     card: {
-      borderRadius: radius.eighteen,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.popover,
-      backgroundColor: theme.bg.popover,
+      borderRadius: MENU.radius,
+      borderCurve: 'continuous',
       overflow: 'hidden',
     },
   });

@@ -37,7 +37,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       padding: space.four,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       backgroundColor: theme.bg.softTertiary,
       flexDirection: 'row',
       alignItems: 'center',

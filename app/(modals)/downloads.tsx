@@ -120,7 +120,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     empty: {
       padding: space.four,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       borderWidth: stroke.soft,
       borderStyle: 'dashed',
       borderColor: theme.border.soft,

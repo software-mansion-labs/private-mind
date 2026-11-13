@@ -6,24 +6,19 @@ import React, {
   useState,
 } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
-import { useFocusEffect, useNavigation } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
-import { Model } from '../../database/modelRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { StyleSheet, View } from 'react-native';
 import { NewChatBackground } from '../../components/chat-screen/NewChatBackground';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useImportChat } from '../../hooks/useImportChat';
-import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useModelUpdateSheetStore } from '../../store/modelUpdateSheetStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
-import { setLastUsedModelId } from '../../utils/lastUsedModel';
-import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
 import NoModelWelcome from '../../components/NoModelWelcome';
 
 let coldStartRedirectPending = true;
@@ -36,7 +31,6 @@ export default function App() {
   const onboardingRedirect = useOnboardingRedirect();
 
   const navigation = useNavigation();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { downloadedModels } = useModelStore();
   const { loadSources } = useSourceStore();
   const hasAutoRedirectedRef = useRef(false);
@@ -46,13 +40,7 @@ export default function App() {
 
   const { styles } = useThemedStyles(createStyles);
 
-  const handleSetModel = async (model: Model, replace = false) => {
-    await setLastUsedModelId(model.id);
-    await startPhantomChat(db, replace ? 'replace' : 'push', model);
-    return true;
-  };
-
-  const { pickModel, handleSheetStateChange } = useModelSwitch(handleSetModel);
+  const openModels = useCallback(() => router.replace('/model-hub'), []);
 
   const handleImport = useImportChat();
 
@@ -88,20 +76,22 @@ export default function App() {
     }, [db, downloadedModels])
   );
 
+  const onboardingRedirectRef = useRef(onboardingRedirect);
+  onboardingRedirectRef.current = onboardingRedirect;
   const [isFocused, setIsFocused] = useState(false);
-  const [hasLeftScreen, setHasLeftScreen] = useState(false);
+  const [returnedFromRedirect, setReturnedFromRedirect] = useState(false);
   useFocusEffect(
     useCallback(() => {
       setIsFocused(true);
-      return () => {
-        setIsFocused(false);
-        setHasLeftScreen(true);
-      };
+      if (onboardingRedirectRef.current === 'redirected') {
+        setReturnedFromRedirect(true);
+      }
+      return () => setIsFocused(false);
     }, [])
   );
   const welcomeIsUncovered =
     onboardingRedirect === 'stayed' ||
-    (onboardingRedirect === 'redirected' && hasLeftScreen);
+    (onboardingRedirect === 'redirected' && returnedFromRedirect);
 
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 
@@ -118,17 +108,12 @@ export default function App() {
         <NewChatBackground />
         {!willRedirect && (
           <NoModelWelcome
-            onChooseModel={() => bottomSheetModalRef.current?.present()}
+            onChooseModel={openModels}
             onImportChat={handleImport}
             playSwarm={isFocused && welcomeIsUncovered}
           />
         )}
       </View>
-      <ModelSelectSheet
-        bottomSheetModalRef={bottomSheetModalRef}
-        onModelPicked={pickModel}
-        onSheetStateChange={handleSheetStateChange}
-      />
     </>
   );
 }
