@@ -371,7 +371,10 @@ export const useSendChatMessage = ({
           if (webSources.length > 0) {
             webIntent = webTelemetry.intent || undefined;
             webIntentKind = webTelemetry.intentKind;
-            webSubQueries = webTelemetry.plannedQueries;
+            webSubQueries =
+              webTelemetry.intentKind === 'comparison'
+                ? webTelemetry.plannedQueries
+                : undefined;
             webWeak = webTelemetry.finalLabel === 'incorrect';
           } else {
             webSearchFailed =

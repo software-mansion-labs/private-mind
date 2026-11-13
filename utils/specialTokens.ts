@@ -8,14 +8,28 @@ const SENTINEL_NOTATIONS = [
   /<0x[0-9A-Fa-f]{2}>/,
   /<\/?(?:start_of_turn|end_of_turn|end_of_text|begin_of_text)>/,
   /<\/?(?:pad|eos|bos|unk|mask|sep|cls)>/,
+  /<\/?answer>/,
 ];
 
+const PROMPT_SCAFFOLDING = [
+  /<\/?sources?\b[^<>\n]{0,40}>/,
+  /--- (?:End of )?(?:Current Attachment )?Source(?: \d+)?(?:: [^\n]{0,160}?)? ---/,
+  /--- End of [^\n]{1,120}? ---/,
+  /\(Answer in [^()\n]{1,60}?\.?\)/,
+  /\[Verified product data\]/,
+];
+
+const MAY_CARRY_HIDDEN_NOTATION =
+  /<|--- |\(Answer in |\[Verified product data\]/i;
+
+const HIDDEN_NOTATIONS = [...SENTINEL_NOTATIONS, ...PROMPT_SCAFFOLDING];
+
 const SENTINEL_RUN = new RegExp(
-  `([^\\S\\n]*)(?:${SENTINEL_NOTATIONS.map((p) => p.source).join('|')})+([^\\S\\n]*)`,
+  `([^\\S\\n]*)(?:${HIDDEN_NOTATIONS.map((p) => p.source).join('|')})+([^\\S\\n]*)`,
   'gi'
 );
 
-const SENTINEL_ALTERNATIVES = SENTINEL_NOTATIONS.map((p) => p.source).join('|');
+const SENTINEL_ALTERNATIVES = HIDDEN_NOTATIONS.map((p) => p.source).join('|');
 
 const SENTINEL_ONLY_FIRST_LINE = new RegExp(
   `^[^\\S\\n]*(?:${SENTINEL_ALTERNATIVES})+[^\\S\\n]*\\n`,
@@ -38,7 +52,7 @@ const withoutSentinels = (text: string): string =>
     );
 
 export const stripSpecialTokens = (text: string): string => {
-  if (!text || !text.includes('<')) return text;
+  if (!text || !MAY_CARRY_HIDDEN_NOTATION.test(text)) return text;
 
   let out = '';
   let cursor = 0;
