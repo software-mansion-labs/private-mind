@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { radius, space, stroke } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
@@ -85,8 +85,6 @@ const createStyles = (theme: Theme) =>
       padding: space.four,
       borderRadius: radius.eighteen,
       backgroundColor: theme.bg.toast,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.toast,
       shadowColor: theme.bg.shadow,
       shadowOffset: { width: 0, height: 12 },
       shadowOpacity: theme.shadow.floatingOpacity,
