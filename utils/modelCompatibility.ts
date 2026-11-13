@@ -96,6 +96,12 @@ export const isModelCompatibleWithRam = (
 
 const LARGEST_DEVICE_RAM_GB = 64;
 const INCOMPATIBLE_LABEL = 'Incompatible';
+const UNNAMED_DEVICE = 'this phone';
+
+const thisDeviceName = (): string => {
+  const name = DeviceInfo.getModel();
+  return name && name !== 'unknown' ? name : UNNAMED_DEVICE;
+};
 
 export const requiredDeviceRamGB = (
   model: CompatibilityCheckedModel,
@@ -122,9 +128,14 @@ export const incompatibilityLabel = (
   models: CompatibilityCheckedModel[]
 ): string => {
   try {
+    const runnableHere = models.filter(
+      (model) => !isBlockedOnThisDevice(model)
+    );
+    if (models.length > 0 && runnableHere.length === 0) {
+      return `Doesn't run on ${thisDeviceName()}`;
+    }
     const share = reportedShareOfNominalRam();
-    const requirements = models
-      .filter((model) => !isBlockedOnThisDevice(model))
+    const requirements = runnableHere
       .map((model) => requiredDeviceRamGB(model, share))
       .filter((ramGB): ramGB is number => ramGB !== null);
     if (requirements.length === 0) return INCOMPATIBLE_LABEL;
