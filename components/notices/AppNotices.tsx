@@ -23,6 +23,7 @@ import CloseIcon from '../../assets/icons/close.svg';
 const STACK_GAP = 8;
 const HEADER_CLEARANCE = 16;
 const DISMISS_HIT_SLOP = 12;
+const DISMISS_ICON_SIZE = 14;
 
 interface Props {
   children: ReactNode;
@@ -93,8 +94,8 @@ const AppNotices = ({ children }: Props) => {
                   testID={`notice-${notice.id}-dismiss`}
                 >
                   <CloseIcon
-                    width={13.33}
-                    height={13.33}
+                    width={DISMISS_ICON_SIZE}
+                    height={DISMISS_ICON_SIZE}
                     style={styles.dismissIcon}
                   />
                 </Pressable>
