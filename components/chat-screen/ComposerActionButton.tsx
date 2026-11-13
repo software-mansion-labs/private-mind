@@ -127,8 +127,8 @@ const ComposerActionButton = ({
           </Reanimated.View>
           <Reanimated.View style={[styles.iconLayer, stopStyle]}>
             <PauseIcon
-              width={13.33}
-              height={13.33}
+              width={13}
+              height={13}
               color={theme.text.contrastPrimary}
             />
           </Reanimated.View>

@@ -43,7 +43,7 @@ import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
 
 const ACTION_ICON_SIZE = 16;
-const CANCEL_ICON_SIZE = 13.33;
+const CANCEL_ICON_SIZE = 13;
 const CHECKBOX_SIZE = 24;
 const CHECKBOX_RADIUS = 7;
 const CHECKBOX_BORDER_WIDTH = 1.5;
