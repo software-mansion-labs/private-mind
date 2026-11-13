@@ -286,7 +286,7 @@ const createStyles = (theme: Theme) =>
       gap: space.two,
       paddingVertical: space.three,
       paddingHorizontal: space.three,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
     },
@@ -299,7 +299,7 @@ const createStyles = (theme: Theme) =>
       gap: space.two,
       paddingVertical: space.two,
       paddingHorizontal: space.three,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
     },
     webRowText: {
       flex: 1,

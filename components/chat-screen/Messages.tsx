@@ -90,7 +90,7 @@ import {
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 import { pressedOpacity } from '../../styles/pressable';
-import { space } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -1398,7 +1398,7 @@ const createStyles = (theme: Theme) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      borderRadius: 8,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.softTertiary,
       paddingHorizontal: space.three,
       paddingVertical: space.two,

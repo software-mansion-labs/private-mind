@@ -46,6 +46,8 @@ const ACTION_TEST_IDS: Record<ComposerAction, string> = {
 
 interface Props {
   onAttach: () => void;
+  onAttachPressIn?: () => void;
+  onAttachPressOut?: () => void;
   userInput: string;
   hasAttachments?: boolean;
   isLoadingAttachment?: boolean;
@@ -69,6 +71,8 @@ interface Props {
 
 const ChatBarActions = ({
   onAttach,
+  onAttachPressIn,
+  onAttachPressOut,
   userInput,
   hasAttachments = false,
   isLoadingAttachment = false,
@@ -166,6 +170,8 @@ const ChatBarActions = ({
               icon={PlusIcon}
               size={16}
               onPress={handleAttach}
+              onPressIn={onAttachPressIn}
+              onPressOut={onAttachPressOut}
               {...composerControlColors(theme)}
               color={theme.text.onChatBar}
               testID="attach-btn"

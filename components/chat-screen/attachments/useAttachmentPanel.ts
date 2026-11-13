@@ -15,6 +15,9 @@ import type { MenuAction } from './AttachmentMenu';
 
 export type Mode = 'closed' | 'menu' | 'photos' | 'camera';
 
+const PRESS_SETTLE_MS = 80;
+const WARM_OVERLAY_TIMEOUT_MS = 1000;
+
 export type Sheet = 'photos' | 'camera';
 
 interface PanelOptions {
@@ -39,8 +42,13 @@ export function useAttachmentPanel({
   const [mode, setMode] = useState<Mode>('closed');
   const [sheet, setSheet] = useState<Sheet>('photos');
   const [closing, setClosing] = useState(false);
+  const [overlayWarm, setOverlayWarm] = useState(false);
   const leadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sheetResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const awaitingOverlayLayout = useRef(false);
+  const overlayLaidOut = useRef(false);
+  const openRequested = useRef(false);
 
   const open = useSharedValue(0);
   const plusOut = useSharedValue(0);
@@ -52,6 +60,7 @@ export function useAttachmentPanel({
   useEffect(
     () => () => {
       if (leadTimer.current !== null) clearTimeout(leadTimer.current);
+      if (warmTimer.current !== null) clearTimeout(warmTimer.current);
       if (sheetResetTimer.current !== null) {
         clearTimeout(sheetResetTimer.current);
       }
@@ -60,6 +69,9 @@ export function useAttachmentPanel({
   );
 
   const closeSheet = useCallback(() => {
+    openRequested.current = false;
+    overlayLaidOut.current = false;
+    setOverlayWarm(false);
     setMode('closed');
     setClosing(false);
     KeyboardController.setFocusTo('current');
@@ -75,12 +87,30 @@ export function useAttachmentPanel({
   }, [blur]);
 
   const clearLead = useCallback(() => {
+    awaitingOverlayLayout.current = false;
     if (leadTimer.current === null) return;
     clearTimeout(leadTimer.current);
     leadTimer.current = null;
   }, []);
 
+  const startOpening = useCallback(() => {
+    awaitingOverlayLayout.current = false;
+    open.set(withSpring(1, SPRING.panel));
+    blur.set(withTiming(0, { duration: DURATION.blur, easing: EASE_FADE }));
+  }, [blur, open]);
+
+  const coolOverlay = useCallback(() => {
+    if (warmTimer.current !== null) {
+      clearTimeout(warmTimer.current);
+      warmTimer.current = null;
+    }
+    if (openRequested.current) return;
+    overlayLaidOut.current = false;
+    setOverlayWarm(false);
+  }, []);
+
   const openMenu = useCallback(() => {
+    openRequested.current = true;
     Feedback.sheetOpen();
     plusOut.set(withSpring(1, SPRING.panel));
     morph.set(0);
@@ -91,10 +121,27 @@ export function useAttachmentPanel({
     leadTimer.current = setTimeout(() => {
       leadTimer.current = null;
       setMode('menu');
-      open.set(withSpring(1, SPRING.panel));
-      blur.set(withTiming(0, { duration: DURATION.blur, easing: EASE_FADE }));
+      if (overlayLaidOut.current) startOpening();
+      else awaitingOverlayLayout.current = true;
     }, DURATION.plusLead);
-  }, [blur, clearLead, gridOpacity, menuOpacity, morph, open, plusOut]);
+  }, [blur, clearLead, gridOpacity, menuOpacity, morph, plusOut, startOpening]);
+
+  const onOverlayLayout = useCallback(() => {
+    overlayLaidOut.current = true;
+    if (awaitingOverlayLayout.current) startOpening();
+  }, [startOpening]);
+
+  const onPlusPressIn = useCallback(() => {
+    if (mode !== 'closed' || openRequested.current) return;
+    setOverlayWarm(true);
+    if (warmTimer.current !== null) clearTimeout(warmTimer.current);
+    warmTimer.current = setTimeout(coolOverlay, WARM_OVERLAY_TIMEOUT_MS);
+  }, [coolOverlay, mode]);
+
+  const onPlusPressOut = useCallback(() => {
+    if (warmTimer.current !== null) clearTimeout(warmTimer.current);
+    warmTimer.current = setTimeout(coolOverlay, PRESS_SETTLE_MS);
+  }, [coolOverlay]);
 
   const dismiss = useCallback(() => {
     clearLead();
@@ -219,6 +266,7 @@ export function useAttachmentPanel({
   }, [dismiss, mode, openMenu]);
 
   const collapseForLeave = useCallback(() => {
+    awaitingOverlayLayout.current = false;
     setClosing(true);
     blur.set(withTiming(1, { duration: DURATION.panel, easing: EASE_FADE }));
     gridOpacity.set(
@@ -249,6 +297,10 @@ export function useAttachmentPanel({
     gridOpacity,
     blur,
     onPlusPress,
+    onPlusPressIn,
+    onPlusPressOut,
+    overlayWarm,
+    onOverlayLayout,
     dismiss,
     backToMenu,
     onMenuAction,

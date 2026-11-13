@@ -38,7 +38,6 @@ const ROW_ICON_WELL = 28;
 const NAME_LINE_HEIGHT = lineHeights.md;
 const TITLE_BLOCK_HEIGHT = lineHeights.xs + NAME_LINE_HEIGHT;
 const FIELD_HEIGHT = TITLE_BLOCK_HEIGHT;
-const FIELD_RADIUS = 10;
 const FIELD_BORDER = 1.5;
 const ROW_LABEL_SIZE = 15;
 
@@ -266,11 +265,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       minWidth: 0,
       minHeight: FIELD_HEIGHT,
-      paddingHorizontal: space.twoHalf,
+      paddingHorizontal: space.four,
       paddingVertical: 0,
       includeFontPadding: false,
       textAlignVertical: 'center',
-      borderRadius: FIELD_RADIUS,
+      borderRadius: radius.full,
       borderWidth: FIELD_BORDER,
       borderColor: theme.text.accent,
       fontFamily: fontFamily.medium,
@@ -279,8 +278,8 @@ const createStyles = (theme: Theme) =>
     },
     saveButton: {
       minHeight: FIELD_HEIGHT,
-      paddingHorizontal: space.three,
-      borderRadius: FIELD_RADIUS,
+      paddingHorizontal: space.four,
+      borderRadius: radius.full,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bg.main,
