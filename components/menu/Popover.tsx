@@ -14,7 +14,7 @@ import { OverKeyboardView } from 'react-native-keyboard-controller';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useBackToDismiss } from '../../hooks/useBackToDismiss';
-import { radius } from '../../constants/design-system';
+import { MENU } from '../chat-screen/attachments/constants';
 import { Theme } from '../../styles/colors';
 import { Glass, LIQUID_GLASS } from '../Glass';
 
@@ -79,7 +79,7 @@ const Popover = ({
         onLayout={onLayout}
       >
         <Glass
-          radius={radius.eighteen}
+          radius={MENU.radius}
           interactive={false}
           duration={GLASS_APPEAR_MS / 1000}
           fallbackTint={theme.bg.popover}
@@ -131,7 +131,7 @@ const createStyles = (theme: Theme) =>
       width: POPOVER_WIDTH,
     },
     card: {
-      borderRadius: radius.eighteen,
+      borderRadius: MENU.radius,
       borderCurve: 'continuous',
       overflow: 'hidden',
     },

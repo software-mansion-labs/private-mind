@@ -21,7 +21,7 @@ export const MENU_ROW = {
     paddingHorizontal: space.two,
     gap: space.three,
     well: 32,
-    wellRadius: radius.twelve,
+    wellRadius: radius.full,
     icon: 18,
   },
   compact: {
