@@ -11,12 +11,16 @@ import { Model } from '../database/modelRepository';
 import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
 import { stripThinkBlocks } from './thinking';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
-import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
+import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import {
   estimatePromptTokens,
+  getConversationCharBudget,
+  getConversationTokenBudget,
   getPromptCharBudget,
-  getPromptTokenBudget,
+  type ConversationWindowInput,
 } from '../constants/context-window';
+import { getDeviceMemoryGB } from './modelCompatibility';
+import { modelContextCapacity } from './modelContextCapacity';
 import { calendarFacts, mentionsTime, namesAnotherDay } from './calendarFacts';
 import type { WebIntentKind } from './web/intentKind';
 import {
@@ -657,6 +661,23 @@ const withQuestionForImage = (message: Message): Message =>
     ? { ...message, content: questionForImage(message.content) }
     : message;
 
+const deviceMemoryGBOrZero = (): number => {
+  try {
+    return getDeviceMemoryGB();
+  } catch {
+    return 0;
+  }
+};
+
+const conversationWindowFor = (
+  model: Model,
+  settings: ChatSettings
+): ConversationWindowInput => ({
+  thinking: !!settings.thinkingEnabled && !!model.thinking,
+  deviceRamGB: deviceMemoryGBOrZero(),
+  modelCapacityTokens: modelContextCapacity(model.id),
+});
+
 export const prepareMessagesForLLM = (
   chatMessages: Message[],
   context: string[],
@@ -790,6 +811,11 @@ export const prepareMessagesForLLM = (
   const budgetChars = Math.floor(
     getPromptCharBudget(model, budgetSample) * budgetScale
   );
+  const conversationWindow = conversationWindowFor(model, settings);
+  const conversationBudgetChars = Math.floor(
+    getConversationCharBudget(model, conversationWindow, budgetSample) *
+      budgetScale
+  );
   const systemChars = messagesWithSystemPrompt[0].content.length;
 
   if (hasContext) {
@@ -887,7 +913,7 @@ export const prepareMessagesForLLM = (
     : '';
   const mandatoryChars =
     systemChars + lastMessage.content.length + digestLine.length;
-  const remainingChars = budgetChars - mandatoryChars;
+  const remainingChars = conversationBudgetChars - mandatoryChars;
   const greetingTurn =
     lastMessage.role === 'user' && !!question && isGreetingOnly(question);
   const history = greetingTurn ? [] : messagesWithSystemPrompt.slice(1, -1);
@@ -926,7 +952,10 @@ export const prepareMessagesForLLM = (
 
   if (hasContext && budgetScale > 0.75) {
     const assembled = finalMessages.map((msg) => msg.content).join(' ');
-    if (estimatePromptTokens(assembled) > getPromptTokenBudget(model)) {
+    if (
+      estimatePromptTokens(assembled) >
+      getConversationTokenBudget(model, conversationWindow)
+    ) {
       return prepareMessagesForLLM(
         activeChatMessages,
         context,
