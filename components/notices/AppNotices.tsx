@@ -1,5 +1,11 @@
 import React, { useState, type ReactNode } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {
   SafeAreaInsetsContext,
   useSafeAreaInsets,
@@ -11,9 +17,13 @@ import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useNoticeStore } from '../../store/noticeStore';
 import { radius } from '../../constants/design-system';
 import { Glass } from '../Glass';
+import { pressedOpacity } from '../../styles/pressable';
+import CloseIcon from '../../assets/icons/close.svg';
 
 const STACK_GAP = 8;
 const HEADER_CLEARANCE = 16;
+const DISMISS_HIT_SLOP = 12;
+const DISMISS_ICON_SIZE = 14;
 
 interface Props {
   children: ReactNode;
@@ -22,6 +32,7 @@ interface Props {
 const AppNotices = ({ children }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const notices = useNoticeStore((state) => state.notices);
+  const dismissNotice = useNoticeStore((state) => state.dismissNotice);
   const insets = useSafeAreaInsets();
   const hasNotices = notices.length > 0;
   const [stackHeight, setStackHeight] = useState(0);
@@ -70,6 +81,25 @@ const AppNotices = ({ children }: Props) => {
                   <Text style={styles.message}>{notice.message}</Text>
                 )}
               </View>
+              {!!notice.onDismiss && (
+                <Pressable
+                  onPress={() => dismissNotice(notice)}
+                  hitSlop={DISMISS_HIT_SLOP}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss"
+                  style={({ pressed }) => [
+                    styles.dismiss,
+                    pressed && pressedOpacity,
+                  ]}
+                  testID={`notice-${notice.id}-dismiss`}
+                >
+                  <CloseIcon
+                    width={DISMISS_ICON_SIZE}
+                    height={DISMISS_ICON_SIZE}
+                    style={styles.dismissIcon}
+                  />
+                </Pressable>
+              )}
             </Glass>
           ))}
         </View>
@@ -131,6 +161,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.regular,
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
+    },
+    dismiss: {
+      paddingTop: 4,
+    },
+    dismissIcon: {
+      color: theme.text.primary,
     },
     content: {
       flex: 1,
