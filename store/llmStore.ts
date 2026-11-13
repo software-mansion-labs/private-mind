@@ -97,6 +97,7 @@ import {
 import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
+import { rememberModelContextCapacity } from '../utils/modelContextCapacity';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -465,6 +466,14 @@ export const modelLoadFailedCopy = (modelName: string) =>
 export const modelNeedsUpdateCopy = (modelName: string) =>
   `${modelName} needs a one-time update. Connect to the internet and tap Update at the top of the chat.`;
 
+const rememberContextCapacityOf = (model: Model, engine: LLMEngine) => {
+  try {
+    rememberModelContextCapacity(model.id, engine.getMaxContextLength());
+  } catch (error) {
+    console.warn('Could not read the model context capacity', error);
+  }
+};
+
 const loadModelInstance = async (
   model: Model,
   hardReload: boolean,
@@ -577,6 +586,7 @@ const loadModelInstance = async (
     );
 
     applyGenerationConfig(llmInstance, getGenerationConfigForModel(model));
+    rememberContextCapacityOf(model, llmInstance);
     await warmUpModel(llmInstance);
 
     set({ isLoading: false });
