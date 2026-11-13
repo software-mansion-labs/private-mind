@@ -2,7 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { radius, space, textStyles } from '../../constants/design-system';
+import { space, textStyles } from '../../constants/design-system';
+import { COMPOSER_CARD_RADIUS } from './attachments/constants';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
 
@@ -49,7 +50,7 @@ const createStyles = (theme: Theme) =>
     card: {
       width: '100%',
       backgroundColor: theme.bg.softTertiary,
-      borderRadius: radius.twelve,
+      borderRadius: COMPOSER_CARD_RADIUS,
       padding: space.four,
       gap: space.two,
       marginBottom: space.six,

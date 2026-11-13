@@ -52,6 +52,13 @@ describe('NewChatHeaderButton', () => {
     expect(useChatStore.getState().phantomChatStarts).toBe(before + 1);
   });
 
+  it('does not replay the new chat animation when noOp=true, as no new chat opens', () => {
+    const before = useChatStore.getState().phantomChatOpens;
+    const { getByTestId } = render(<NewChatHeaderButton noOp={true} />);
+    fireEvent.press(getByTestId('new-chat-header-button'));
+    expect(useChatStore.getState().phantomChatOpens).toBe(before);
+  });
+
   it('taps back like the rest of the chat controls, on either screen', () => {
     const { getByTestId, rerender } = render(<NewChatHeaderButton />);
     fireEvent.press(getByTestId('new-chat-header-button'));

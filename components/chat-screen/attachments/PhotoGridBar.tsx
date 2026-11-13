@@ -19,7 +19,7 @@ import {
   SPRING,
   panelPalette,
 } from './constants';
-import { Glass } from './Glass';
+import { Glass } from '../../Glass';
 import SheetBar from './SheetBar';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);

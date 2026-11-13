@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   UNKNOWN_FAMILY_COLOR,
   familyIcon,
+  familyIconScale,
   familyInitial,
 } from '../../constants/model-families';
 import { radius, space } from '../../constants/design-system';
@@ -20,28 +21,38 @@ const FAMILY_TILE = {
 
 export type ModelFamilyTileSize = keyof typeof FAMILY_TILE;
 
+export const familyTileSize = (size: ModelFamilyTileSize): number =>
+  FAMILY_TILE[size].tile;
+
 interface Props {
   family: string;
   size: ModelFamilyTileSize;
   iconColor?: string;
+  bareIconSize?: number;
 }
 
-const ModelFamilyTile = ({ family, size, iconColor }: Props) => {
+const ModelFamilyTile = ({ family, size, iconColor, bareIconSize }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles, size);
   const FamilyIcon = familyIcon(family);
-  const iconSize = FAMILY_TILE[size].icon;
+  const iconOnly = bareIconSize !== undefined && !!FamilyIcon;
+  const iconSize = iconOnly ? bareIconSize : FAMILY_TILE[size].icon;
+  const drawnIconSize = iconSize * familyIconScale(family);
 
   return (
     <View
-      style={[styles.tile, !FamilyIcon && styles.initialTile]}
+      style={[
+        styles.tile,
+        !FamilyIcon && styles.initialTile,
+        iconOnly && [styles.bareTile, { width: iconSize, height: iconSize }],
+      ]}
       testID="model-family-tile"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
       {FamilyIcon ? (
         <FamilyIcon
-          width={iconSize}
-          height={iconSize}
+          width={drawnIconSize}
+          height={drawnIconSize}
           style={{ color: iconColor ?? theme.text.primary }}
           testID="model-family-icon"
         />
@@ -69,6 +80,9 @@ const createStyles = (theme: Theme, size: ModelFamilyTileSize) => {
     },
     initialTile: {
       backgroundColor: theme.label[UNKNOWN_FAMILY_COLOR].background,
+    },
+    bareTile: {
+      backgroundColor: 'transparent',
     },
     initial: {
       fontFamily: fontFamily.bold,

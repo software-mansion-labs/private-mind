@@ -4,6 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
+import { showNotEnoughStorage } from '../utils/storageSpace';
 import { useSourceStore } from '../store/sourceStore';
 import { useVectorStore } from '../context/VectorStoreContext';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
@@ -581,6 +582,11 @@ export const useAttachment = () => {
       .getState()
       .ensureReady(store, loadWithLanguageModelOffloaded);
     if (!ready) {
+      const storageFailure = useEmbeddingModelStore.getState().failedForStorage;
+      if (storageFailure) {
+        showNotEnoughStorage('the document model', storageFailure.shortfall);
+        return;
+      }
       Toast.show({
         type: 'defaultToast',
         text1: 'Failed to download the document model.',

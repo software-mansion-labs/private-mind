@@ -26,6 +26,7 @@ interface ChatStore {
   db: SQLiteDatabase | null;
   phantomChat: Chat | null;
   phantomChatStarts: number;
+  phantomChatOpens: number;
   startBlankChat: () => void;
   setDB: (db: SQLiteDatabase) => void;
   loadChats: () => Promise<void>;
@@ -52,6 +53,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   db: null,
   phantomChat: null,
   phantomChatStarts: 0,
+  phantomChatOpens: 0,
 
   startBlankChat: () =>
     set((state) => ({ phantomChatStarts: state.phantomChatStarts + 1 })),
@@ -86,6 +88,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     set((state) => ({
       phantomChatStarts: state.phantomChatStarts + 1,
+      phantomChatOpens: state.phantomChatOpens + 1,
       phantomChat: {
         id: phantomChatId,
         title: '',

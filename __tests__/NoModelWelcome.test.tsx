@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as Reanimated from 'react-native-reanimated';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
@@ -13,11 +14,15 @@ const layoutAt = (height: number) =>
     nativeEvent: { layout: { height } },
   });
 
-const renderWelcome = () => {
+const renderWelcome = (playSwarm = false) => {
   const onChooseModel = jest.fn();
   const onImportChat = jest.fn();
   render(
-    <NoModelWelcome onChooseModel={onChooseModel} onImportChat={onImportChat} />
+    <NoModelWelcome
+      onChooseModel={onChooseModel}
+      onImportChat={onImportChat}
+      playSwarm={playSwarm}
+    />
   );
   layoutAt(844);
   return { onChooseModel, onImportChat };
@@ -64,10 +69,35 @@ describe('the no-model screen', () => {
 
   it('keeps its actions usable before the screen has been measured', () => {
     render(
-      <NoModelWelcome onChooseModel={jest.fn()} onImportChat={jest.fn()} />
+      <NoModelWelcome
+        onChooseModel={jest.fn()}
+        onImportChat={jest.fn()}
+        playSwarm={false}
+      />
     );
 
     expect(screen.getByText('Choose a model')).toBeTruthy();
     expect(screen.queryByText('Welcome!')).toBeNull();
+  });
+
+  describe('before the swarm has played', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it('keeps the heading, badge and description hidden for the dots to form', () => {
+      jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(false);
+      renderWelcome();
+
+      expect(screen.getByText('Welcome!')).toHaveStyle({ opacity: 0 });
+      expect(
+        screen.getByText('Choose a model to get started with Private Mind')
+      ).toHaveStyle({ opacity: 0 });
+    });
+
+    it('shows them straight away with reduced motion', () => {
+      jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(true);
+      renderWelcome();
+
+      expect(screen.getByText('Welcome!')).toHaveStyle({ opacity: 1 });
+    });
   });
 });

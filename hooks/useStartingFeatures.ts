@@ -4,6 +4,7 @@ import { useVectorStore } from '../context/VectorStoreContext';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { useLLMStore } from '../store/llmStore';
 import { useSTTStore } from '../store/sttStore';
+import { showNotEnoughStorage } from '../utils/storageSpace';
 import { LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES } from '../constants/embedding-model';
 import {
   WHISPER_DOWNLOAD_SIZE_BYTES,
@@ -99,18 +100,25 @@ export const useStartingFeatures = () => {
   const downloadDocuments = async () => {
     const store = await waitForVectorStore(() => vectorStoreRef.current);
     if (!store) return false;
-    return useEmbeddingModelStore.getState().ensureReady(store, (load) =>
-      useLLMStore.getState().runWithModelOffloaded(
-        async () => {
-          try {
-            await load();
-          } finally {
-            await embeddingsRef.current?.unload();
-          }
-        },
-        { restore: false }
-      )
-    );
+    const ready = await useEmbeddingModelStore
+      .getState()
+      .ensureReady(store, (load) =>
+        useLLMStore.getState().runWithModelOffloaded(
+          async () => {
+            try {
+              await load();
+            } finally {
+              await embeddingsRef.current?.unload();
+            }
+          },
+          { restore: false }
+        )
+      );
+    const storageFailure = useEmbeddingModelStore.getState().failedForStorage;
+    if (!ready && storageFailure) {
+      showNotEnoughStorage('Documents & web search', storageFailure.shortfall);
+    }
+    return ready;
   };
 
   const downloadDictation = async () => {

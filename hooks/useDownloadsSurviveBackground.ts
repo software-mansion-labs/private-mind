@@ -4,13 +4,22 @@ import {
   pauseDownloadsForBackground,
   resumeDownloadsAfterBackground,
 } from '../store/modelStore';
+import {
+  pauseFeatureDownloadsForBackground,
+  resumeFeatureDownloadsAfterBackground,
+} from '../utils/featureDownloadsInBackground';
 
 export const useDownloadsSurviveBackground = () => {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const subscription = AppState.addEventListener('change', (next) => {
-      if (next === 'background') pauseDownloadsForBackground();
-      else if (next === 'active') resumeDownloadsAfterBackground();
+      if (next === 'background') {
+        pauseDownloadsForBackground();
+        pauseFeatureDownloadsForBackground();
+      } else if (next === 'active') {
+        resumeDownloadsAfterBackground();
+        resumeFeatureDownloadsAfterBackground();
+      }
     });
     return () => subscription.remove();
   }, []);

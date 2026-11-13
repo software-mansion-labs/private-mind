@@ -33,7 +33,11 @@ import {
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
 import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
-import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
+import {
+  COMPOSER,
+  COMPOSER_CARD_RADIUS,
+  COMPOSER_STRIP_HEIGHT,
+} from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
@@ -67,7 +71,13 @@ import {
   useBarGrowth,
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  bottomBarPadding,
+  radius,
+  space,
+  stroke,
+} from '../../constants/design-system';
+import { Glass } from '../Glass';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -139,7 +149,10 @@ const ChatBar = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
-    () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
+    () => [
+      styles.container,
+      { paddingBottom: bottomBarPadding(theme.insets.bottom) },
+    ],
     [styles.container, theme.insets.bottom]
   );
 
@@ -654,7 +667,12 @@ const ChatBar = ({
               />
             </Animated.View>
           )}
-          <View style={styles.inputContainer}>
+          <Glass
+            radius={COMPOSER_CARD_RADIUS}
+            interactive={false}
+            fallbackTint={theme.bg.chatBar}
+            style={styles.inputContainer}
+          >
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -731,6 +749,8 @@ const ChatBar = ({
                 sendPending={sendPending}
                 sendInFlight={sendInFlight}
                 onAttach={handleAttach}
+                onAttachPressIn={panel.onPlusPressIn}
+                onAttachPressOut={panel.onPlusPressOut}
                 hasAttachments={attachments.length > 0}
                 isLoadingAttachment={hasLoadingAttachment}
                 userInput={userInput}
@@ -749,7 +769,7 @@ const ChatBar = ({
                 onWebSearchToggle={webSearchToggle}
               />
             </View>
-          </View>
+          </Glass>
           <AttachmentOverlay
             panel={panel}
             onWindowHeight={setPanelWindowHeight}
@@ -807,10 +827,6 @@ const createStyles = (theme: Theme) =>
     },
     inputContainer: {
       flexDirection: 'column',
-      backgroundColor: theme.bg.chatBar,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.chatBar,
-      borderRadius: radius.eighteen,
       padding: COMPOSER.cardPadding,
       paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
@@ -819,14 +835,15 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     input: {
-      fontSize: fontSizes.md,
+      fontSize: fontSizes.lg,
       // lineHeight on Android causes typed text to be taller than the
       // placeholder, making the ChatBar jump on first keystroke.
       ...(Platform.OS === 'ios'
-        ? { lineHeight: lineHeights.md }
+        ? { lineHeight: lineHeights.lg }
         : { includeFontPadding: false }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
+      paddingHorizontal: space.one,
       color: theme.text.onChatBar,
     },
     strip: {

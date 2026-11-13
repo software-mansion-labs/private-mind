@@ -11,7 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import OnboardingScrim from './OnboardingScrim';
 import OnboardingCaption from './OnboardingCaption';
-import { Theme, mixColors, withAlpha } from '../../styles/colors';
+import MaskedView from '@react-native-masked-view/masked-view';
+import { Theme, withAlpha } from '../../styles/colors';
 import {
   BADGE_LEAD,
   CARD_INSET,
@@ -33,6 +34,8 @@ const CROP_RAMP: [number, number][] = [
   [0.75, 0.156],
   [1, 0],
 ];
+
+const MASK_INK = '#000000';
 
 interface Props {
   slide: Slide;
@@ -84,16 +87,8 @@ function OnboardingSlide({
     0,
     ...CROP_RAMP.map(([at]) => clearStop + (1 - clearStop) * at),
   ] as [number, number, ...number[]];
-  const cropFadeColors = [1, ...CROP_RAMP.map(([, alpha]) => alpha)].map(
-    (alpha, stop) =>
-      withAlpha(
-        mixColors(
-          theme.bg.softPrimary,
-          theme.bg.main,
-          (cropFadeLocations[stop] * cropHeight) / pageHeight
-        ),
-        alpha
-      )
+  const cropMaskColors = [1, ...CROP_RAMP.map(([, cover]) => cover)].map(
+    (cover) => withAlpha(MASK_INK, 1 - cover)
   ) as [string, string, ...string[]];
 
   const start = (index - 1) * pageWidth;
@@ -180,28 +175,42 @@ function OnboardingSlide({
     };
   });
 
+  const illustration = (
+    <Animated.View style={illustrationStyle}>
+      <Image
+        source={slide.illustration.source}
+        style={{
+          width: illustrationWidth,
+          height: illustrationWidth / slide.illustration.aspectRatio,
+        }}
+      />
+    </Animated.View>
+  );
+
   return (
     <View style={[styles.page, { width: pageWidth, height: pageHeight }]}>
       <View
         pointerEvents="none"
         style={[styles.illustrationZone, zonePlacement]}
       >
-        <Animated.View style={illustrationStyle}>
-          <Image
-            source={slide.illustration.source}
-            style={{
-              width: illustrationWidth,
-              height: illustrationWidth / slide.illustration.aspectRatio,
-            }}
-          />
-        </Animated.View>
-        {!anchoredTop && (
-          <LinearGradient
-            colors={cropFadeColors}
-            locations={cropFadeLocations}
-            style={[styles.cropFade, { height: cropHeight }]}
-            pointerEvents="none"
-          />
+        {anchoredTop ? (
+          illustration
+        ) : (
+          <MaskedView
+            style={[styles.cropMask, isSplit && styles.cropMaskCentred]}
+            maskElement={
+              <View style={StyleSheet.absoluteFill}>
+                <LinearGradient
+                  colors={cropMaskColors}
+                  locations={cropFadeLocations}
+                  style={{ height: cropHeight }}
+                />
+                <View style={styles.cropMaskSolid} />
+              </View>
+            }
+          >
+            {illustration}
+          </MaskedView>
         )}
       </View>
 
@@ -253,11 +262,17 @@ const createStyles = (theme: Theme) =>
     zoneCentred: {
       justifyContent: 'center',
     },
-    cropFade: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
+    cropMask: {
+      ...StyleSheet.absoluteFill,
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+    },
+    cropMaskCentred: {
+      justifyContent: 'center',
+    },
+    cropMaskSolid: {
+      flex: 1,
+      backgroundColor: MASK_INK,
     },
     textClip: {
       position: 'absolute',
