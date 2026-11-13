@@ -2,18 +2,18 @@ import { useCallback, useRef, useState } from 'react';
 import { AudioManager, AudioRecorder } from 'react-native-audio-api';
 import { OnAudioReadyEventType } from 'react-native-audio-api/lib/typescript/events/types';
 import { useStableCallback } from './useStableCallback';
-import { STTStore, useSTTStore } from '../store/sttStore';
 import {
+  STTStore,
+  useSTTStore,
   type SpeechToTextModule,
-  type TranscriptionResult,
-} from 'react-native-executorch/legacy';
+} from '../store/sttStore';
 
 interface Options {
   onAudioData?: (data: number[]) => void;
 }
 
 type StartReturnType = Promise<AsyncGenerator<
-  { committed: TranscriptionResult; nonCommitted: TranscriptionResult },
+  { committed: string; nonCommitted: string },
   void,
   unknown
 > | null>;
@@ -86,7 +86,9 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       }
 
       changeStatus('listening');
-      const streamGenerator = useSTTStore.getState().module!.stream();
+      const streamGenerator = useSTTStore
+        .getState()
+        .module!.stream({ language: 'en' });
       throwIfRecorderFailed(
         recorder.current!.onAudioReady(
           {

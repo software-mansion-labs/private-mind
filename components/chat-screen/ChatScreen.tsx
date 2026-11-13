@@ -14,6 +14,8 @@ import { useSendChatMessage } from './useSendChatMessage';
 import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
+  FadeInUp,
+  FadeOutUp,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -35,6 +37,9 @@ import NewChatSwarm, {
 import { TopFade, topFadeHeight } from './TopFade';
 import { NewChatBackground } from './NewChatBackground';
 import UserMessageActionMenu from './UserMessageActionMenu';
+import ModelUpdateBanner from './ModelUpdateBanner';
+import { needsUpdate } from '../../utils/modelUpdate';
+import { space } from '../../constants/design-system';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -304,6 +309,15 @@ export default function ChatScreen({
   });
 
   const scrollBottomOffset = theme.insets.bottom;
+  const showUpdateBanner = hasMessages && !!model && needsUpdate(model);
+  const [updateBannerHeight, setUpdateBannerHeight] = useState(0);
+  const handleUpdateBannerLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) =>
+      setUpdateBannerHeight(e.nativeEvent.layout.height + space.two),
+    []
+  );
+  const messagesTopInset =
+    headerHeight + (showUpdateBanner ? updateBannerHeight : 0);
 
   useLegacyChatNotice(messageHistory);
 
@@ -367,7 +381,7 @@ export default function ChatScreen({
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
           chatBarInset={chatBarHeight}
-          topInset={headerHeight}
+          topInset={messagesTopInset}
           fadeBottom={fadeBottom}
         />
       </View>
@@ -440,6 +454,21 @@ export default function ChatScreen({
         </Animated.View>
       )}
 
+      {showUpdateBanner && model && (
+        <Animated.View
+          entering={FadeInUp}
+          exiting={FadeOutUp}
+          style={[
+            styles.updateBannerOverlay,
+            { top: headerHeight + space.two },
+          ]}
+          pointerEvents="box-none"
+          onLayout={handleUpdateBannerLayout}
+        >
+          <ModelUpdateBanner model={model} />
+        </Animated.View>
+      )}
+
       {userActionMenuPosition && (
         <View
           style={[styles.userActionMenuOverlay, userActionMenuPosition]}
@@ -470,6 +499,14 @@ const createStyles = (theme: Theme) =>
       zIndex: 1,
       elevation: 1,
       overflow: 'visible',
+    },
+    updateBannerOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 4,
+      elevation: 4,
     },
     userActionMenuOverlay: {
       position: 'absolute',

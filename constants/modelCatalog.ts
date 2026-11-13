@@ -1,6 +1,6 @@
 export const MODEL_CATALOG_URL =
   process.env.EXPO_PUBLIC_MODEL_CATALOG_URL ??
-  'https://software-mansion-labs.github.io/private-mind/model-catalog-v2.json';
+  'https://software-mansion-labs.github.io/private-mind/model-catalog-v3.json';
 
 export const MODEL_CATALOG_FETCH_TIMEOUT_MS = 3000;
 

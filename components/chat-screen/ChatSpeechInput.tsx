@@ -25,6 +25,7 @@ import { WHISPER_DOWNLOAD_SIZE_BYTES } from '../../utils/sttModelFiles';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
 import { radius, space } from '../../constants/design-system';
+import { withoutNonSpeechNotes } from '../../utils/whisperTranscript';
 import { COMPOSER_CARD_RADIUS } from './attachments/constants';
 
 interface Props {
@@ -45,15 +46,8 @@ const ACTION_NOTES: Record<Phase, string> = {
   ended: 'Dictation stopped',
 };
 
-const BRACKETED_ANNOTATION_ONLY = /^[([][^)\]]*[)\]]$/;
-
-const isAnnotationOnly = (transcript: string): boolean =>
-  BRACKETED_ANNOTATION_ONLY.test(transcript);
-
-const shownTranscript = (committed: string, nonCommitted: string) => {
-  const heard = (committed.trim() + ' ' + nonCommitted.trim()).trim();
-  return isAnnotationOnly(heard) ? '' : heard;
-};
+const shownTranscript = (committed: string, nonCommitted: string) =>
+  withoutNonSpeechNotes(committed + ' ' + nonCommitted);
 
 const ChatSpeechInput: React.FC<Props> = ({
   onSubmit: onSubmitProp,
@@ -118,8 +112,8 @@ const ChatSpeechInput: React.FC<Props> = ({
         let pendingText = '';
         for await (const { committed, nonCommitted } of streamGenerator) {
           if (unmountedRef.current) break;
-          text = text + committed.text;
-          pendingText = nonCommitted.text;
+          text = committed;
+          pendingText = nonCommitted;
           heardSoFarRef.current = {
             committed: text,
             nonCommitted: pendingText,

@@ -1,5 +1,5 @@
 import { useLLMStore } from '../store/llmStore';
-import { LLMModule } from 'react-native-executorch/legacy';
+import { LLMEngine } from '../utils/llmEngine';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -13,6 +13,7 @@ jest.mock('../modules/memory-probe', () => ({
   releaseMlxCache: jest.fn(),
 }));
 jest.mock('../database/chatRepository');
+jest.mock('../utils/llmEngine', () => ({ LLMEngine: { load: jest.fn() } }));
 jest.mock('../utils/Feedback', () => ({
   Feedback: { firstToken: jest.fn() },
 }));
@@ -32,7 +33,7 @@ jest.mock('@react-native-community/netinfo', () => ({
   default: { fetch: jest.fn().mockResolvedValue({ isConnected: true }) },
 }));
 
-const mockLLMModule = LLMModule as jest.Mocked<typeof LLMModule>;
+const mockLLMEngine = LLMEngine as jest.Mocked<typeof LLMEngine>;
 const mockPersistMessage = chatRepository.persistMessage as jest.Mock;
 const mockMarkMessageCutShort = chatRepository.markMessageCutShort as jest.Mock;
 
@@ -99,8 +100,8 @@ beforeEach(async () => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   instance = makeInstance();
-  mockLLMModule.fromModelName.mockImplementation(
-    async () => instance as unknown as LLMModule
+  mockLLMEngine.load.mockImplementation(
+    async () => instance as unknown as LLMEngine
   );
   mockPersistMessage.mockResolvedValue(42);
   useSettingsStore.setState({ hasHydrated: true, customSystemPrompt: '' });
@@ -288,12 +289,12 @@ describe('a turn the memory stall cut short', () => {
     stallNextTurn('');
     await send();
     await settle();
-    mockLLMModule.fromModelName.mockClear();
+    mockLLMEngine.load.mockClear();
 
     instance.generate.mockResolvedValue('Rome was founded in 753 BC.');
     await send();
 
-    expect(mockLLMModule.fromModelName).toHaveBeenCalled();
+    expect(mockLLMEngine.load).toHaveBeenCalled();
     expect(
       messages().find((message) => message.role === 'assistant')?.content
     ).toBe('Rome was founded in 753 BC.');
@@ -304,12 +305,12 @@ describe('a turn the memory stall cut short', () => {
     await send();
     await settle();
     await useLLMStore.getState().loadModel(qwen);
-    mockLLMModule.fromModelName.mockClear();
+    mockLLMEngine.load.mockClear();
 
     instance.generate.mockResolvedValue('Rome was founded in 753 BC.');
     await useLLMStore.getState().retryLastGeneration();
 
-    expect(mockLLMModule.fromModelName).not.toHaveBeenCalled();
+    expect(mockLLMEngine.load).not.toHaveBeenCalled();
     expect(
       messages().find((message) => message.role === 'assistant')?.content
     ).toBe('Rome was founded in 753 BC.');

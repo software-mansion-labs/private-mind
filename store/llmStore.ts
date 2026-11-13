@@ -9,7 +9,7 @@ import {
   withTemplateThinkOpener,
 } from '../utils/thinking';
 import { create } from 'zustand';
-import { LLMModule } from 'react-native-executorch/legacy';
+import { LLMEngine } from '../utils/llmEngine';
 import { preferDownloadedCopy } from '../utils/downloadedCopy';
 import { Model } from '../database/modelRepository';
 import { SQLiteDatabase } from 'expo-sqlite';
@@ -32,10 +32,15 @@ import {
   BENCHMARK_TOKEN_TARGET,
 } from '../constants/default-benchmark';
 import { BenchmarkResultPerformanceNumbers } from '../database/benchmarkRepository';
-import { type Message as ExecutorchMessage } from 'react-native-executorch/legacy';
-import { calculatePerformanceMetrics } from '../utils/performanceMetrics';
+import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
+import {
+  calculatePerformanceMetrics,
+  timeToFirstTokenSince,
+} from '../utils/performanceMetrics';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
+import { needsUpdate, requiresUpdate } from '../utils/modelUpdate';
+import { onModelFilesReplaced } from '../utils/modelFilesReplaced';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
@@ -74,7 +79,10 @@ import {
   truncateAtRepeatedClause,
 } from '../utils/loopDetection';
 import { recordAnswerTrace, type AnswerRetry } from '../utils/answerTrace';
-import { updateConversationDigest } from '../utils/conversationDigest';
+import {
+  digestReplyIsComplete,
+  updateConversationDigest,
+} from '../utils/conversationDigest';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import { useSettingsStore } from './settingsStore';
 import { openingWelcomeFor } from '../utils/openingGreeting';
@@ -96,6 +104,7 @@ import {
 import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
+import { rememberModelContextCapacity } from '../utils/modelContextCapacity';
 
 export interface LLMStore {
   isLoading: boolean;
@@ -150,13 +159,16 @@ export interface LLMStore {
   appWentToBackground: () => void;
   appReturnedToForeground: () => void;
   runBenchmark: () => Promise<BenchmarkResultPerformanceNumbers | undefined>;
-  generateUtility: (messages: ExecutorchMessage[]) => Promise<string>;
+  generateUtility: (
+    messages: ExecutorchMessage[],
+    options?: UtilityOptions
+  ) => Promise<string>;
   interrupt: () => void;
   sendEventMessage: (chatId: number, message: string) => Promise<void>;
   refreshActiveChatMessages: () => Promise<void>;
 }
 
-let llmInstance: LLMModule | null = null;
+let llmInstance: LLMEngine | null = null;
 let instanceRunsOnMlx = false;
 let modelOffloadChain: Promise<void> = Promise.resolve();
 let modelLoadChain: Promise<void> = Promise.resolve();
@@ -185,7 +197,7 @@ type LLMGenerationConfig = ReturnType<typeof getGenerationConfigForModel>;
 let appliedGenerationConfig: string | null = null;
 
 const applyGenerationConfig = (
-  instance: LLMModule,
+  instance: LLMEngine,
   generationConfig: LLMGenerationConfig | undefined
 ) => {
   if (!generationConfig) return;
@@ -206,7 +218,7 @@ type FailedGenerationRequest = {
 };
 
 let failedGenerationRequest: FailedGenerationRequest | null = null;
-let instanceBehindFailedTurn: LLMModule | null = null;
+let instanceBehindFailedTurn: LLMEngine | null = null;
 
 let appIsAway = false;
 let appIsInBackground = false;
@@ -259,7 +271,48 @@ let benchmarkTokenBudget: number | null = null;
 let suppressUtilityStreaming = false;
 let utilityGenerating = false;
 let utilityChain: Promise<void> = Promise.resolve();
-let warmingUp: LLMModule | null = null;
+
+export interface UtilityOptions {
+  background?: boolean;
+  isComplete?: (text: string) => boolean;
+}
+
+interface UtilityRun extends UtilityOptions {
+  text: string;
+  completed: boolean;
+  abandoned: boolean;
+  interruptSent: boolean;
+  settled: boolean;
+}
+
+const startUtilityRun = (options: UtilityOptions = {}): UtilityRun => ({
+  ...options,
+  text: '',
+  completed: false,
+  abandoned: false,
+  interruptSent: false,
+  settled: false,
+});
+
+let latestUtilityRun: UtilityRun | null = null;
+let streamingUtilityRun: UtilityRun | null = null;
+
+const utilityRunShouldStop = (run: UtilityRun, token: string): boolean => {
+  if (!run.completed && !run.abandoned) {
+    run.text += token;
+    run.completed = !!run.isComplete?.(run.text);
+  }
+  if (!(run.completed || run.abandoned) || run.interruptSent) return false;
+  run.interruptSent = true;
+  return true;
+};
+
+const utilityRunResult = (run: UtilityRun, result: unknown): string => {
+  if (run.abandoned) return '';
+  if (run.completed) return run.text;
+  return typeof result === 'string' ? result : '';
+};
+let warmingUp: LLMEngine | null = null;
 let warmupStopRequested = false;
 let modelWarmup: Promise<void> = Promise.resolve();
 let sendAbortController: AbortController | null = null;
@@ -368,17 +421,26 @@ type StoreSet = (
   partial: Partial<LLMStore> | ((state: LLMStore) => Partial<LLMStore>)
 ) => void;
 
+let instanceFiles: Model | null = null;
+
+const sameFiles = (model: Model, loaded: Model | null) =>
+  !!loaded &&
+  model.modelPath === loaded.modelPath &&
+  model.tokenizerPath === loaded.tokenizerPath &&
+  model.tokenizerConfigPath === loaded.tokenizerConfigPath;
+
 const unloadLLM = () => {
   appliedGenerationConfig = null;
   if (!llmInstance) return false;
   llmInstance.delete();
   llmInstance = null;
+  instanceFiles = null;
   if (instanceRunsOnMlx) releaseMlxCache();
   instanceRunsOnMlx = false;
   return true;
 };
 
-const interruptQuietly = (instance: LLMModule) => {
+const interruptQuietly = (instance: LLMEngine) => {
   try {
     instance.interrupt();
   } catch (error) {
@@ -417,7 +479,7 @@ const WARMUP_MESSAGES: ExecutorchMessage[] = [
   { role: 'user', content: 'hi' },
 ];
 
-const warmUpModel = (instance: LLMModule): Promise<void> => {
+const warmUpModel = (instance: LLMEngine): Promise<void> => {
   if (appIsInBackground) return Promise.resolve();
   const generation = withExclusiveRunner(async (isCancelled) => {
     if (llmInstance !== instance || isCancelled()) return;
@@ -461,6 +523,17 @@ const releaseModelOnceIdleInBackground = (get: () => LLMStore) => {
 export const modelLoadFailedCopy = (modelName: string) =>
   `${modelName} could not be loaded. Try again or pick another model.`;
 
+export const modelNeedsUpdateCopy = (modelName: string) =>
+  `${modelName} needs a one-time update. Connect to the internet and tap Update at the top of the chat.`;
+
+const rememberContextCapacityOf = (model: Model, engine: LLMEngine) => {
+  try {
+    rememberModelContextCapacity(model.id, engine.getMaxContextLength());
+  } catch (error) {
+    console.warn('Could not read the model context capacity', error);
+  }
+};
+
 const loadModelInstance = async (
   model: Model,
   hardReload: boolean,
@@ -468,7 +541,12 @@ const loadModelInstance = async (
   get: () => LLMStore
 ) => {
   const { model: currentModel } = get();
-  if (model.id === currentModel?.id && llmInstance && !hardReload) {
+  if (
+    model.id === currentModel?.id &&
+    sameFiles(model, instanceFiles) &&
+    llmInstance &&
+    !hardReload
+  ) {
     return;
   }
   await unloadLLMWhenIdle();
@@ -519,17 +597,14 @@ const loadModelInstance = async (
 
   try {
     instanceRunsOnMlx = runsOnMlxDelegate(model);
-    llmInstance = await LLMModule.fromModelName(
+    instanceFiles = model;
+    llmInstance = await LLMEngine.load(
       {
-        modelName: 'custom' as Parameters<
-          typeof LLMModule.fromModelName
-        >[0]['modelName'],
         modelSource: fromDisk(model.modelPath),
         tokenizerSource: fromDisk(model.tokenizerPath),
         tokenizerConfigSource: fromDisk(model.tokenizerConfigPath),
-        capabilities: model.vision ? (['vision'] as const) : undefined,
+        vision: model.vision,
       },
-      () => {},
       (token) => {
         if (warmingUp) {
           if (!warmupStopRequested) {
@@ -539,6 +614,12 @@ const loadModelInstance = async (
           return;
         }
         generationSawToken = true;
+        if (streamingUtilityRun) {
+          if (utilityRunShouldStop(streamingUtilityRun, token) && llmInstance) {
+            interruptQuietly(llmInstance);
+          }
+          return;
+        }
         if (suppressUtilityStreaming) return;
         if (streamStopRequested) return;
 
@@ -577,6 +658,7 @@ const loadModelInstance = async (
     );
 
     applyGenerationConfig(llmInstance, getGenerationConfigForModel(model));
+    rememberContextCapacityOf(model, llmInstance);
     await warmUpModel(llmInstance);
 
     set({ isLoading: false });
@@ -586,7 +668,9 @@ const loadModelInstance = async (
     set({ isLoading: false, model: null });
     Toast.show({
       type: 'defaultToast',
-      text1: modelLoadFailedCopy(model.modelName),
+      text1: needsUpdate(model)
+        ? modelNeedsUpdateCopy(model.modelName)
+        : modelLoadFailedCopy(model.modelName),
     });
   }
 };
@@ -789,17 +873,20 @@ const tidyVisibleAnswer = (response: string): string =>
   );
 
 const runUtilityGeneration = (
-  instance: LLMModule,
+  instance: LLMEngine,
   messages: ExecutorchMessage[],
-  model: Model | null
+  model: Model | null,
+  run: UtilityRun
 ): Promise<string> => {
   utilityGenerating = true;
   return withExclusiveRunner(async (isCancelled) => {
-    if (llmInstance !== instance || isCancelled()) {
+    if (llmInstance !== instance || isCancelled() || run.abandoned) {
       utilityGenerating = false;
+      run.settled = true;
       return '';
     }
     suppressUtilityStreaming = true;
+    streamingUtilityRun = run;
     try {
       const prepared =
         model?.thinking && !usesTemplateThinkingSwitch(model)
@@ -814,18 +901,30 @@ const runUtilityGeneration = (
       instance.setChatTemplateFlags(chatTemplateFlagsFor(model, false));
       const result = await instance.generate(prepared);
       reportPromptEstimateAccuracy(prepared, instance, 'utility');
-      return typeof result === 'string' ? result : '';
+      return utilityRunResult(run, result);
     } catch (error) {
+      if (run.abandoned || run.completed) return utilityRunResult(run, '');
       console.warn('generateUtility failed', error);
       return '';
     } finally {
       if (model) {
         applyGenerationConfig(instance, getGenerationConfigForModel(model));
       }
+      streamingUtilityRun = null;
       suppressUtilityStreaming = false;
       utilityGenerating = false;
+      run.settled = true;
     }
   });
+};
+
+const abandonBackgroundUtility = () => {
+  const run = latestUtilityRun;
+  if (!run?.background || run.settled || run.abandoned) return;
+  run.abandoned = true;
+  if (streamingUtilityRun === run && llmInstance) {
+    interruptQuietly(llmInstance);
+  }
 };
 
 const GENERATION_FAILED = 'Failed to generate a response.';
@@ -899,17 +998,6 @@ const generateLLMResponse = (
 ): Promise<LLMGenerationResult> => {
   const instance = llmInstance;
   if (!instance) return Promise.resolve(NO_LLM_RESPONSE);
-  const preparedMessages = messages.map((msg) =>
-    msg.mediaPath
-      ? {
-          ...msg,
-          content: [
-            { type: 'image' },
-            { type: 'text', text: msg.content as string },
-          ] as unknown as string,
-        }
-      : msg
-  );
 
   return withExclusiveRunner<LLMGenerationResult>(async (isCancelled) => {
     if (llmInstance !== instance || isCancelled()) return NO_LLM_RESPONSE;
@@ -929,7 +1017,7 @@ const generateLLMResponse = (
     const startTime = performance.now();
     let finalResponse: Awaited<ReturnType<typeof instance.generate>>;
     try {
-      finalResponse = await instance.generate(preparedMessages);
+      finalResponse = await instance.generate(messages);
     } finally {
       clearTimeout(firstTokenWatchdog);
     }
@@ -1057,9 +1145,15 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
   loadModel: async (model, hardReload: boolean = false) => {
     const { model: currentModel } = get();
-    if (model.id === currentModel?.id && llmInstance && !hardReload) {
+    if (
+      model.id === currentModel?.id &&
+      sameFiles(model, instanceFiles) &&
+      llmInstance &&
+      !hardReload
+    ) {
       return;
     }
+    if (requiresUpdate(model)) return;
     const result = modelLoadChain.then(async () => {
       // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
       if (await cpuLacksLseAtomics()) {
@@ -1159,6 +1253,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       console.warn('A turn is already in flight, rejecting the send');
       return false;
     }
+    const turnStartedAt = performance.now();
+    abandonBackgroundUtility();
     const activeChatMessages = isRetry
       ? withoutAbandonedAnswer(get().activeChatMessages, chatId)
       : get().activeChatMessages;
@@ -1609,6 +1705,17 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled)
         );
       }
+      generation = {
+        ...generation,
+        performance: {
+          ...generation.performance,
+          timeToFirstToken: timeToFirstTokenSince(
+            turnStartedAt,
+            streamFirstTokenTime,
+            generation.performance.timeToFirstToken
+          ),
+        },
+      };
       const userStoppedTurn = !get().isGenerating;
       const stallCameFromMemory =
         generation.stalled && !userStoppedTurn && !appWasAwayDuringTurn;
@@ -1900,7 +2007,10 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             finalResponse,
             continuationResponse.trim()
           );
-          responsePerformance = continuationGeneration.performance;
+          responsePerformance = {
+            ...continuationGeneration.performance,
+            timeToFirstToken: responsePerformance.timeToFirstToken,
+          };
         }
       }
 
@@ -2019,7 +2129,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         if (!stoppedByUser && !openingWelcome) {
           const previousDigest = digestForChat(get, chatId);
           updateConversationDigest(
-            (messages) => get().generateUtility(messages),
+            (messages) =>
+              get().generateUtility(messages, {
+                background: true,
+                isComplete: digestReplyIsComplete,
+              }),
             previousDigest,
             currentQuestion ?? '',
             humanizedResponse
@@ -2218,7 +2332,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     }
   },
 
-  generateUtility: (messages) => {
+  generateUtility: (messages, options) => {
     if (
       !llmInstance ||
       get().isLoading ||
@@ -2228,7 +2342,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     ) {
       return Promise.resolve('');
     }
-    const run = runUtilityGeneration(llmInstance, messages, get().model);
+    latestUtilityRun = startUtilityRun(options);
+    const run = runUtilityGeneration(
+      llmInstance,
+      messages,
+      get().model,
+      latestUtilityRun
+    );
     utilityChain = run.then(
       () => undefined,
       () => undefined
@@ -2277,3 +2397,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     set({ activeChatMessages: messageHistory });
   },
 }));
+
+onModelFilesReplaced((updated) => {
+  if (useLLMStore.getState().model?.id === updated.id) {
+    useLLMStore.setState({ model: updated });
+  }
+});
