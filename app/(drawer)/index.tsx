@@ -88,20 +88,22 @@ export default function App() {
     }, [db, downloadedModels])
   );
 
+  const onboardingRedirectRef = useRef(onboardingRedirect);
+  onboardingRedirectRef.current = onboardingRedirect;
   const [isFocused, setIsFocused] = useState(false);
-  const [hasLeftScreen, setHasLeftScreen] = useState(false);
+  const [returnedFromRedirect, setReturnedFromRedirect] = useState(false);
   useFocusEffect(
     useCallback(() => {
       setIsFocused(true);
-      return () => {
-        setIsFocused(false);
-        setHasLeftScreen(true);
-      };
+      if (onboardingRedirectRef.current === 'redirected') {
+        setReturnedFromRedirect(true);
+      }
+      return () => setIsFocused(false);
     }, [])
   );
   const welcomeIsUncovered =
     onboardingRedirect === 'stayed' ||
-    (onboardingRedirect === 'redirected' && hasLeftScreen);
+    (onboardingRedirect === 'redirected' && returnedFromRedirect);
 
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
 

@@ -203,7 +203,7 @@ const createStyles = (theme: Theme) =>
     searchEmptyAction: {
       alignSelf: 'center',
       overflow: 'hidden',
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
     },

@@ -8,19 +8,15 @@ import {
 } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Model } from '../../database/modelRepository';
-import {
-  radius,
-  space,
-  stroke,
-  textStyles,
-} from '../../constants/design-system';
+import { radius, space, textStyles } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { Theme } from '../../styles/colors';
 import { pressedOpacity } from '../../styles/pressable';
 import { getModelFamily } from '../../utils/modelFamily';
 import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import { composerControlSurface } from './composerControl';
-import { COMPOSER } from './attachments/constants';
+import { Glass } from '../Glass';
+import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
 import {
   BADGE_HEIGHT,
   CHEVRON_HEIGHT,
@@ -47,63 +43,65 @@ const ModelUnavailableCard = ({ model, pendingModel, onPress }: Props) => {
   const message = unavailableMessage(model);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && pressedOpacity]}
-      onPress={onPress}
-      disabled={!!pendingModel}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!pendingModel, busy: !!pendingModel }}
-      accessibilityLabel={
-        pendingModel
-          ? `${message}. Loading ${pendingModel.modelName}`
-          : `${message}. Choose a model`
-      }
-      testID="model-unavailable-card"
-    >
-      <Text style={styles.message}>{message}</Text>
-      {pendingModel ? (
-        <View style={styles.pill}>
-          <ModelFamilyTile
-            family={getModelFamily(pendingModel)}
-            size="badge"
-            iconColor={theme.text.onChatBar}
-          />
-          <Text
-            style={styles.pillLabel}
-            numberOfLines={1}
-            maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-          >
-            {pendingModel.modelName}
-          </Text>
-          <ActivityIndicator
-            size="small"
-            color={theme.text.onChatBar}
-            style={styles.loader}
-            testID="model-unavailable-card-loader"
-          />
-        </View>
-      ) : (
-        <View style={[styles.pill, styles.choosePill]}>
-          <ModelsIcon
-            width={MODELS_ICON_SIZE}
-            height={MODELS_ICON_SIZE}
-            style={styles.icon}
-          />
-          <Text
-            style={styles.pillLabel}
-            numberOfLines={1}
-            maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-          >
-            Choose a model
-          </Text>
-          <ChevronDownIcon
-            width={CHEVRON_WIDTH}
-            height={CHEVRON_HEIGHT}
-            style={styles.chevron}
-          />
-        </View>
-      )}
-    </Pressable>
+    <Glass radius={COMPOSER_CARD_RADIUS} fallbackTint={theme.bg.chatBar}>
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && pressedOpacity]}
+        onPress={onPress}
+        disabled={!!pendingModel}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !!pendingModel, busy: !!pendingModel }}
+        accessibilityLabel={
+          pendingModel
+            ? `${message}. Loading ${pendingModel.modelName}`
+            : `${message}. Choose a model`
+        }
+        testID="model-unavailable-card"
+      >
+        <Text style={styles.message}>{message}</Text>
+        {pendingModel ? (
+          <View style={styles.pill}>
+            <ModelFamilyTile
+              family={getModelFamily(pendingModel)}
+              size="badge"
+              iconColor={theme.text.onChatBar}
+            />
+            <Text
+              style={styles.pillLabel}
+              numberOfLines={1}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
+              {pendingModel.modelName}
+            </Text>
+            <ActivityIndicator
+              size="small"
+              color={theme.text.onChatBar}
+              style={styles.loader}
+              testID="model-unavailable-card-loader"
+            />
+          </View>
+        ) : (
+          <View style={[styles.pill, styles.choosePill]}>
+            <ModelsIcon
+              width={MODELS_ICON_SIZE}
+              height={MODELS_ICON_SIZE}
+              style={styles.icon}
+            />
+            <Text
+              style={styles.pillLabel}
+              numberOfLines={1}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
+              Choose a model
+            </Text>
+            <ChevronDownIcon
+              width={CHEVRON_WIDTH}
+              height={CHEVRON_HEIGHT}
+              style={styles.chevron}
+            />
+          </View>
+        )}
+      </Pressable>
+    </Glass>
   );
 };
 
@@ -114,10 +112,6 @@ const createStyles = (theme: Theme) =>
     card: {
       gap: space.three,
       padding: COMPOSER.cardPadding,
-      backgroundColor: theme.bg.chatBar,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.chatBar,
-      borderRadius: radius.eighteen,
     },
     message: {
       ...textStyles.bodySecondaryRegular,

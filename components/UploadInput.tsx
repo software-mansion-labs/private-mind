@@ -114,7 +114,7 @@ const createStyles = (theme: Theme, disabled: boolean) =>
     },
     selectButton: {
       height: 40,
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       paddingHorizontal: space.twoHalf,
       flexDirection: 'row',
       justifyContent: 'center',

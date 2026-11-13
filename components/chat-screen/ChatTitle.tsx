@@ -16,7 +16,7 @@ import { space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
-import GlassSurface from '../GlassSurface';
+import { Glass } from '../Glass';
 import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
 
 const CHEVRON_WIDTH = 10;
@@ -69,7 +69,7 @@ const ChatTitle = ({
   const titleWidth = maxWidth ? maxWidth - CHEVRON_SPACE : undefined;
 
   return (
-    <GlassSurface interactive style={styles.capsule}>
+    <Glass radius={GLASS_BUTTON_SIZE / 2} style={styles.capsule}>
       <Pressable
         ref={containerRef}
         onLayout={onBottomMeasured ? handleLayout : undefined}
@@ -117,7 +117,7 @@ const ChatTitle = ({
           />
         ) : null}
       </Pressable>
-    </GlassSurface>
+    </Glass>
   );
 };
 
@@ -127,7 +127,6 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     capsule: {
       height: GLASS_BUTTON_SIZE,
-      borderRadius: GLASS_BUTTON_SIZE / 2,
     },
     title: {
       flexDirection: 'row',
