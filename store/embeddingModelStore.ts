@@ -4,6 +4,12 @@ import {
   cancelEmbeddingModelFetch,
   fetchEmbeddingModelFiles,
 } from '../utils/embeddingModel';
+import {
+  StorageShortfall,
+  isOutOfSpaceError,
+  shortfallBehind,
+} from '../utils/storageSpace';
+import { LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES } from '../constants/embedding-model';
 
 export type EmbeddingModelStatus =
   'unknown' | 'not_downloaded' | 'downloading' | 'ready' | 'error';
@@ -17,6 +23,7 @@ const loadInPlace: EmbeddingModelLoader = (load) => load();
 type EmbeddingModelStore = {
   status: EmbeddingModelStatus;
   progress: number;
+  failedForStorage: { shortfall?: StorageShortfall } | null;
   setProgress: (progress: number) => void;
   setStatus: (status: EmbeddingModelStatus) => void;
   markReady: () => void;
@@ -39,6 +46,7 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
   (set, get) => ({
     status: 'unknown',
     progress: 0,
+    failedForStorage: null,
 
     setProgress: (progress) => {
       const clamped = Number.isFinite(progress)
@@ -68,7 +76,7 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
         result: Promise.resolve(false),
       };
       currentAttempt = attempt;
-      set({ status: 'downloading', progress: 0 });
+      set({ status: 'downloading', progress: 0, failedForStorage: null });
 
       const run = async () => {
         try {
@@ -89,7 +97,18 @@ export const useEmbeddingModelStore = create<EmbeddingModelStore>(
         } catch (error) {
           if (attempt.cancelled) return false;
           console.error('Failed to download/load embedding model', error);
-          set({ status: 'error', progress: 0 });
+          set({
+            status: 'error',
+            progress: 0,
+            failedForStorage: isOutOfSpaceError(error)
+              ? {
+                  shortfall: shortfallBehind(
+                    error,
+                    LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES
+                  ),
+                }
+              : null,
+          });
           return false;
         } finally {
           if (attempt.stage === 'fetching') attempt.stage = 'settled';

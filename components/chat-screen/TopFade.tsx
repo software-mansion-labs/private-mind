@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { EdgeFade } from './EdgeFade';
@@ -13,33 +13,59 @@ import {
 export const topFadeHeight = (anchor: number) =>
   anchor - FADE_GAP_TRIM + FADE_HEIGHT;
 
+const MASK_COLOR = '#000000';
+
 interface Props {
   anchor: number;
-  colors?: readonly [string, string];
+  backdrop?: React.ReactNode;
+  backdropHeight?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-export const TopFade = React.memo(({ anchor, colors, style }: Props) => {
-  const solidHeight = anchor - FADE_GAP_TRIM;
-  const { styles } = useThemedStyles(createStyles, solidHeight);
+export const TopFade = React.memo(
+  ({ anchor, backdrop, backdropHeight = 0, style }: Props) => {
+    const solidHeight = anchor - FADE_GAP_TRIM;
+    const { styles } = useThemedStyles(
+      createStyles,
+      solidHeight,
+      backdropHeight
+    );
 
-  if (solidHeight <= 0) return null;
+    if (solidHeight <= 0) return null;
 
-  return (
-    <View style={[styles.container, style]} pointerEvents="none">
-      {colors ? (
-        <LinearGradient colors={colors} style={styles.solid} />
-      ) : (
+    if (backdrop) {
+      return (
+        <MaskedView
+          style={[styles.container, style]}
+          pointerEvents="none"
+          maskElement={
+            <View style={styles.container}>
+              <View style={[styles.solid, styles.mask]} />
+              <EdgeFade edge="top" color={MASK_COLOR} style={styles.ramp} />
+            </View>
+          }
+        >
+          <View style={styles.backdrop}>{backdrop}</View>
+        </MaskedView>
+      );
+    }
+
+    return (
+      <View style={[styles.container, style]} pointerEvents="none">
         <View style={styles.solid} />
-      )}
-      <EdgeFade edge="top" color={colors?.[1]} style={styles.ramp} />
-    </View>
-  );
-});
+        <EdgeFade edge="top" style={styles.ramp} />
+      </View>
+    );
+  }
+);
 
 TopFade.displayName = 'TopFade';
 
-const createStyles = (theme: Theme, solidHeight: number) =>
+const createStyles = (
+  theme: Theme,
+  solidHeight: number,
+  backdropHeight: number
+) =>
   StyleSheet.create({
     container: {
       position: 'absolute',
@@ -55,6 +81,16 @@ const createStyles = (theme: Theme, solidHeight: number) =>
       right: 0,
       height: solidHeight + SEAM_OVERLAP,
       backgroundColor: theme.bg.softPrimary,
+    },
+    mask: {
+      backgroundColor: MASK_COLOR,
+    },
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: backdropHeight,
     },
     ramp: {
       position: 'absolute',

@@ -10,8 +10,7 @@ would settle it; where the cause is a guess, it says so.
 ### Client-rendered pages come back empty
 
 A question reaches exactly the right page and gets nothing from it. Weather,
-fixture lists and live scores are at once the most common questions asked of
-the app and its weakest category:
+fixture lists and live scores are common questions and the weakest category:
 
 | question                       | page that was read            | answer                                   |
 | ------------------------------ | ----------------------------- | ---------------------------------------- |
@@ -83,14 +82,14 @@ title does not already state. A page that dumps its list with no heading at
 all, after a paragraph echoing the question, still needs `intent: 'howto'`
 from the planner — so it does not work for models that run the verbatim path.
 
-Measured over 155 distinct questions from devices: list questions are 12 of
-271 turns (4.4%), but most never reach the web at all, because the planner
-rejects them as general knowledge. Two reach passage selection — about **1.3%
-of searching turns**.
+List questions are a small share of turns, and most never reach the web at
+all, because the planner rejects them as general knowledge. Few reach passage
+selection, so the gap affects a small fraction of searching turns.
 
 A numeral in the question ("give me 5 things") looks like a free notational
-signal and is not: on the same corpus it catches 15 questions of which 10 are
-false ("iPhone 17 Pro 256GB", "Legion 5 Pro", "what is 10 times 10").
+signal and is not: on a corpus of real questions most of the questions it
+catches are false positives ("iPhone 17 Pro 256GB", "Legion 5 Pro", "what is
+10 times 10").
 
 What to do instead of guessing: record, per round, the share of list-shaped
 lines on a page and whether a heading was found — the trace does not capture
@@ -99,13 +98,13 @@ cheapest fix is budget reservation rather than question classification: when a
 document has a clear list region, guarantee it a slice of the context next to
 the prose and let the model choose. Asking the model whether a question wants
 a list costs a whole extra generation on the phone, on every turn, to serve
-one turn in a hundred.
+a small minority of turns.
 
 ### Smaller, unresolved
 
 - **False "A number here couldn't be confirmed against the sources"** — still
-  raised on figures the answer explicitly attributes to a cited page (2 of 20
-  turns on an S25, repeated on a Pixel on fishing-rod prices).
+  raised on figures the answer explicitly attributes to a cited page, seen on
+  a Galaxy S25 and repeated on a Pixel on fishing-rod prices.
 - **A range instead of a list of prices** — with seven prices found, the model
   listed all seven, although the range hint asks for the range alone from
   three upwards.
@@ -159,7 +158,7 @@ prompt build by one frame so the mount animation gets its frames.
 
 ### The first word of an answer is sometimes corrupted
 
-Three of fourteen answers in one chat opened with a damaged first word, always
+Several answers in one chat opened with a damaged first word, always
 the same stock opener and always the second token, with the rest of the answer
 clean. The damage is already in the token stream as delivered by the native
 side, and grounded answers run with no repetition penalty, so sampling does

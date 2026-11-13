@@ -90,7 +90,7 @@ import {
 } from './pinScroll';
 import { visibleMessageText } from '../../utils/messageText';
 import { pressedOpacity } from '../../styles/pressable';
-import { space } from '../../constants/design-system';
+import { radius, space } from '../../constants/design-system';
 
 export interface MessagesHandle {
   onMessageSent: () => void;
@@ -260,9 +260,6 @@ const Messages = ({
     []
   );
 
-  // v0-style initial scroll: hide the view until we've snapped to
-  // the bottom, then fade in so the user never sees content flying by.
-  // https://vercel.com/blog/how-we-built-the-v0-ios-app
   const opacity = useSharedValue(0);
   const revealTranslateY = useSharedValue(revealFromTop ? -28 : 0);
   const [revealed, setRevealed] = useState(false);
@@ -403,6 +400,7 @@ const Messages = ({
   useLayoutEffect(() => {
     const prevChatLength = prevChatLengthRef.current;
     prevChatLengthRef.current = chatHistory.length;
+    if (chatHistory.length === 0) setShowScrollButton(false);
 
     const sendInFlight = pendingPinRef.current || pinActive.current;
     if (
@@ -1323,15 +1321,17 @@ const Messages = ({
           <View style={styles.bottomFadeSolid} />
         </Reanimated.View>
       )}
-      <Reanimated.View
-        style={[scrollButtonStyle, scrollButtonAnimatedStyle]}
-        pointerEvents="box-none"
-      >
-        <ScrollToLatestButton
-          visible={showScrollButton}
-          onPress={scrollToBottom}
-        />
-      </Reanimated.View>
+      {hasMessages && (
+        <Reanimated.View
+          style={[scrollButtonStyle, scrollButtonAnimatedStyle]}
+          pointerEvents="box-none"
+        >
+          <ScrollToLatestButton
+            visible={showScrollButton}
+            onPress={scrollToBottom}
+          />
+        </Reanimated.View>
+      )}
 
       <SourcesSheet ref={sourcesSheetRef} />
     </View>
@@ -1398,7 +1398,7 @@ const createStyles = (theme: Theme) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      borderRadius: 8,
+      borderRadius: radius.full,
       backgroundColor: theme.bg.softTertiary,
       paddingHorizontal: space.three,
       paddingVertical: space.two,

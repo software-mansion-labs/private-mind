@@ -33,7 +33,11 @@ import {
 } from '../../hooks/useAttachment';
 import AttachmentOverlay from './attachments/AttachmentOverlay';
 import { USES_SYSTEM_PHOTO_PICKER } from './attachments/usePhotoLibrary';
-import { COMPOSER, COMPOSER_STRIP_HEIGHT } from './attachments/constants';
+import {
+  COMPOSER,
+  COMPOSER_CARD_RADIUS,
+  COMPOSER_STRIP_HEIGHT,
+} from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
 import { useSheetGeometry } from './attachments/useSheetGeometry';
@@ -54,7 +58,7 @@ import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
-import WhatsNewCard from '../WhatsNewCard';
+import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -67,7 +71,13 @@ import {
   useBarGrowth,
 } from './useBarGrowth';
 import { pressedOpacity } from '../../styles/pressable';
-import { radius, space, stroke } from '../../constants/design-system';
+import {
+  bottomBarPadding,
+  radius,
+  space,
+  stroke,
+} from '../../constants/design-system';
+import { Glass } from '../Glass';
 
 const SENT_ECHO_WINDOW_MS = 300;
 
@@ -101,6 +111,8 @@ interface Props {
   extraContentPadding: SharedValue<number>;
   onHeightChange?: (height: number) => void;
   onBarGrow?: () => void;
+  onSpeechInputChange?: (open: boolean) => void;
+  promptsPaused?: boolean;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
@@ -124,6 +136,8 @@ const ChatBar = ({
   extraContentPadding,
   onHeightChange,
   onBarGrow,
+  onSpeechInputChange,
+  promptsPaused = false,
   thinkingEnabled,
   onThinkingToggle,
   webSearchEnabled,
@@ -135,7 +149,10 @@ const ChatBar = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const containerStyle = useMemo(
-    () => [styles.container, { paddingBottom: theme.insets.bottom + 16 }],
+    () => [
+      styles.container,
+      { paddingBottom: bottomBarPadding(theme.insets.bottom) },
+    ],
     [styles.container, theme.insets.bottom]
   );
 
@@ -552,6 +569,10 @@ const ChatBar = ({
 
   const [showSpeechInput, setShowSpeechInput] = useState(false);
 
+  useEffect(() => {
+    onSpeechInputChange?.(showSpeechInput);
+  }, [onSpeechInputChange, showSpeechInput]);
+
   const openSpeechInput = async () => {
     if (hasLoadingAttachment) {
       Toast.show({
@@ -636,12 +657,22 @@ const ChatBar = ({
       {model?.isDownloaded && (
         <>
           {!hasMessages && (
-            <View style={styles.suggestionsContainer}>
-              <WhatsNewCard />
-              <PromptSuggestions onSelectPrompt={onSelectPrompt} />
-            </View>
+            <Animated.View
+              style={styles.suggestionsContainer}
+              exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
+            >
+              <PromptSuggestions
+                onSelectPrompt={onSelectPrompt}
+                paused={promptsPaused}
+              />
+            </Animated.View>
           )}
-          <View style={styles.inputContainer}>
+          <Glass
+            radius={COMPOSER_CARD_RADIUS}
+            interactive={false}
+            fallbackTint={theme.bg.chatBar}
+            style={styles.inputContainer}
+          >
             <Animated.View
               pointerEvents={attachments.length ? 'auto' : 'none'}
               style={[styles.strip, stripStyle]}
@@ -718,6 +749,8 @@ const ChatBar = ({
                 sendPending={sendPending}
                 sendInFlight={sendInFlight}
                 onAttach={handleAttach}
+                onAttachPressIn={panel.onPlusPressIn}
+                onAttachPressOut={panel.onPlusPressOut}
                 hasAttachments={attachments.length > 0}
                 isLoadingAttachment={hasLoadingAttachment}
                 userInput={userInput}
@@ -736,7 +769,7 @@ const ChatBar = ({
                 onWebSearchToggle={webSearchToggle}
               />
             </View>
-          </View>
+          </Glass>
           <AttachmentOverlay
             panel={panel}
             onWindowHeight={setPanelWindowHeight}
@@ -785,8 +818,7 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: space.five,
-      gap: space.six,
+      marginBottom: space.four,
     },
     content: {
       flexDirection: 'row',
@@ -795,10 +827,6 @@ const createStyles = (theme: Theme) =>
     },
     inputContainer: {
       flexDirection: 'column',
-      backgroundColor: theme.bg.chatBar,
-      borderWidth: stroke.soft,
-      borderColor: theme.border.chatBar,
-      borderRadius: radius.eighteen,
       padding: COMPOSER.cardPadding,
       paddingTop: COMPOSER.cardPaddingTop,
       justifyContent: 'center',
@@ -807,14 +835,15 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     input: {
-      fontSize: fontSizes.md,
+      fontSize: fontSizes.lg,
       // lineHeight on Android causes typed text to be taller than the
       // placeholder, making the ChatBar jump on first keystroke.
       ...(Platform.OS === 'ios'
-        ? { lineHeight: lineHeights.md }
+        ? { lineHeight: lineHeights.lg }
         : { includeFontPadding: false }),
       fontFamily: fontFamily.regular,
       textAlignVertical: 'center',
+      paddingHorizontal: space.one,
       color: theme.text.onChatBar,
     },
     strip: {

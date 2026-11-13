@@ -5,10 +5,17 @@ import {
 import { create } from 'zustand';
 import { pauseModelDownloadsWhile } from './modelStore';
 import {
+  WHISPER_DOWNLOAD_SIZE_BYTES,
   cancelWhisperFetch,
   fetchWhisperFiles,
   isWhisperDownloaded,
 } from '../utils/sttModelFiles';
+import {
+  ensureStorageFor,
+  isOutOfSpaceError,
+  shortfallBehind,
+  showNotEnoughStorage,
+} from '../utils/storageSpace';
 
 const FILES_PROGRESS_INTERVAL_MS = 250;
 
@@ -103,6 +110,7 @@ export const useSTTStore = create<STTStore>((set, get) => {
       return (modelLoadPromise = whisperOnDisk
         .then((downloaded) => {
           if (downloaded) return loadModule();
+          ensureStorageFor(WHISPER_DOWNLOAD_SIZE_BYTES);
           set({ isDownloading: true });
           return pauseModelDownloadsWhile(loadModule);
         })
@@ -154,7 +162,15 @@ export const useSTTStore = create<STTStore>((set, get) => {
         if (attempt.cancelled) return false;
         attempt.fetching = true;
         const fetched = await fetchWhisperFiles(publishProgress)
-          .catch(() => false)
+          .catch((error) => {
+            if (isOutOfSpaceError(error)) {
+              showNotEnoughStorage(
+                'Voice dictation',
+                shortfallBehind(error, WHISPER_DOWNLOAD_SIZE_BYTES)
+              );
+            }
+            return false;
+          })
           .finally(() => {
             attempt.fetching = false;
           });

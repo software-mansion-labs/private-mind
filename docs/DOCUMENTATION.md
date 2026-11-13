@@ -20,27 +20,22 @@ All three are living. Nothing else belongs in `docs/`.
 ## What is kept outside the repository
 
 Working notes from a single test round — device transcripts, screenshots, raw
-dumps pulled off phones, per-round plans and tester prompts — are kept out of
-git through `.git/info/exclude` rather than `.gitignore`. A `.gitignore` entry
-would be committed and would impose one person's working habits on everyone
-else, and these files carry the contents of real conversations, which have no
-reason to travel in the history of a public repository.
+dumps pulled off phones, per-round plans — stay out of git. They carry the
+contents of real conversations and have no place in the history of a public
+repository. Keep them out with `.git/info/exclude` rather than `.gitignore`,
+so that one person's working habits are not imposed on everyone else.
 
 What survives a round is not the transcript but the conclusion: a fix with its
 test, or an entry in `KNOWN_ISSUES.md`.
 
-The store-submission walkthrough lives outside for a different reason. How this
-team uploads to Play Console and App Store Connect helps nobody reading or
-forking the repository, and a process nobody outside the team follows is one
-nobody outside the team corrects. `RELEASE.md` keeps what a fork needs — where
-the version numbers live and how a release build is produced.
+The store-submission walkthrough is not kept here either. `RELEASE.md` keeps
+what a fork needs: where the version numbers live and how a release build is
+produced.
 
 ## Referring to a change
 
 **Link a pull request number, not a short commit SHA.** Short SHAs do not
-survive a rebase, a squash or a history rewrite; 153 such references had to be
-remapped twice in a single day on one branch, and a squash merge would have
-killed every one of them permanently.
+survive a rebase, a squash or a history rewrite.
 
 When you need to point at a specific change:
 

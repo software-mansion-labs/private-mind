@@ -291,7 +291,7 @@ const createStyles = (theme: Theme) =>
     },
     actionGroup: {
       marginTop: space.one,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
       overflow: 'hidden',

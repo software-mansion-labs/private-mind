@@ -6,29 +6,19 @@ import React, {
   useState,
 } from 'react';
 import { startPhantomChat } from '../../utils/startPhantomChat';
-import { useFocusEffect, useNavigation } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 import NewChatHeaderButton from '../../components/NewChatHeaderButton';
-import { Model } from '../../database/modelRepository';
 import { useSQLiteContext } from 'expo-sqlite';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { View, Image, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import PrimaryButton from '../../components/PrimaryButton';
-import TextButton from '../../components/TextButton';
-import { Theme } from '../../styles/colors';
+import { StyleSheet, View } from 'react-native';
+import { NewChatBackground } from '../../components/chat-screen/NewChatBackground';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useImportChat } from '../../hooks/useImportChat';
-import ModelSelectSheet from '../../components/bottomSheets/ModelSelectSheet';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useModelStore } from '../../store/modelStore';
 import { useSourceStore } from '../../store/sourceStore';
 import useOnboardingRedirect from '../../hooks/useOnboardingRedirect';
-import WhatsNewCard from '../../components/WhatsNewCard';
-import { setLastUsedModelId } from '../../utils/lastUsedModel';
-import { useModelSwitch } from '../../components/chat-screen/useModelSwitch';
-import { radius, space } from '../../constants/design-system';
+import NoModelWelcome from '../../components/NoModelWelcome';
 
 let coldStartRedirectPending = true;
 
@@ -37,10 +27,9 @@ configureReanimatedLogger({
 });
 
 export default function App() {
-  useOnboardingRedirect();
+  const onboardingRedirect = useOnboardingRedirect();
 
   const navigation = useNavigation();
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const { downloadedModels } = useModelStore();
   const { loadSources } = useSourceStore();
   const hasAutoRedirectedRef = useRef(false);
@@ -48,21 +37,9 @@ export default function App() {
   const db = useSQLiteContext();
   useDefaultHeader({ glass: true });
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => <NewChatHeaderButton noOp glass />,
-    });
-  }, [navigation]);
-  const headerHeight = useHeaderHeight();
-  const { styles, theme } = useThemedStyles(createStyles, headerHeight);
+  const { styles } = useThemedStyles(createStyles);
 
-  const handleSetModel = async (model: Model, replace = false) => {
-    await setLastUsedModelId(model.id);
-    await startPhantomChat(db, replace ? 'replace' : 'push', model);
-    return true;
-  };
-
-  const { pickModel, handleSheetStateChange } = useModelSwitch(handleSetModel);
+  const openModels = useCallback(() => router.replace('/model-hub'), []);
 
   const handleImport = useImportChat();
 
@@ -97,70 +74,51 @@ export default function App() {
     }, [db, downloadedModels])
   );
 
+  const onboardingRedirectRef = useRef(onboardingRedirect);
+  onboardingRedirectRef.current = onboardingRedirect;
+  const [isFocused, setIsFocused] = useState(false);
+  const [returnedFromRedirect, setReturnedFromRedirect] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      if (onboardingRedirectRef.current === 'redirected') {
+        setReturnedFromRedirect(true);
+      }
+      return () => setIsFocused(false);
+    }, [])
+  );
+  const welcomeIsUncovered =
+    onboardingRedirect === 'stayed' ||
+    (onboardingRedirect === 'redirected' && returnedFromRedirect);
+
   const willRedirect = downloadedModels.length > 0 && !redirectFailed;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () =>
+        willRedirect ? <NewChatHeaderButton noOp glass /> : null,
+    });
+  }, [navigation, willRedirect]);
 
   return (
     <>
-      <LinearGradient
-        colors={[theme.bg.softPrimary, theme.bg.main]}
-        style={styles.container}
-      >
+      <View style={styles.container}>
+        <NewChatBackground />
         {!willRedirect && (
-          <View style={styles.emptyContainer}>
-            <Image
-              source={require('../../assets/icons/icon.png')}
-              style={styles.icon}
-            />
-            <WhatsNewCard />
-            <View style={styles.buttonGroup}>
-              <PrimaryButton
-                text="Choose a model"
-                onPress={() => {
-                  bottomSheetModalRef.current?.present();
-                }}
-              />
-              <TextButton
-                text="Import chat"
-                onPress={handleImport}
-                style={styles.flatButton}
-              />
-            </View>
-          </View>
+          <NoModelWelcome
+            onChooseModel={openModels}
+            onImportChat={handleImport}
+            playSwarm={isFocused && welcomeIsUncovered}
+          />
         )}
-      </LinearGradient>
-      <ModelSelectSheet
-        bottomSheetModalRef={bottomSheetModalRef}
-        onModelPicked={pickModel}
-        onSheetStateChange={handleSheetStateChange}
-      />
+      </View>
     </>
   );
 }
 
-const createStyles = (theme: Theme, headerHeight: number) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
       flex: 1,
-      paddingBottom: space.four + theme.insets.bottom,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'flex-start',
-      alignItems: 'center',
-      paddingHorizontal: space.four,
-      paddingTop: headerHeight + 64,
-      gap: space.six,
-    },
-    icon: {
-      width: 64,
-      height: 64,
-      borderRadius: radius.twelve,
-    },
-    buttonGroup: {
-      gap: space.two,
-      width: '100%',
-    },
-    flatButton: {
-      borderWidth: 0,
     },
   });

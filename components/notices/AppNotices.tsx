@@ -1,5 +1,11 @@
-import React, { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState, type ReactNode } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {
   SafeAreaInsetsContext,
   useSafeAreaInsets,
@@ -9,10 +15,13 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useNoticeStore } from '../../store/noticeStore';
+import { radius } from '../../constants/design-system';
+import { Glass } from '../Glass';
 import { pressedOpacity } from '../../styles/pressable';
 import CloseIcon from '../../assets/icons/close.svg';
 
 const STACK_GAP = 8;
+const HEADER_CLEARANCE = 16;
 const DISMISS_HIT_SLOP = 12;
 
 interface Props {
@@ -20,23 +29,39 @@ interface Props {
 }
 
 const AppNotices = ({ children }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   const notices = useNoticeStore((state) => state.notices);
   const dismissNotice = useNoticeStore((state) => state.dismissNotice);
   const insets = useSafeAreaInsets();
   const hasNotices = notices.length > 0;
-  const contentInsets = hasNotices ? { ...insets, top: 0 } : insets;
+  const [stackHeight, setStackHeight] = useState(0);
+  const contentInsets = hasNotices
+    ? { ...insets, top: Math.max(insets.top, stackHeight) }
+    : insets;
+
+  const measureStack = (event: LayoutChangeEvent) =>
+    setStackHeight(event.nativeEvent.layout.height);
 
   return (
     <View style={styles.root}>
+      <SafeAreaInsetsContext.Provider value={contentInsets}>
+        <ThemeProvider>
+          <View style={styles.content}>{children}</View>
+        </ThemeProvider>
+      </SafeAreaInsetsContext.Provider>
       {hasNotices && (
         <View
           style={[styles.stack, { paddingTop: insets.top + STACK_GAP }]}
+          onLayout={measureStack}
+          pointerEvents="box-none"
           testID="notice-stack"
         >
           {notices.map((notice) => (
-            <View
+            <Glass
               key={notice.id}
+              radius={radius.eighteen}
+              interactive={false}
+              fallbackTint={theme.bg.toast}
               style={styles.card}
               accessibilityRole="alert"
               accessibilityLiveRegion="polite"
@@ -74,15 +99,10 @@ const AppNotices = ({ children }: Props) => {
                   />
                 </Pressable>
               )}
-            </View>
+            </Glass>
           ))}
         </View>
       )}
-      <SafeAreaInsetsContext.Provider value={contentInsets}>
-        <ThemeProvider>
-          <View style={styles.content}>{children}</View>
-        </ThemeProvider>
-      </SafeAreaInsetsContext.Provider>
     </View>
   );
 };
@@ -96,19 +116,19 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softPrimary,
     },
     stack: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       gap: STACK_GAP,
       paddingHorizontal: 12,
-      paddingBottom: STACK_GAP,
+      paddingBottom: HEADER_CLEARANCE,
     },
     card: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 12,
       padding: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border.soft,
-      backgroundColor: theme.bg.cardSurface,
     },
     badge: {
       width: 28,

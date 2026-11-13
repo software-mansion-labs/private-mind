@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  AccessibilityRole,
   Pressable,
   Text,
   StyleSheet,
@@ -20,6 +21,8 @@ interface Props {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityRole?: AccessibilityRole;
+  accessibilityHint?: string;
 }
 
 const SecondaryButton = ({
@@ -29,6 +32,8 @@ const SecondaryButton = ({
   disabled = false,
   style,
   textStyle,
+  accessibilityRole,
+  accessibilityHint,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles, disabled);
 
@@ -36,6 +41,8 @@ const SecondaryButton = ({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityHint={accessibilityHint}
       style={({ pressed }) => [styles.button, style, pressed && pressedOpacity]}
     >
       {icon}
@@ -50,11 +57,11 @@ const createStyles = (theme: Theme, disabled: boolean) =>
   StyleSheet.create({
     button: {
       height: 48,
-      paddingHorizontal: space.twoHalf,
+      paddingHorizontal: space.four,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: stroke.soft,
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       borderColor: theme.bg.strongPrimary,
       opacity: disabled ? DIMMED_OPACITY : 1,
       flexDirection: 'row',

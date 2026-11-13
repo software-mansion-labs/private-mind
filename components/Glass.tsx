@@ -7,22 +7,36 @@ import React, {
   type ComponentProps,
   type ComponentType,
 } from 'react';
-import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  View,
+  type ViewProps,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
-  type AnimatedProps,
   type SharedValue,
 } from 'react-native-reanimated';
-import { useTheme } from '../../../context/ThemeContext';
-import { isDarkTheme } from '../../../styles/colors';
-import { panelPalette } from './constants';
+import { useTheme } from '../context/ThemeContext';
+import { isDarkTheme, type Theme } from '../styles/colors';
 
-const LIQUID_GLASS = isLiquidGlassAvailable();
+export const LIQUID_GLASS = isLiquidGlassAvailable();
 
-type GlassSurfaceProps = ComponentProps<typeof GlassView> & {
+const DARK_SCHEME_SCRIM = 'rgba(0, 0, 0, 0.18)';
+const FALLBACK_BLUR_INTENSITY = 60;
+const RAISED_SHADOW = {
+  opacity: 0.1,
+  radius: 10,
+  offsetY: 3,
+  elevation: 3,
+};
+const PAINTS_SOLID_FILL = Platform.OS === 'android';
+
+type NativeGlassProps = ComponentProps<typeof GlassView> & {
   borderRadius?: number;
 };
-const GlassSurface = GlassView as ComponentType<GlassSurfaceProps>;
+const NativeGlass = GlassView as ComponentType<NativeGlassProps>;
 
 export type GlassStyleName = 'regular' | 'none';
 
@@ -34,6 +48,18 @@ function useGlassStyle(target: GlassStyleName, duration: number) {
 
 function shapeOf(radius: number): ViewStyle {
   return { borderRadius: radius, borderCurve: 'continuous' };
+}
+
+function raisedEdge(theme: Theme): ViewStyle {
+  return {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.border.popover,
+    shadowColor: theme.bg.shadow,
+    shadowOffset: { width: 0, height: RAISED_SHADOW.offsetY },
+    shadowOpacity: RAISED_SHADOW.opacity,
+    shadowRadius: RAISED_SHADOW.radius,
+    elevation: RAISED_SHADOW.elevation,
+  };
 }
 
 export interface GlassProps extends ViewProps {
@@ -61,32 +87,45 @@ export function Glass({
 }: GlassProps) {
   const { theme } = useTheme();
   const dark = scheme === 'dark' || isDarkTheme(theme);
-  const palette = panelPalette(theme);
+  const schemeTint = scheme === 'dark' ? DARK_SCHEME_SCRIM : undefined;
   const glassEffectStyle = useGlassStyle(active ? 'regular' : 'none', duration);
   const scrimStyle = useAnimatedStyle(() => ({
     opacity: fade ? fade.get() : 1,
   }));
 
   if (!LIQUID_GLASS) {
+    const fill = fallbackTint ?? schemeTint ?? theme.bg.glassFallback;
+    const solidFill = PAINTS_SOLID_FILL && !fade;
     return (
-      <View style={[shapeOf(radius), styles.clip, style]} {...rest}>
-        {active ? (
+      <View
+        style={[
+          shapeOf(radius),
+          solidFill && active && { backgroundColor: fill },
+          solidFill && styles.clip,
+          scheme === 'theme' && raisedEdge(theme),
+          style,
+        ]}
+        {...rest}
+      >
+        {active && !solidFill ? (
           <Animated.View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, scrimStyle]}
+            style={[
+              StyleSheet.absoluteFill,
+              shapeOf(radius),
+              styles.clip,
+              scrimStyle,
+            ]}
           >
             <BlurView
-              intensity={60}
+              intensity={FALLBACK_BLUR_INTENSITY}
               tint={
                 dark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'
               }
               style={StyleSheet.absoluteFill}
             />
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: fallbackTint ?? palette.controlScrim },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: fill }]}
             />
           </Animated.View>
         ) : null}
@@ -96,43 +135,21 @@ export function Glass({
   }
 
   return (
-    <GlassSurface
+    <NativeGlass
       glassEffectStyle={glassEffectStyle}
       colorScheme={dark ? 'dark' : 'light'}
-      tintColor={scheme === 'dark' ? palette.controlScrim : undefined}
+      tintColor={schemeTint}
       isInteractive={interactive}
       borderRadius={radius}
       style={[shapeOf(radius), style]}
       {...rest}
     >
       {children}
-    </GlassSurface>
-  );
-}
-
-export function PanelMaterial({
-  variant,
-  style,
-}: {
-  variant: GlassStyleName;
-  style?: AnimatedProps<ViewProps>['style'];
-}) {
-  const { theme } = useTheme();
-  const palette = panelPalette(theme);
-
-  if (variant === 'none') return null;
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[style, { backgroundColor: palette.materialFlat }]}
-    />
+    </NativeGlass>
   );
 }
 
 const styles = StyleSheet.create({
-  shape: {
-    borderCurve: 'continuous',
-  },
   clip: {
     overflow: 'hidden',
   },

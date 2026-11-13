@@ -7,7 +7,6 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { mixColors, Theme } from '../../styles/colors';
 import {
   USER_ACTION_MENU_OFFSET,
   USER_MESSAGE_BOTTOM_SPACING,
@@ -24,27 +23,28 @@ interface UseChatScreenLayoutOptions {
   isEmpty: boolean;
   headerTitleBottom?: number;
   headerHeight: number;
-  theme: Theme;
 }
 
 const GRADIENT_UNMOUNT_SLACK_MS = 100;
 const GRADIENT_DRIFT_PX = 28;
 const GRADIENT_ENTER_SCALE = 1.05;
 
+let lastRootFrame = { x: 0, y: 0, height: 0 };
+
 export const useChatScreenLayout = ({
   isEmpty,
   headerTitleBottom,
   headerHeight,
-  theme,
 }: UseChatScreenLayoutOptions) => {
   const rootRef = useRef<View>(null);
-  const [rootFrame, setRootFrame] = useState({ x: 0, y: 0, height: 0 });
+  const [rootFrame, setRootFrame] = useState(lastRootFrame);
   const [userActionMenu, setUserActionMenu] =
     useState<UserMessageActionMenuState>({ isOpen: false });
   const { width: windowWidth } = useWindowDimensions();
 
   const handleRootLayout = useCallback(() => {
     rootRef.current?.measureInWindow((x, y, _width, height) => {
+      lastRootFrame = { x, y, height };
       setRootFrame((current) =>
         current.x === x && current.y === y && current.height === height
           ? current
@@ -121,16 +121,6 @@ export const useChatScreenLayout = ({
       ? headerTitleBottom - rootFrame.y
       : undefined;
   const topFadeAnchor = fadeBottom ?? headerHeight;
-  const emptyFadeColors = useMemo(() => {
-    const sample = (y: number) =>
-      mixColors(
-        theme.bg.softPrimary,
-        theme.bg.main,
-        rootFrame.height > 0 ? y / rootFrame.height : 0
-      );
-    return [sample(0), sample(topFadeAnchor)] as const;
-  }, [rootFrame.height, theme.bg.main, theme.bg.softPrimary, topFadeAnchor]);
-
   return {
     rootRef,
     rootFrame,
@@ -143,6 +133,5 @@ export const useChatScreenLayout = ({
     showGradient,
     fadeBottom,
     topFadeAnchor,
-    emptyFadeColors,
   };
 };

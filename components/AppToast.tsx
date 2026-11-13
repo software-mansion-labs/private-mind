@@ -5,12 +5,13 @@ import Toast, { ToastConfig } from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Theme } from '../styles/colors';
-import { radius, space, stroke } from '../constants/design-system';
+import { radius, space } from '../constants/design-system';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import CloseIcon from '../assets/icons/close.svg';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { openAppSettings } from '../utils/openAppSettings';
 import { pressedOpacity } from '../styles/pressable';
+import { Glass } from './Glass';
 
 const NAV_HEADER_HEIGHT = Platform.OS === 'ios' ? 44 : 56;
 const TOAST_HEADER_GAP = 2;
@@ -47,12 +48,17 @@ const ToastAction = ({ label, testID, onPress }: ToastActionProps) => {
 };
 
 const AppToast: React.FC = () => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
 
   const toastConfig: ToastConfig = {
     defaultToast: ({ text1, props }) => (
-      <View style={styles.toastContainer}>
+      <Glass
+        radius={radius.eighteen}
+        interactive={false}
+        fallbackTint={theme.bg.toast}
+        style={styles.toastContainer}
+      >
         <View style={styles.toastBody}>
           <Text style={styles.toastText}>{text1}</Text>
           {props?.settings && (
@@ -84,7 +90,7 @@ const AppToast: React.FC = () => {
         >
           <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
         </Pressable>
-      </View>
+      </Glass>
     ),
   };
 
@@ -107,17 +113,8 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     toastContainer: {
       width: '90%',
-      backgroundColor: theme.bg.toast,
-      borderRadius: radius.eighteen,
       padding: space.four,
       flexDirection: 'row',
-      borderWidth: stroke.soft,
-      borderColor: theme.border.toast,
-      shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: theme.shadow.floatingOpacity,
-      shadowRadius: 20,
-      elevation: 12,
     },
     toastBody: {
       width: '80%',

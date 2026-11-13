@@ -180,6 +180,7 @@ const createStyles = (theme: Theme) =>
       color: theme.text.onBrand,
     },
     settingsActive: {
+      borderRadius: radius.full,
       backgroundColor: theme.bg.softTertiary,
     },
     settingsIcon: {

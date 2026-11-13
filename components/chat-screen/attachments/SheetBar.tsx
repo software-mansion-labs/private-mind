@@ -14,7 +14,7 @@ import {
   PRESS_ANYWHERE,
   panelPalette,
 } from './constants';
-import { Glass } from './Glass';
+import { Glass } from '../../Glass';
 
 interface Props {
   width: number;

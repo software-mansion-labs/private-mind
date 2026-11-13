@@ -15,11 +15,18 @@ import SecondaryButton from '../../components/SecondaryButton';
 import Logo from '../../assets/icons/logo.svg';
 import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
-import FooterIcon from '../../assets/icons/footer.svg';
+import SwmLogo from '../../assets/icons/swm-logo.svg';
+import RneLogo from '../../assets/icons/rne-logo.svg';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
 
 const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
+
+const FOOTER_LOGO_COLOR = '#e6e7eb';
+const FOOTER_HEIGHT = 80;
+const SWM_LOGO_SIZE = { width: 51.4, height: 27.8 };
+const RNE_LOGO_SIZE = { width: 116.5, height: 32.5 };
+const FOOTER_SEPARATOR_HEIGHT = 21;
 
 const GITHUB_LINKS: { text: string; url: string }[] = [
   {
@@ -147,7 +154,11 @@ export default function AppInfoScreen() {
         <LearnMoreSection />
         <VersionInfo />
         <View style={styles.footer}>
-          <FooterIcon />
+          <View style={styles.footerLogos}>
+            <SwmLogo {...SWM_LOGO_SIZE} style={styles.footerLogo} />
+            <View style={styles.footerSeparator} />
+            <RneLogo {...RNE_LOGO_SIZE} style={styles.footerLogo} />
+          </View>
         </View>
       </ScrollView>
       <GlassScreenHeader title="App info" onBack={() => router.back()} />
@@ -168,14 +179,14 @@ const styles = StyleSheet.create({
     padding: space.four,
     alignItems: 'center',
     gap: space.four,
-    borderRadius: radius.twelve,
+    borderRadius: radius.eighteen,
     borderWidth: stroke.soft,
   },
   versionCard: {
     padding: space.four,
     alignItems: 'center',
     gap: space.four,
-    borderRadius: radius.twelve,
+    borderRadius: radius.eighteen,
     borderWidth: stroke.soft,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -216,5 +227,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: space.four,
+  },
+  footerLogos: {
+    height: FOOTER_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerLogo: {
+    color: FOOTER_LOGO_COLOR,
+  },
+  footerSeparator: {
+    width: stroke.soft,
+    height: FOOTER_SEPARATOR_HEIGHT,
+    marginLeft: space.four + space.half,
+    marginRight: space.three + space.half,
+    borderRadius: radius.full,
+    backgroundColor: FOOTER_LOGO_COLOR,
   },
 });

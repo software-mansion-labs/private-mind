@@ -3,6 +3,7 @@ import { Dimensions, StyleSheet } from 'react-native';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { lightTheme, Theme } from '../styles/colors';
 import { SplashScreen } from 'expo-router';
+import { markSplashFinished } from '../utils/splashState';
 import Animated, {
   FadeOut,
   runOnJS,
@@ -16,12 +17,16 @@ function SplashScreenAnimation() {
 
   const rippleProgress = useSharedValue(0);
   const [done, setDone] = useState(false);
+  const finish = () => {
+    setDone(true);
+    markSplashFinished();
+  };
 
   useEffect(() => {
     SplashScreen.hide();
     rippleProgress.set(
       withTiming(1, { duration: 800 }, () => {
-        runOnJS(setDone)(true);
+        runOnJS(finish)();
       })
     );
   }, []);

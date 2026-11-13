@@ -5,7 +5,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import { useSpeechInput, type Status } from '../../hooks/useSpeechInput';
 import CircleButton from '../CircleButton';
-import TrashIcon from '../../assets/icons/trash.svg';
+import StopIcon from '../../assets/icons/pause_icon.svg';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import RecordingAnimation from './RecordingAnimation';
 import Animated, {
@@ -16,9 +16,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
+import {
+  isOutOfSpaceError,
+  shortfallBehind,
+  showNotEnoughStorage,
+} from '../../utils/storageSpace';
+import { WHISPER_DOWNLOAD_SIZE_BYTES } from '../../utils/sttModelFiles';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
 import { radius, space } from '../../constants/design-system';
+import { COMPOSER_CARD_RADIUS } from './attachments/constants';
 
 interface Props {
   onSubmit: (text: string) => void;
@@ -133,12 +140,19 @@ const ChatSpeechInput: React.FC<Props> = ({
         } else if (exitStateRef.current === null) {
           onEndedEarly(shownTranscript(text, pendingText));
         }
-      } catch {
+      } catch (error) {
         if (unmountedRef.current) return;
-        Toast.show({
-          type: 'defaultToast',
-          text1: 'Could not start live transcript',
-        });
+        if (isOutOfSpaceError(error)) {
+          showNotEnoughStorage(
+            'Voice dictation',
+            shortfallBehind(error, WHISPER_DOWNLOAD_SIZE_BYTES)
+          );
+        } else {
+          Toast.show({
+            type: 'defaultToast',
+            text1: 'Could not start live transcript',
+          });
+        }
         onCancel();
         return;
       }
@@ -301,12 +315,12 @@ const ChatSpeechInput: React.FC<Props> = ({
 
       <View style={styles.actionRow}>
         <CircleButton
-          icon={TrashIcon}
+          icon={StopIcon}
           onPress={handleCancel}
-          size={20}
+          size={14}
           color={theme.text.contrastPrimary}
           backgroundColor={theme.bg.voiceModeSurface}
-          testID="speech-trash"
+          testID="speech-cancel"
         />
         <Text style={[styles.secondaryNote, styles.actionNote]}>
           {actionNote}
@@ -367,7 +381,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       backgroundColor: theme.bg.main,
-      borderRadius: radius.eighteen,
+      borderRadius: COMPOSER_CARD_RADIUS,
       padding: space.four,
       gap: space.four,
     },
@@ -386,7 +400,7 @@ const createStyles = (theme: Theme) =>
     recordingRow: {
       backgroundColor: theme.bg.voiceModeSurface,
       height: 40,
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       flexDirection: 'row',
       paddingHorizontal: space.three,
       paddingVertical: space.two,

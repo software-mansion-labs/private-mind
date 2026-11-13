@@ -23,8 +23,6 @@ The following secrets must be configured in your repository (Settings → Secret
 - `ANDROID_KEYSTORE_PASSWORD` - Keystore password
 - `ANDROID_KEY_ALIAS` - Key alias
 - `ANDROID_KEY_PASSWORD` - Key password
-- `EXPO_PUBLIC_DETOUR_API_KEY` - Detour SDK API key
-- `EXPO_PUBLIC_DETOUR_APP_ID` - Detour SDK App ID
 
 ---
 

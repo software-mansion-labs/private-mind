@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  Keyboard,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useIsFocused } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
@@ -10,6 +15,7 @@ import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
 } from 'react-native-reanimated';
 import type { MessagesHandle } from './Messages';
@@ -20,7 +26,14 @@ import { Chat, type Message } from '../../database/chatRepository';
 import { Model } from '../../database/modelRepository';
 import Messages from './Messages';
 import ChatBar from './ChatBar';
+import NewChatHero from './NewChatHero';
+import { useHeadingAnchor } from './useHeadingAnchor';
+import NewChatSwarm, {
+  SWARM_CLEARANCE_WITH_PROMPTS,
+  useSwarmOncePerNewChat,
+} from './NewChatSwarm';
 import { TopFade, topFadeHeight } from './TopFade';
+import { NewChatBackground } from './NewChatBackground';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
@@ -33,7 +46,10 @@ import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { useBackToDismiss } from '../../hooks/useBackToDismiss';
-import { LAYOUT_HEIGHT_CHANGE_THRESHOLD } from '../../constants/chat-screen';
+import {
+  LAYOUT_HEIGHT_CHANGE_THRESHOLD,
+  NEW_CHAT_HEADING,
+} from '../../constants/chat-screen';
 import { retryWithPinnedModel } from './loadModelPinnedToChat';
 import { useMemoryStallCard } from './useMemoryStallCard';
 import { startPhantomChat } from '../../utils/startPhantomChat';
@@ -77,6 +93,7 @@ export default function ChatScreen({
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
   const retryArmedForChatId = useLLMStore((state) => state.retryArmedForChatId);
   const { setChatModel, phantomChat } = useChatStore();
+  const phantomChatOpens = useChatStore((state) => state.phantomChatOpens);
   const isPhantomChat = phantomChat?.id === chatId && !chat;
 
   const { styles, theme } = useThemedStyles(createStyles);
@@ -115,8 +132,7 @@ export default function ChatScreen({
     showGradient,
     fadeBottom,
     topFadeAnchor,
-    emptyFadeColors,
-  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight, theme });
+  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight });
   const chatBarTopClearance = Math.max(
     headerHeight,
     topFadeHeight(topFadeAnchor)
@@ -130,6 +146,16 @@ export default function ChatScreen({
       chatId,
       messageHistoryLength: messageHistory.length,
     });
+  const [speechInputOpen, setSpeechInputOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const barHeight = useSharedValue(0);
+  const handleBarLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      barHeight.set(event.nativeEvent.layout.height);
+    },
+    [barHeight]
+  );
+
   const handleBarGrow = useCallback(() => {
     setTimeout(() => {
       messagesRef.current?.scrollToEndIfAtBottom();
@@ -281,6 +307,21 @@ export default function ChatScreen({
 
   useLegacyChatNotice(messageHistory);
 
+  const showHero =
+    isEmpty &&
+    !!model?.isDownloaded &&
+    !speechInputOpen &&
+    rootFrame.height > 0;
+  const isFocused = useIsFocused();
+  const playSwarm = useSwarmOncePerNewChat(
+    showHero && isFocused,
+    phantomChatOpens
+  );
+  const heading = useHeadingAnchor(rootRef, rootFrame.height);
+  const heroOpacityBeforeSwarm = useReducedMotion() ? 1 : 0;
+  const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
+  const badgeReveal = useSharedValue(heroOpacityBeforeSwarm);
+
   return (
     <View
       ref={rootRef}
@@ -293,11 +334,20 @@ export default function ChatScreen({
           style={[StyleSheet.absoluteFill, gradientStyle]}
           pointerEvents="none"
         >
-          <LinearGradient
-            colors={[theme.bg.softPrimary, theme.bg.main]}
-            style={StyleSheet.absoluteFill}
-          />
+          <NewChatBackground />
         </Animated.View>
+      )}
+      {playSwarm && (
+        <NewChatSwarm
+          key={phantomChatOpens}
+          screenHeight={rootFrame.height}
+          headingClearance={SWARM_CLEARANCE_WITH_PROMPTS}
+          keyboardLift={keyboardLift}
+          heading={NEW_CHAT_HEADING}
+          headingAnchor={heading.anchor}
+          headingReveal={headingReveal}
+          badgeReveal={badgeReveal}
+        />
       )}
       <View style={styles.messagesLayer} pointerEvents="box-none">
         <Messages
@@ -322,7 +372,21 @@ export default function ChatScreen({
         />
       </View>
 
+      {showHero && (
+        <NewChatHero
+          screenHeight={rootFrame.height}
+          barHeight={barHeight}
+          keyboardLift={keyboardLift}
+          onWhatsNewOpenChange={setWhatsNewOpen}
+          headingRef={heading.textRef}
+          onHeadingLayout={heading.onTextLayout}
+          headingReveal={headingReveal}
+          badgeReveal={badgeReveal}
+        />
+      )}
+
       <Animated.View
+        onLayout={handleBarLayout}
         style={[
           styles.chatBarSticky,
           rootFrame.height > 0 && {
@@ -354,10 +418,12 @@ export default function ChatScreen({
           onAttachmentSheetStateChange={setAttachmentSheetOpen}
           onHeightChange={handleChatBarHeightChange}
           onBarGrow={handleBarGrow}
+          onSpeechInputChange={setSpeechInputOpen}
+          promptsPaused={overlayOpen || whatsNewOpen || !isPhantomChat}
         />
       </Animated.View>
 
-      {showGradient && (
+      {showGradient && !isEmpty && (
         <Animated.View
           style={[
             styles.topFadeOverlay,
@@ -366,7 +432,11 @@ export default function ChatScreen({
           ]}
           pointerEvents="none"
         >
-          <TopFade anchor={topFadeAnchor} colors={emptyFadeColors} />
+          <TopFade
+            anchor={topFadeAnchor}
+            backdrop={<NewChatBackground />}
+            backdropHeight={rootFrame.height}
+          />
         </Animated.View>
       )}
 

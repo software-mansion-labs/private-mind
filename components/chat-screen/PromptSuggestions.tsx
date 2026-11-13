@@ -1,194 +1,87 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { ScrollView, Pressable } from 'react-native-gesture-handler';
-import MaskedView from '@react-native-masked-view/masked-view';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AccessibilityInfo, AppState, StyleSheet, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
-import { Theme } from '../../styles/colors';
-import { radius, space } from '../../constants/design-system';
-import { MASK_CLEAR, MASK_OPAQUE } from '../../constants/mask';
-import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
-import {
-  DEFAULT_PROMPT_SUGGESTIONS,
-  PROMPT_SUGGESTIONS_TEXT,
-  SUGGESTION_CARD_WIDTH,
-  type PromptSuggestion,
-} from '../../constants/default-prompts';
-import { pressedOpacity } from '../../styles/pressable';
-import { GUTTER } from './attachments/constants';
+import { space } from '../../constants/design-system';
+import { PROMPT_SUGGESTION_ROWS } from '../../constants/default-prompts';
+import DriftingPromptRow from './DriftingPromptRow';
+import type { DriftDirection } from './promptRowMotion';
 
-const ICON_TILE_SIZE = 24;
-const ICON_TILE_RADIUS = 7;
-const ICON_SIZE = 14;
-const CARD_TITLE_LINE_HEIGHT = 18;
-const PROMPT_SIZE = 13;
-const PROMPT_LINE_HEIGHT = 18;
-const EDGE_FADE_WIDTH = GUTTER;
+const ROW_DIRECTIONS: readonly DriftDirection[] = [-1, 1];
+
+const useRowsRunning = (paused: boolean): boolean => {
+  const [focused, setFocused] = useState(true);
+  const [appActive, setAppActive] = useState(
+    AppState.currentState !== 'background'
+  );
+
+  const [screenReaderOn, setScreenReaderOn] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, [])
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      setAppActive(state === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isScreenReaderEnabled()
+      .then((enabled) => {
+        if (mounted) setScreenReaderOn(enabled);
+      })
+      .catch((error) => {
+        console.error('Failed to read the screen reader state:', error);
+      });
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setScreenReaderOn
+    );
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  return !paused && focused && appActive && !screenReaderOn;
+};
 
 interface Props {
   onSelectPrompt: (prompt: string) => void;
+  paused?: boolean;
 }
 
-const PromptSuggestions = ({ onSelectPrompt }: Props) => {
+const PromptSuggestions = ({ onSelectPrompt, paused = false }: Props) => {
   const { styles } = useThemedStyles(createStyles);
+  const running = useRowsRunning(paused);
 
   return (
     <View style={styles.container}>
-      <Text
-        style={styles.heading}
-        accessibilityRole="header"
-        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-      >
-        {PROMPT_SUGGESTIONS_TEXT.title}
-      </Text>
-      <MaskedView
-        style={styles.bleed}
-        maskElement={
-          <View style={styles.mask}>
-            <LinearGradient
-              colors={[MASK_CLEAR, MASK_OPAQUE]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.maskEdge}
-            />
-            <View style={styles.maskBody} />
-            <LinearGradient
-              colors={[MASK_OPAQUE, MASK_CLEAR]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.maskEdge}
-            />
-          </View>
-        }
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {DEFAULT_PROMPT_SUGGESTIONS.map((suggestion) => (
-            <SuggestionCard
-              key={suggestion.id}
-              suggestion={suggestion}
-              onPress={() => onSelectPrompt(suggestion.prompt)}
-            />
-          ))}
-        </ScrollView>
-      </MaskedView>
+      {PROMPT_SUGGESTION_ROWS.map((row, index) => (
+        <DriftingPromptRow
+          key={row[0]!.id}
+          suggestions={row}
+          direction={ROW_DIRECTIONS[index]!}
+          running={running}
+          onSelectPrompt={onSelectPrompt}
+        />
+      ))}
     </View>
-  );
-};
-
-interface CardProps {
-  suggestion: PromptSuggestion;
-  onPress: () => void;
-}
-
-const SuggestionCard = ({ suggestion, onPress }: CardProps) => {
-  const { styles, theme } = useThemedStyles(createStyles);
-  const { icon: Icon, tone } = suggestion;
-  const toneColors = theme.label[tone];
-
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.card, pressed && pressedOpacity]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${suggestion.title}: ${suggestion.prompt}`}
-      testID="prompt-suggestion-card"
-    >
-      <View style={styles.titleRow}>
-        <View
-          style={[styles.iconTile, { backgroundColor: toneColors.background }]}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <Icon
-            width={ICON_SIZE}
-            height={ICON_SIZE}
-            style={{ color: toneColors.foreground }}
-          />
-        </View>
-        <Text
-          style={styles.cardTitle}
-          numberOfLines={1}
-          testID="suggestion-title"
-        >
-          {suggestion.title}
-        </Text>
-      </View>
-      <Text style={styles.prompt} numberOfLines={1}>
-        {suggestion.prompt}
-      </Text>
-    </Pressable>
   );
 };
 
 export default PromptSuggestions;
 
-const createStyles = (theme: Theme) =>
+const createStyles = () =>
   StyleSheet.create({
     container: {
-      gap: space.four,
-    },
-    heading: {
-      fontSize: fontSizes.xl,
-      lineHeight: lineHeights.xl,
-      fontFamily: fontFamily.medium,
-      color: theme.text.primary,
-      textAlign: 'center',
-    },
-    bleed: {
-      marginHorizontal: -GUTTER,
-    },
-    mask: {
-      flex: 1,
-      flexDirection: 'row',
-    },
-    maskEdge: {
-      width: EDGE_FADE_WIDTH,
-    },
-    maskBody: {
-      flex: 1,
-      backgroundColor: MASK_OPAQUE,
-    },
-    scrollContent: {
       gap: space.two,
-      paddingHorizontal: GUTTER,
-      alignItems: 'stretch',
-    },
-    card: {
-      width: SUGGESTION_CARD_WIDTH,
-      gap: space.one + space.half,
-      paddingVertical: space.three,
-      paddingHorizontal: space.three + space.half,
-      borderRadius: radius.eighteen,
-      backgroundColor: theme.bg.softTertiary,
-    },
-    titleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.two,
-    },
-    iconTile: {
-      width: ICON_TILE_SIZE,
-      height: ICON_TILE_SIZE,
-      borderRadius: ICON_TILE_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    cardTitle: {
-      flex: 1,
-      fontSize: fontSizes.sm,
-      lineHeight: CARD_TITLE_LINE_HEIGHT,
-      fontFamily: fontFamily.bold,
-      color: theme.text.primary,
-    },
-    prompt: {
-      fontSize: PROMPT_SIZE,
-      lineHeight: PROMPT_LINE_HEIGHT,
-      fontFamily: fontFamily.regular,
-      color: theme.text.defaultSecondary,
     },
   });

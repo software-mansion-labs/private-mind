@@ -31,4 +31,17 @@ export const FAMILY_PROVIDERS: Record<string, string> = {
   'LFM 2.5': 'Liquid AI',
   'Gemma 4': 'Google',
   'Bielik': 'SpeakLeash',
+  'LFM 3': 'Liquid AI',
+};
+
+export type SwmModelRole = 'optimized' | 'prepared';
+
+export const FAMILY_SWM_ROLES: Record<string, SwmModelRole> = {
+  'Gemma 4': 'optimized',
+  'Qwen 3': 'optimized',
+  'Qwen 2.5': 'optimized',
+  'LFM 2.5': 'optimized',
+  'LFM 3': 'optimized',
+  'Bielik': 'optimized',
+  'LLaMA 3.2': 'prepared',
 };
