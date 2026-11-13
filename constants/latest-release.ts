@@ -6,13 +6,13 @@ export interface Release {
 }
 
 export const LATEST_RELEASE: Release = {
-  version: '1.3.6',
-  title: 'LFM 3 is here',
+  version: '1.4.0',
+  title: 'A whole new look',
   highlights: [
-    'LFM 3 1.7B: reasons before it answers, 16 languages',
-    'LFM 3 VL 2B: ask about your photos',
-    'New on-device engine: update your models once to keep chatting',
-    'Voice dictation gets ready faster on first use',
+    'Redesigned chat, sidebar, models and settings, with a lighter glass style',
+    'A simpler start: pick a model and the extra features in one place',
+    'Long conversations remember more on phones with 8 GB of RAM or more',
+    'Update an outdated model straight from the Models screen',
   ],
-  opensOnLaunch: false,
+  opensOnLaunch: true,
 };
