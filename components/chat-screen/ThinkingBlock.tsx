@@ -50,13 +50,9 @@ const ThinkingBlock = memo(
                 style={styles.chevronIcon}
               />
             ) : expanded ? (
-              <ChevronUp width={15} height={8.33} style={styles.chevronIcon} />
+              <ChevronUp width={15} height={8} style={styles.chevronIcon} />
             ) : (
-              <ChevronDown
-                width={15}
-                height={8.33}
-                style={styles.chevronIcon}
-              />
+              <ChevronDown width={15} height={8} style={styles.chevronIcon} />
             )}
           </Pressable>
         </View>
