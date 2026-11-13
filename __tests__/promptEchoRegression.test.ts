@@ -318,6 +318,11 @@ describe('a reply that echoes the hidden prompt shows none of it', () => {
     expect(shownToUser(reply).answer).toBe(reply);
   });
 
+  it('hides the language anchor when the model drops its full stop', () => {
+    const reply = 'Stolica Australii to Canberra. (Answer in Polish)';
+    expect(shownToUser(reply).answer).toBe('Stolica Australii to Canberra.');
+  });
+
   it('keeps a bracketed note that is not the product marker', () => {
     const reply = 'The price is $449 [as of today] according to the store.';
     expect(shownToUser(reply).answer).toBe(reply);
