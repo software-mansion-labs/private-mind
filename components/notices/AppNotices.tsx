@@ -1,5 +1,5 @@
-import React, { type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState, type ReactNode } from 'react';
+import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import {
   SafeAreaInsetsContext,
   useSafeAreaInsets,
@@ -12,6 +12,7 @@ import { useNoticeStore } from '../../store/noticeStore';
 import { radius } from '../../constants/design-system';
 
 const STACK_GAP = 8;
+const HEADER_CLEARANCE = 16;
 
 interface Props {
   children: ReactNode;
@@ -22,13 +23,26 @@ const AppNotices = ({ children }: Props) => {
   const notices = useNoticeStore((state) => state.notices);
   const insets = useSafeAreaInsets();
   const hasNotices = notices.length > 0;
-  const contentInsets = hasNotices ? { ...insets, top: 0 } : insets;
+  const [stackHeight, setStackHeight] = useState(0);
+  const contentInsets = hasNotices
+    ? { ...insets, top: Math.max(insets.top, stackHeight) }
+    : insets;
+
+  const measureStack = (event: LayoutChangeEvent) =>
+    setStackHeight(event.nativeEvent.layout.height);
 
   return (
     <View style={styles.root}>
+      <SafeAreaInsetsContext.Provider value={contentInsets}>
+        <ThemeProvider>
+          <View style={styles.content}>{children}</View>
+        </ThemeProvider>
+      </SafeAreaInsetsContext.Provider>
       {hasNotices && (
         <View
           style={[styles.stack, { paddingTop: insets.top + STACK_GAP }]}
+          onLayout={measureStack}
+          pointerEvents="box-none"
           testID="notice-stack"
         >
           {notices.map((notice) => (
@@ -56,11 +70,6 @@ const AppNotices = ({ children }: Props) => {
           ))}
         </View>
       )}
-      <SafeAreaInsetsContext.Provider value={contentInsets}>
-        <ThemeProvider>
-          <View style={styles.content}>{children}</View>
-        </ThemeProvider>
-      </SafeAreaInsetsContext.Provider>
     </View>
   );
 };
@@ -74,9 +83,13 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.softPrimary,
     },
     stack: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       gap: STACK_GAP,
       paddingHorizontal: 12,
-      paddingBottom: STACK_GAP,
+      paddingBottom: HEADER_CLEARANCE,
     },
     card: {
       flexDirection: 'row',
@@ -85,8 +98,8 @@ const createStyles = (theme: Theme) =>
       padding: 12,
       borderRadius: radius.eighteen,
       borderWidth: 1,
-      borderColor: theme.border.soft,
-      backgroundColor: theme.bg.cardSurface,
+      borderColor: theme.border.toast,
+      backgroundColor: theme.bg.toast,
     },
     badge: {
       width: 28,
