@@ -420,7 +420,7 @@ describe('what a turn paid for its sources', () => {
   const capturedBuildSources = () =>
     mockedState().sendChatMessage.mock.calls[0][2] as (
       signal?: AbortSignal
-    ) => Promise<{ retrievalStats?: RetrievalStats }>;
+    ) => Promise<{ retrievalStats?: RetrievalStats; webSubQueries?: string[] }>;
 
   const useSendWith = (
     overrides: Partial<Parameters<typeof useSendChatMessage>[0]>
@@ -495,6 +495,51 @@ describe('what a turn paid for its sources', () => {
       queries: 2,
     });
     expect(built.retrievalStats?.rag).toBeUndefined();
+  });
+
+  const searchPlanned = (intentKind: string, plannedQueries: string[]) =>
+    (runWebSearch as jest.Mock).mockResolvedValueOnce({
+      context: ['a web chunk'],
+      sourceDocuments: [
+        { name: 'A', kind: 'web', url: 'https://a.example', read: true },
+      ],
+      telemetry: {
+        needsSearch: true,
+        intent: 'last US presidential election winner',
+        intentKind,
+        plannedQueries,
+        finalLabel: 'correct',
+      },
+    });
+
+  it('does not pass extra search queries off as parts of a single question', async () => {
+    searchPlanned('person', [
+      'last US presidential election winner',
+      '2026 US presidential election result',
+    ]);
+    webEnabledByChat[1] = true;
+
+    await useSendWith({})('Who won the last presidential election in the USA?');
+    const built = await capturedBuildSources()();
+
+    expect(built.webSubQueries).toBeUndefined();
+    expect(built.retrievalStats?.web?.queries).toBe(2);
+  });
+
+  it('keeps one part per named thing when the question compares them', async () => {
+    searchPlanned('comparison', [
+      'bitcoin price today',
+      'ethereum price today',
+    ]);
+    webEnabledByChat[1] = true;
+
+    await useSendWith({})('compare the prices of bitcoin and ethereum');
+    const built = await capturedBuildSources()();
+
+    expect(built.webSubQueries).toEqual([
+      'bitcoin price today',
+      'ethereum price today',
+    ]);
   });
 
   it('reports nothing for a turn with no documents and no search', async () => {
