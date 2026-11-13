@@ -11,12 +11,21 @@ const SENTINEL_NOTATIONS = [
   /<\/?answer>/,
 ];
 
+const PROMPT_SCAFFOLDING = [
+  /<\/?sources?\b[^<>\n]{0,40}>/,
+  /--- (?:End of )?Source \d+(?:: [^\n]{0,160}?)? ---/,
+  /--- End of [^\n]{1,120}? ---/,
+  /\(Answer in [^()\n]{1,60}\.\)/,
+];
+
+const HIDDEN_NOTATIONS = [...SENTINEL_NOTATIONS, ...PROMPT_SCAFFOLDING];
+
 const SENTINEL_RUN = new RegExp(
-  `([^\\S\\n]*)(?:${SENTINEL_NOTATIONS.map((p) => p.source).join('|')})+([^\\S\\n]*)`,
+  `([^\\S\\n]*)(?:${HIDDEN_NOTATIONS.map((p) => p.source).join('|')})+([^\\S\\n]*)`,
   'gi'
 );
 
-const SENTINEL_ALTERNATIVES = SENTINEL_NOTATIONS.map((p) => p.source).join('|');
+const SENTINEL_ALTERNATIVES = HIDDEN_NOTATIONS.map((p) => p.source).join('|');
 
 const SENTINEL_ONLY_FIRST_LINE = new RegExp(
   `^[^\\S\\n]*(?:${SENTINEL_ALTERNATIVES})+[^\\S\\n]*\\n`,

@@ -82,9 +82,10 @@ describe('stripSpecialTokens', () => {
     );
   });
 
-  it('keeps the sources tag a reply quotes, so a cited block stays readable', () => {
-    const text = 'The <sources> block lists [1] and [2].';
-    expect(stripSpecialTokens(text)).toBe(text);
+  it('drops the sources tag the prompt wraps retrieved text in, which means nothing to the reader', () => {
+    expect(stripSpecialTokens('The <sources> block lists [1] and [2].')).toBe(
+      'The block lists [1] and [2].'
+    );
   });
 
   it('keeps answer tags the reply is explaining inside code', () => {
