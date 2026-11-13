@@ -38,7 +38,7 @@ const CHECKBOX_SIZE = 24;
 const CHECKBOX_RADIUS = 7;
 const CHECKBOX_BORDER_WIDTH = 1.5;
 const CHECKBOX_ICON_SIZE = 14;
-const CANCEL_ICON_SIZE = 13.33;
+const CANCEL_ICON_SIZE = 13;
 const LOCKED_OPACITY = 0.4;
 
 const FEATURE_ICONS: Record<StartingFeatureKey, SvgComponent> = {
