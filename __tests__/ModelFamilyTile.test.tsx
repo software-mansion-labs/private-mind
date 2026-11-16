@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import ModelFamilyTile from '../components/model-hub/ModelFamilyTile';
+import { UNKNOWN_FAMILY_COLOR } from '../constants/model-families';
 import { testTheme } from './helpers/renderWithTheme';
 
 jest.mock('../context/ThemeContext', () => ({
@@ -19,10 +20,11 @@ const iconWidth = () =>
     .width;
 
 describe('ModelFamilyTile', () => {
-  it('sits the icon on a tinted tile by default', () => {
-    render(<ModelFamilyTile family="Qwen 2.5" size="badge" />);
+  it('draws the icon with no tile, in a box the size of the old tile', () => {
+    render(<ModelFamilyTile family="Qwen 2.5" size="list" />);
 
-    expect(tileStyle().backgroundColor).toBe(testTheme.bg.tile);
+    expect(tileStyle().backgroundColor).toBe('transparent');
+    expect(tileStyle().width).toBe(40);
   });
 
   it('drops the tile and draws the icon at the size it is given', () => {
@@ -43,7 +45,9 @@ describe('ModelFamilyTile', () => {
   it('keeps the coloured letter tile for a family without an icon, even without a tile requested', () => {
     render(<ModelFamilyTile family="Phi 4" size="badge" bareIconSize={14} />);
 
-    expect(tileStyle().backgroundColor).not.toBe('transparent');
+    expect(tileStyle().backgroundColor).toBe(
+      testTheme.label[UNKNOWN_FAMILY_COLOR].background
+    );
     expect(screen.getByText('P', { includeHiddenElements: true })).toBeTruthy();
   });
 });

@@ -16,14 +16,9 @@ jest.mock('react-native-gesture-handler', () => {
   return { Pressable };
 });
 
-const mockTileProps = jest.fn();
 jest.mock('../components/model-hub/ModelFamilyTile', () => ({
   __esModule: true,
-  default: (props: unknown) => {
-    mockTileProps(props);
-    return null;
-  },
-  familyTileSize: () => 40,
+  default: () => null,
 }));
 
 const mockDownloadStates: Record<number, { progress: number; status: string }> =
@@ -71,13 +66,6 @@ describe('FamilyCard', () => {
     expect(opacityOf()).toBe(DIMMED_OPACITY);
     fireEvent.press(screen.getByTestId('family-card-Gemma 4'));
     expect(onPress).toHaveBeenCalledWith(family);
-  });
-
-  it('draws the family icon without a tile in the model list', () => {
-    render(<FamilyCard family={family} onPress={jest.fn()} />);
-    expect(mockTileProps).toHaveBeenCalledWith(
-      expect.objectContaining({ family: 'Gemma 4', bareIconSize: 24 })
-    );
   });
 
   it('counts variants and marks the family once a variant is downloaded', () => {
