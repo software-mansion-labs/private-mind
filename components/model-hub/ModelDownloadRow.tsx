@@ -2,11 +2,11 @@ import React from 'react';
 import {
   type AccessibilityActionEvent,
   type AccessibilityActionInfo,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   useModelDownload,
