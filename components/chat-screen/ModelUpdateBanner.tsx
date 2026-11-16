@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -9,6 +9,8 @@ import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { pressedOpacity } from '../../styles/pressable';
 import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
+import { Glass } from '../Glass';
+import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
 
 interface Props {
   model: Model;
@@ -16,7 +18,7 @@ interface Props {
 }
 
 const ModelUpdateBanner = ({ model, replaces }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   const download = useModelStore((state) => state.downloadStates[model.id]);
   const updateOutdatedModel = useModelStore(
     (state) => state.updateOutdatedModel
@@ -50,11 +52,17 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
   };
 
   return (
-    <View
-      style={[styles.banner, !replaces && styles.floating]}
+    <Glass
+      radius={replaces ? COMPOSER_CARD_RADIUS : radius.eighteen}
+      interactive={false}
+      tint={replaces ? undefined : theme.bg.toastGlassTint}
+      fallbackTint={replaces ? theme.bg.chatBar : theme.bg.toast}
+      style={[styles.banner, replaces ? styles.docked : styles.floating]}
       testID="model-update-banner"
     >
-      <Text style={styles.text}>{message()}</Text>
+      <Text style={[styles.text, replaces && styles.dockedText]}>
+        {message()}
+      </Text>
       <Pressable
         onPress={handleUpdate}
         disabled={updating}
@@ -64,7 +72,7 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
         <Text style={styles.actionText}>{actionLabel()}</Text>
       </Pressable>
       {ConfirmElement}
-    </View>
+    </Glass>
   );
 };
 
@@ -76,20 +84,13 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.three,
-      padding: space.three,
-      borderRadius: radius.twelve,
-      backgroundColor: theme.bg.softTertiary,
+    },
+    docked: {
+      padding: COMPOSER.cardPadding,
     },
     floating: {
       width: '90%',
       padding: space.four,
-      borderRadius: radius.eighteen,
-      backgroundColor: theme.bg.toast,
-      shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: theme.shadow.floatingOpacity,
-      shadowRadius: 20,
-      elevation: 12,
     },
     text: {
       flex: 1,
@@ -97,6 +98,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
       color: theme.text.primary,
+    },
+    dockedText: {
+      color: theme.text.onChatBar,
     },
     action: {
       paddingVertical: space.two,
