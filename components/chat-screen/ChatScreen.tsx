@@ -196,9 +196,7 @@ export default function ChatScreen({
   const handleSelectModel = async (selectedModel: Model) => {
     try {
       await loadModel(selectedModel);
-      if (useLLMStore.getState().model?.id !== selectedModel.id) {
-        throw new Error(`Model ${selectedModel.id} did not finish loading`);
-      }
+      if (useLLMStore.getState().model?.id !== selectedModel.id) return false;
 
       if (chatId && !model) {
         await setChatModel(chatId, selectedModel.id);

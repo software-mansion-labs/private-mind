@@ -93,8 +93,7 @@ const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'image-not-saved': null,
   'image-unsupported':
     "This model can't see images. Remove the photo or pick a model with Vision.",
-  'model-needs-update':
-    'This model needs a one-time update first. Tap Update at the top of the chat.',
+  'model-needs-update': 'This model needs a one-time update first. Tap Update.',
 };
 
 interface Props {

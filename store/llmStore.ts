@@ -524,7 +524,7 @@ export const modelLoadFailedCopy = (modelName: string) =>
   `${modelName} could not be loaded. Try again or pick another model.`;
 
 export const modelNeedsUpdateCopy = (modelName: string) =>
-  `${modelName} needs a one-time update. Connect to the internet and tap Update at the top of the chat.`;
+  `${modelName} needs a one-time update. Connect to the internet and tap Update.`;
 
 const rememberContextCapacityOf = (model: Model, engine: LLMEngine) => {
   try {
@@ -1153,7 +1153,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
     ) {
       return;
     }
-    if (requiresUpdate(model)) return;
+    if (requiresUpdate(model)) {
+      Toast.show({
+        type: 'defaultToast',
+        text1: modelNeedsUpdateCopy(model.modelName),
+      });
+      return;
+    }
     const result = modelLoadChain.then(async () => {
       // TEMPORARY FIX (#437 A2): remove with utils/cpuSupport.ts.
       if (await cpuLacksLseAtomics()) {
