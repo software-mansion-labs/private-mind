@@ -8,7 +8,7 @@ import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { pressedOpacity } from '../../styles/pressable';
-import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
+import { useModelUpdate } from '../../hooks/useModelUpdate';
 import { Glass } from '../Glass';
 import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
 
@@ -21,22 +21,11 @@ interface Props {
 const ModelUpdateBanner = ({ model, replaces, floating = false }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const download = useModelStore((state) => state.downloadStates[model.id]);
-  const updateOutdatedModel = useModelStore(
-    (state) => state.updateOutdatedModel
-  );
-  const downloadModel = useModelStore((state) => state.downloadModel);
   const updating = download?.status === ModelState.Downloading;
-  const { canDownload, ConfirmElement } = useUpdateNetworkCheck();
+  const { updateModel, downloadReplacement, ConfirmElement } = useModelUpdate();
 
-  const handleUpdate = async () => {
-    const network = await canDownload(model.modelSize ?? 0);
-    if (!network) return;
-    await useModelStore
-      .getState()
-      .rememberUpdateConsent([model.modelName], network === 'mobile-data');
-    if (replaces) downloadModel(model);
-    else updateOutdatedModel(model);
-  };
+  const handleUpdate = () =>
+    replaces ? downloadReplacement(model) : updateModel(model);
 
   const message = () => {
     if (replaces)

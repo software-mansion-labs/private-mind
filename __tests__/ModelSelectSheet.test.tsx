@@ -3,7 +3,10 @@ import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { Model } from '../database/modelRepository';
 
-type ModelStoreMockState = { downloadedModels: Model[] };
+type ModelStoreMockState = {
+  downloadedModels: Model[];
+  downloadStates: Record<number, { status: string; progress: number }>;
+};
 
 type SheetHandle = {
   dismiss: () => void;
@@ -27,12 +30,24 @@ jest.mock('../context/ThemeContext', () => ({
 }));
 
 jest.mock('../store/modelStore', () => ({
+  ModelState: { Downloading: 'downloading' },
   useModelStore: jest.fn(
     (selector?: (state: ModelStoreMockState) => unknown) => {
-      const state: ModelStoreMockState = { downloadedModels: [] };
+      const state: ModelStoreMockState = {
+        downloadedModels: [],
+        downloadStates: {},
+      };
       return selector ? selector(state) : state;
     }
   ),
+}));
+
+const mockUpdateModel = jest.fn();
+jest.mock('../hooks/useModelUpdate', () => ({
+  useModelUpdate: () => ({
+    updateModel: mockUpdateModel,
+    ConfirmElement: null,
+  }),
 }));
 
 jest.mock('expo-router', () => ({
@@ -121,20 +136,29 @@ jest.mock('@gorhom/bottom-sheet', () => {
 });
 
 import ModelSelectSheet from '../components/bottomSheets/ModelSelectSheet';
+import { MODEL_UPDATE_TEXT } from '../constants/model-update';
+import { DIMMED_OPACITY } from '../styles/pressable';
 import { useModelStore } from '../store/modelStore';
 import { router } from 'expo-router';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 
-const withDownloadedModels = (downloadedModels: Model[]) =>
+const withDownloadedModels = (
+  downloadedModels: Model[],
+  downloadStates: ModelStoreMockState['downloadStates'] = {}
+) =>
   mockUseModelStore.mockImplementation(
     (selector?: (state: ModelStoreMockState) => unknown) => {
-      const state: ModelStoreMockState = { downloadedModels };
+      const state: ModelStoreMockState = { downloadedModels, downloadStates };
       return selector ? selector(state) : state;
     }
   );
 
-const makeModel = (id: number, name: string) => ({
+const makeModel = (
+  id: number,
+  name: string,
+  overrides: Partial<Model> = {}
+) => ({
   id,
   modelName: name,
   source: 'remote' as const,
@@ -144,6 +168,7 @@ const makeModel = (id: number, name: string) => ({
   tokenizerPath: '',
   tokenizerConfigPath: '',
   thinking: false,
+  ...overrides,
 });
 
 beforeEach(() => {
@@ -259,6 +284,98 @@ describe('current model', () => {
   it('checks nothing when no model is current', () => {
     renderSheet();
     expect(screen.queryByTestId('model-select-current')).toBeNull();
+  });
+});
+
+describe('models that need an update', () => {
+  const outdated = (updateRequired: boolean) =>
+    makeModel(1, 'Llama-3B', { outdatedSources: ['old.pte'], updateRequired });
+
+  it('lists models whose update is required in their own section after the rest', () => {
+    withDownloadedModels([outdated(true), makeModel(2, 'Qwen-1B')]);
+    renderSheet();
+
+    const order = screen
+      .getAllByText(
+        new RegExp(
+          `^(Llama-3B|Qwen-1B|${MODEL_UPDATE_TEXT.pickerSectionTitle})$`
+        )
+      )
+      .map((node) => node.props.children);
+
+    expect(order).toEqual([
+      'Qwen-1B',
+      MODEL_UPDATE_TEXT.pickerSectionTitle,
+      'Llama-3B',
+    ]);
+    expect(screen.getByText(MODEL_UPDATE_TEXT.pickerSectionBody)).toBeTruthy();
+  });
+
+  it('disables a model whose update is required', () => {
+    const onModelPicked = jest.fn();
+    withDownloadedModels([outdated(true)]);
+    renderSheet({ onModelPicked });
+
+    const row = screen.getByTestId('model-select-row-1');
+    expect(row.props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByText('Llama-3B').parent?.parent).toHaveStyle({
+      opacity: DIMMED_OPACITY,
+    });
+    expect(screen.getByTestId('model-select-update-1')).not.toHaveStyle({
+      opacity: DIMMED_OPACITY,
+    });
+
+    fireEvent.press(row);
+    expect(onModelPicked).not.toHaveBeenCalled();
+  });
+
+  it('drops the section when the search leaves no model that needs an update', () => {
+    withDownloadedModels([outdated(true), makeModel(2, 'Qwen-1B')]);
+    renderSheet();
+
+    fireEvent.changeText(screen.getByTestId('search-input'), 'qwen');
+
+    expect(screen.queryByText(MODEL_UPDATE_TEXT.pickerSectionTitle)).toBeNull();
+  });
+
+  it('updates the model straight from the sheet', () => {
+    const onModelPicked = jest.fn();
+    withDownloadedModels([outdated(true)]);
+    renderSheet({ onModelPicked });
+
+    fireEvent.press(screen.getByTestId('model-select-update-1'));
+
+    expect(mockUpdateModel).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 })
+    );
+    expect(onModelPicked).not.toHaveBeenCalled();
+  });
+
+  it('shows update progress in place of the button label', () => {
+    withDownloadedModels([outdated(true)], {
+      1: { status: 'downloading', progress: 0.42 },
+    });
+    renderSheet();
+
+    const button = screen.getByTestId('model-select-update-1');
+    expect(screen.getByText('42%')).toBeTruthy();
+    expect(button.props.accessibilityState.busy).toBe(true);
+  });
+
+  it('keeps a model with only an optional update selectable', () => {
+    const onModelPicked = jest.fn();
+    withDownloadedModels([outdated(false)]);
+    renderSheet({ onModelPicked });
+
+    const row = screen.getByTestId('model-select-row-1');
+    expect(row.props.accessibilityState.disabled).toBe(false);
+    expect(screen.queryByText(MODEL_UPDATE_TEXT.pickerSectionTitle)).toBeNull();
+    expect(screen.queryByTestId('model-select-update-1')).toBeNull();
+
+    fireEvent.press(row);
+    expect(onModelPicked).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1 })
+    );
   });
 });
 

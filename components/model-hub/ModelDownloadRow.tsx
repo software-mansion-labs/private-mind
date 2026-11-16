@@ -13,7 +13,7 @@ import {
   type WifiWarningSheetRef,
 } from '../../hooks/useModelDownload';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
-import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
+import { useModelUpdate } from '../../hooks/useModelUpdate';
 import { Theme } from '../../styles/colors';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
@@ -21,12 +21,11 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { radius, space, stroke } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
-import { ModelState, useModelStore } from '../../store/modelStore';
+import { ModelState } from '../../store/modelStore';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import { getModelFamily } from '../../utils/modelFamily';
 import { formatModelMeta } from '../../utils/modelMeta';
 import { needsUpdate } from '../../utils/modelUpdate';
-import { Feedback } from '../../utils/Feedback';
 import CircleButton, { CIRCLE_BUTTON_SIZE } from '../CircleButton';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelRow from './ModelRow';
@@ -84,14 +83,7 @@ const ModelDownloadRow = ({
   const { status, progress, rate, startDownload, stopDownload } =
     useModelDownload(model, wifiWarningSheetRef);
   const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
-  const updateOutdatedModel = useModelStore(
-    (state) => state.updateOutdatedModel
-  );
-  const rememberUpdateConsent = useModelStore(
-    (state) => state.rememberUpdateConsent
-  );
-  const { canDownload: canDownloadUpdate, ConfirmElement: UpdateConfirm } =
-    useUpdateNetworkCheck();
+  const { updateModel, ConfirmElement: UpdateConfirm } = useModelUpdate();
 
   const isCompatible = isModelCompatible(model);
   const isDownloaded = status === ModelState.Downloaded;
@@ -113,13 +105,7 @@ const ModelDownloadRow = ({
     if (await deleteModelFiles(model)) onDeleted?.(model);
   };
 
-  const update = async () => {
-    const network = await canDownloadUpdate(model.modelSize ?? 0);
-    if (!network) return;
-    await rememberUpdateConsent([model.modelName], network === 'mobile-data');
-    Feedback.downloadStart();
-    await updateOutdatedModel(model);
-  };
+  const update = () => updateModel(model);
 
   const accessibilityActions: AccessibilityActionInfo[] = [
     ...(canDownload && !selection
