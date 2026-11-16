@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
@@ -11,14 +11,21 @@ import { pressedOpacity } from '../../styles/pressable';
 import { useModelUpdate } from '../../hooks/useModelUpdate';
 import { Glass } from '../Glass';
 import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
+import ChooseModelPill, { CHOOSE_MODEL_LABEL } from './ChooseModelPill';
 
 interface Props {
   model: Model;
   replaces?: string;
   floating?: boolean;
+  onChooseModel?: () => void;
 }
 
-const ModelUpdateBanner = ({ model, replaces, floating = false }: Props) => {
+const ModelUpdateBanner = ({
+  model,
+  replaces,
+  floating = false,
+  onChooseModel,
+}: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const download = useModelStore((state) => state.downloadStates[model.id]);
   const updating = download?.status === ModelState.Downloading;
@@ -47,20 +54,44 @@ const ModelUpdateBanner = ({ model, replaces, floating = false }: Props) => {
       interactive={false}
       tint={floating ? theme.bg.toastGlassTint : undefined}
       fallbackTint={floating ? theme.bg.toast : theme.bg.chatBar}
-      style={[styles.banner, floating ? styles.floating : styles.docked]}
+      style={[
+        styles.banner,
+        floating ? styles.floating : styles.docked,
+        onChooseModel && styles.stacked,
+      ]}
       testID="model-update-banner"
     >
-      <Text style={[styles.text, !floating && styles.dockedText]}>
+      <Text
+        style={[
+          styles.text,
+          !floating && styles.dockedText,
+          onChooseModel && styles.stackedText,
+        ]}
+      >
         {message()}
       </Text>
-      <Pressable
-        onPress={handleUpdate}
-        disabled={updating}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
-      >
-        <Text style={styles.actionText}>{actionLabel()}</Text>
-      </Pressable>
+      <View style={styles.actions}>
+        <Pressable
+          onPress={handleUpdate}
+          disabled={updating}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
+          testID="model-update-banner-action"
+        >
+          <Text style={styles.actionText}>{actionLabel()}</Text>
+        </Pressable>
+        {onChooseModel && (
+          <Pressable
+            onPress={onChooseModel}
+            accessibilityRole="button"
+            accessibilityLabel={CHOOSE_MODEL_LABEL}
+            style={({ pressed }) => [styles.choose, pressed && pressedOpacity]}
+            testID="model-update-banner-choose"
+          >
+            <ChooseModelPill />
+          </Pressable>
+        )}
+      </View>
       {ConfirmElement}
     </Glass>
   );
@@ -74,6 +105,22 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.three,
+    },
+    stacked: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
+    stackedText: {
+      flex: 0,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: space.two,
+    },
+    choose: {
+      flexShrink: 1,
     },
     docked: {
       padding: COMPOSER.cardPadding,

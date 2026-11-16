@@ -654,10 +654,16 @@ const ChatBar = ({
     );
   }
 
-  if (chatId && modelLocked && model && requiresUpdate(model)) {
+  const updateBlocksInput =
+    !!model && requiresUpdate(model) && (modelLocked ? !!chatId : !hasMessages);
+
+  if (model && updateBlocksInput) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <ModelUpdateBanner model={model} />
+        <ModelUpdateBanner
+          model={model}
+          onChooseModel={modelLocked ? undefined : onSelectModel}
+        />
       </View>
     );
   }
