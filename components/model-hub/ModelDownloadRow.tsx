@@ -79,7 +79,8 @@ const ModelDownloadRow = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(
     createStyles,
-    selection?.selected ?? false
+    selection?.selected ?? false,
+    matchFamilyCards
   );
   const { status, progress, rate, startDownload, stopDownload } =
     useModelDownload(model, wifiWarningSheetRef);
@@ -197,6 +198,22 @@ const ModelDownloadRow = ({
     </Pressable>
   );
 
+  const badges = <ModelCapabilityBadges model={model} style={styles.badges} />;
+
+  const textBlock = (children?: React.ReactNode) => (
+    <ModelRowText
+      title={model.modelName}
+      titleLines={0}
+      titleStyle={!isCompatible && styles.incompatibleTitle}
+      titleAccessory={titleAccessory}
+      accessoryPlacement={isDownloading ? 'end' : 'inline'}
+      subtitle={formatModelMeta(model, 'B')}
+      style={styles.text}
+    >
+      {children}
+    </ModelRowText>
+  );
+
   const checkbox = selection && (
     <View style={styles.checkbox} testID="model-download-row-checkbox">
       {selection.selected && (
@@ -238,40 +255,42 @@ const ModelDownloadRow = ({
             <ModelFamilyTile family={getModelFamily(model)} size="list" />
           </View>
         )}
-        <ModelRowText
-          title={model.modelName}
-          titleLines={0}
-          titleStyle={!isCompatible && styles.incompatibleTitle}
-          titleAccessory={titleAccessory}
-          accessoryPlacement={isDownloading ? 'end' : 'inline'}
-          subtitle={formatModelMeta(model, 'B')}
-          style={styles.text}
-        >
-          <ModelCapabilityBadges model={model} style={styles.badges} />
-          {isDownloading && (
-            <View style={styles.progress}>
-              <DownloadProgressBar
-                progress={progress}
-                accessibilityLabel={`${model.modelName} download progress`}
-              />
-              <DownloadProgressDetails
-                modelSize={model.modelSize}
-                progress={progress}
-                rate={rate}
-              />
+        {updateButton ? (
+          <View style={styles.updateLayout}>
+            <View style={styles.updateTop}>
+              {textBlock()}
+              <View style={styles.actions}>
+                {updateButton}
+                {action}
+              </View>
             </View>
-          )}
-        </ModelRowText>
+            <View style={styles.updateBadges}>{badges}</View>
+          </View>
+        ) : (
+          textBlock(
+            <>
+              {badges}
+              {isDownloading && (
+                <View style={styles.progress}>
+                  <DownloadProgressBar
+                    progress={progress}
+                    accessibilityLabel={`${model.modelName} download progress`}
+                  />
+                  <DownloadProgressDetails
+                    modelSize={model.modelSize}
+                    progress={progress}
+                    rate={rate}
+                  />
+                </View>
+              )}
+            </>
+          )
+        )}
         {selection ? (
           <View style={styles.trailing}>
             {showsCheckbox ? checkbox : action}
           </View>
-        ) : updateButton ? (
-          <View style={styles.actions}>
-            {updateButton}
-            {action}
-          </View>
-        ) : (
+        ) : updateButton ? null : (
           action
         )}
         {ConfirmElement}
@@ -283,7 +302,12 @@ const ModelDownloadRow = ({
 
 export default ModelDownloadRow;
 
-const createStyles = (theme: Theme, selected: boolean) => {
+const createStyles = (
+  theme: Theme,
+  selected: boolean,
+  matchFamilyCards: boolean
+) => {
+  const rowGap = matchFamilyCards ? TILE_ROW.gap : space.three;
   const cardBorderWidth = selected ? stroke.strong : stroke.soft;
   const cardBorderGrowth = cardBorderWidth - stroke.soft;
   return StyleSheet.create({
@@ -337,6 +361,19 @@ const createStyles = (theme: Theme, selected: boolean) => {
     },
     lockedSelection: {
       opacity: LOCKED_OPACITY,
+    },
+    updateLayout: {
+      flex: 1,
+      minWidth: 0,
+      gap: space.one,
+    },
+    updateTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: rowGap,
+    },
+    updateBadges: {
+      marginRight: CIRCLE_BUTTON_SIZE + rowGap,
     },
     actions: {
       flexDirection: 'row',
