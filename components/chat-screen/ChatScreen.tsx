@@ -38,7 +38,7 @@ import { TopFade, topFadeHeight } from './TopFade';
 import { NewChatBackground } from './NewChatBackground';
 import UserMessageActionMenu from './UserMessageActionMenu';
 import ModelUpdateBanner from './ModelUpdateBanner';
-import { needsUpdate } from '../../utils/modelUpdate';
+import { needsUpdate, requiresUpdate } from '../../utils/modelUpdate';
 import { space } from '../../constants/design-system';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
@@ -309,7 +309,10 @@ export default function ChatScreen({
   });
 
   const scrollBottomOffset = theme.insets.bottom;
-  const showUpdateBanner = hasMessages && !!model && needsUpdate(model);
+  const updateReplacesInput =
+    !isPhantomChat && !!model && requiresUpdate(model);
+  const showUpdateBanner =
+    hasMessages && !!model && needsUpdate(model) && !updateReplacesInput;
   const [updateBannerHeight, setUpdateBannerHeight] = useState(0);
   const handleUpdateBannerLayout = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) =>
@@ -465,7 +468,7 @@ export default function ChatScreen({
           pointerEvents="box-none"
           onLayout={handleUpdateBannerLayout}
         >
-          <ModelUpdateBanner model={model} />
+          <ModelUpdateBanner model={model} floating />
         </Animated.View>
       )}
 

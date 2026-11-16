@@ -15,9 +15,10 @@ import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
 interface Props {
   model: Model;
   replaces?: string;
+  floating?: boolean;
 }
 
-const ModelUpdateBanner = ({ model, replaces }: Props) => {
+const ModelUpdateBanner = ({ model, replaces, floating = false }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const download = useModelStore((state) => state.downloadStates[model.id]);
   const updateOutdatedModel = useModelStore(
@@ -53,14 +54,14 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
 
   return (
     <Glass
-      radius={replaces ? COMPOSER_CARD_RADIUS : radius.eighteen}
+      radius={floating ? radius.eighteen : COMPOSER_CARD_RADIUS}
       interactive={false}
-      tint={replaces ? undefined : theme.bg.toastGlassTint}
-      fallbackTint={replaces ? theme.bg.chatBar : theme.bg.toast}
-      style={[styles.banner, replaces ? styles.docked : styles.floating]}
+      tint={floating ? theme.bg.toastGlassTint : undefined}
+      fallbackTint={floating ? theme.bg.toast : theme.bg.chatBar}
+      style={[styles.banner, floating ? styles.floating : styles.docked]}
       testID="model-update-banner"
     >
-      <Text style={[styles.text, replaces && styles.dockedText]}>
+      <Text style={[styles.text, !floating && styles.dockedText]}>
         {message()}
       </Text>
       <Pressable

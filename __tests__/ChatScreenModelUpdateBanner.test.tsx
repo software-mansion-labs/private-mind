@@ -90,9 +90,11 @@ jest.mock('../components/chat-screen/ModelUpdateBanner', () => {
 });
 
 const mockNeedsUpdate = jest.fn();
+const mockRequiresUpdate = jest.fn();
 jest.mock('../utils/modelUpdate', () => ({
   ...jest.requireActual('../utils/modelUpdate'),
   needsUpdate: (model: unknown) => mockNeedsUpdate(model),
+  requiresUpdate: (model: unknown) => mockRequiresUpdate(model),
 }));
 
 jest.mock('../utils/startPhantomChat', () => ({
@@ -126,6 +128,7 @@ const renderChat = (messageHistory: Message[]) =>
 
 beforeEach(() => {
   mockNeedsUpdate.mockReset();
+  mockRequiresUpdate.mockReset().mockReturnValue(false);
 });
 
 describe('the model update notice in a chat', () => {
@@ -137,6 +140,13 @@ describe('the model update notice in a chat', () => {
 
   it('stays away from a chat whose model is up to date', () => {
     mockNeedsUpdate.mockReturnValue(false);
+    renderChat(earlierTurn);
+    expect(screen.queryByText('update Qwen 3 - 0.6B')).toBeNull();
+  });
+
+  it('leaves a required update to the card that takes the input’s place', () => {
+    mockNeedsUpdate.mockReturnValue(true);
+    mockRequiresUpdate.mockReturnValue(true);
     renderChat(earlierTurn);
     expect(screen.queryByText('update Qwen 3 - 0.6B')).toBeNull();
   });

@@ -391,6 +391,39 @@ describe('model unavailable', () => {
   });
 });
 
+describe('model that must be updated before it can answer', () => {
+  const mustUpdate = {
+    ...downloadedModel,
+    outdatedSources: ['model'],
+    updateRequired: true,
+  };
+
+  it('offers the update in place of the input', () => {
+    renderBar({ model: mustUpdate, modelLocked: true } as Partial<
+      typeof defaultProps
+    >);
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
+    expect(screen.getByTestId('model-update-banner')).toBeTruthy();
+    expect(screen.getByText('Update')).toBeTruthy();
+  });
+
+  it('keeps the input in a new chat, where another model can still be picked', () => {
+    renderBar({ model: mustUpdate, modelLocked: false } as Partial<
+      typeof defaultProps
+    >);
+    expect(screen.getByPlaceholderText('Ask anything')).toBeTruthy();
+    expect(screen.queryByTestId('model-update-banner')).toBeNull();
+  });
+
+  it('keeps the input when the newer files are optional', () => {
+    renderBar({
+      model: { ...mustUpdate, updateRequired: false },
+      modelLocked: true,
+    } as Partial<typeof defaultProps>);
+    expect(screen.getByPlaceholderText('Ask anything')).toBeTruthy();
+  });
+});
+
 // ─── normal input state ───────────────────────────────────────────────────────
 
 describe('downloaded model — text input', () => {

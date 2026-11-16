@@ -61,6 +61,7 @@ import PromptSuggestions from './PromptSuggestions';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import ModelUpdateBanner from './ModelUpdateBanner';
 import { useModelStore } from '../../store/modelStore';
+import { requiresUpdate } from '../../utils/modelUpdate';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -649,6 +650,14 @@ const ChatBar = ({
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <ModelUpdateBanner model={model} replaces={retiredBy} />
+      </View>
+    );
+  }
+
+  if (chatId && modelLocked && model && requiresUpdate(model)) {
+    return (
+      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
+        <ModelUpdateBanner model={model} />
       </View>
     );
   }
