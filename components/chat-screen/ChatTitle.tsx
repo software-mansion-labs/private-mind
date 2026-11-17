@@ -5,6 +5,7 @@ import {
   View,
   Pressable,
   useWindowDimensions,
+  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   type TextLayoutEventData,
 } from 'react-native';
@@ -22,6 +23,7 @@ import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
 const CHEVRON_WIDTH = 10;
 const CHEVRON_HEIGHT = 6;
 const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.four * 2;
+const ELLIPSIS = '\u2026';
 
 interface Props {
   title: string;
@@ -46,18 +48,32 @@ const ChatTitle = ({
     });
   }, [onBottomMeasured]);
 
-  const [fittedTitle, setFittedTitle] = useState<string | null>(null);
-  useEffect(() => setFittedTitle(null), [title, maxWidth]);
-  const handleTitleWrap = useCallback(
-    (event: NativeSyntheticEvent<TextLayoutEventData>) => {
-      setFittedTitle(firstLineOf(event.nativeEvent.lines, title));
-    },
+  const [fitsWhole, setFitsWhole] = useState<boolean | null>(null);
+  const [cutTitle, setCutTitle] = useState<string | null>(null);
+  const [ellipsisWidth, setEllipsisWidth] = useState<number | null>(null);
+  useEffect(() => {
+    setFitsWhole(null);
+    setCutTitle(null);
+  }, [title, maxWidth]);
+  const handleWholeWrap = useCallback(
+    (event: NativeSyntheticEvent<TextLayoutEventData>) =>
+      setFitsWhole(event.nativeEvent.lines.length <= 1),
+    []
+  );
+  const handleCutWrap = useCallback(
+    (event: NativeSyntheticEvent<TextLayoutEventData>) =>
+      setCutTitle(firstLineOf(event.nativeEvent.lines, title)),
     [title]
   );
+  const handleEllipsisLayout = useCallback(
+    (event: LayoutChangeEvent) =>
+      setEllipsisWidth(Math.ceil(event.nativeEvent.layout.width)),
+    []
+  );
   const shownTitle =
-    fittedTitle === null || fittedTitle === title
+    fitsWhole !== false || cutTitle === null || cutTitle === title
       ? title
-      : `${fittedTitle}\u2026`;
+      : `${cutTitle}${ELLIPSIS}`;
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   useEffect(() => {
@@ -94,12 +110,34 @@ const ChatTitle = ({
             importantForAccessibility="no-hide-descendants"
           >
             <Text
-              style={[styles.titleText, { width: titleWidth }]}
-              onTextLayout={handleTitleWrap}
+              style={[styles.titleText, styles.ellipsis]}
+              onLayout={handleEllipsisLayout}
               maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              testID="chat-title-ellipsis"
+            >
+              {ELLIPSIS}
+            </Text>
+            <Text
+              style={[styles.titleText, { width: titleWidth }]}
+              onTextLayout={handleWholeWrap}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              testID="chat-title-whole"
             >
               {title}
             </Text>
+            {ellipsisWidth !== null ? (
+              <Text
+                style={[
+                  styles.titleText,
+                  { width: titleWidth - ellipsisWidth },
+                ]}
+                onTextLayout={handleCutWrap}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+                testID="chat-title-cut"
+              >
+                {title}
+              </Text>
+            ) : null}
           </View>
         ) : null}
         <Text
@@ -147,6 +185,9 @@ const createStyles = (theme: Theme) =>
       position: 'absolute',
       opacity: 0,
       top: 0,
+    },
+    ellipsis: {
+      alignSelf: 'flex-start',
     },
     chevron: {
       color: theme.text.primary,
