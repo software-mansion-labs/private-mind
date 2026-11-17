@@ -97,7 +97,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: radius.full,
     },
     activeBackground: {
-      backgroundColor: theme.bg.softTertiary,
+      backgroundColor: theme.bg.drawerItemActive,
     },
     content: {
       flexDirection: 'row',

@@ -239,7 +239,7 @@ const DrawerMenu = ({
         </ScrollView>
       </Animated.View>
 
-      <GlassScrollEdge anchor={headerHeight} />
+      <GlassScrollEdge anchor={headerHeight} surface={theme.bg.drawer} />
       <View style={styles.topBar}>
         <DrawerTopBar
           searching={searching}
