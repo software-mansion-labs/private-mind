@@ -23,10 +23,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { isDarkTheme } from '../../styles/colors';
-import {
-  KEYBOARD_FADE_DISTANCE,
-  NEW_CHAT_REST_BOTTOM_FRACTION,
-} from '../../constants/chat-screen';
+import { NEW_CHAT_REST_BOTTOM_FRACTION } from '../../constants/chat-screen';
 import { useSplashFinished } from '../../utils/splashState';
 import ParticleSwarm from '../swarm/ParticleSwarm';
 import { HEADING_OUTLINES } from '../swarm/headingOutlines';
@@ -67,6 +64,8 @@ const BLOOM_COLORS_DARK = [
   'rgba(61,97,214,0.4)',
   'rgba(61,97,214,0.85)',
 ] as const;
+
+const KEYBOARD_FADE_DISTANCE = 60;
 
 const PALETTE_LIGHT = {
   backColor: [0.66, 0.73, 0.95],

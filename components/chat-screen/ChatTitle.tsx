@@ -19,14 +19,16 @@ import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
 import LockIcon from '../../assets/icons/lock-solid.svg';
 import { Glass } from '../Glass';
-import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
+import {
+  GLASS_BUTTON_SIZE,
+  TITLE_CAPSULE_PADDING,
+  TITLE_ICON_HEIGHT,
+  TITLE_ICON_WIDTH,
+  TITLE_LOCK_GAP,
+} from '../../constants/header-actions';
 
-const ICON_WIDTH = 10;
-const ICON_HEIGHT = 12;
 const CHEVRON_GAP = space.one;
-const LOCK_GAP = space.two;
-const ICONS_SPACE = ICON_WIDTH * 2 + CHEVRON_GAP + LOCK_GAP;
-const CAPSULE_PADDING = space.four;
+const ICONS_SPACE = TITLE_ICON_WIDTH * 2 + CHEVRON_GAP + TITLE_LOCK_GAP;
 const ON_DEVICE_LABEL = 'Private, runs on this device';
 const ELLIPSIS = '\u2026';
 
@@ -88,7 +90,7 @@ const ChatTitle = ({
   }, [handleLayout, onBottomMeasured, windowWidth, windowHeight]);
 
   const titleWidth = maxWidth
-    ? maxWidth - ICONS_SPACE - CAPSULE_PADDING * 2
+    ? maxWidth - ICONS_SPACE - TITLE_CAPSULE_PADDING * 2
     : undefined;
 
   return (
@@ -150,8 +152,8 @@ const ChatTitle = ({
           </View>
         ) : null}
         <LockIcon
-          width={ICON_WIDTH}
-          height={ICON_HEIGHT}
+          width={TITLE_ICON_WIDTH}
+          height={TITLE_ICON_HEIGHT}
           style={styles.lock}
           testID="chat-title-lock"
         />
@@ -164,8 +166,8 @@ const ChatTitle = ({
         </Text>
         {onPress ? (
           <ChevronDownIcon
-            width={ICON_WIDTH}
-            height={ICON_HEIGHT}
+            width={TITLE_ICON_WIDTH}
+            height={TITLE_ICON_HEIGHT}
             style={[styles.chevron, open && styles.chevronOpen]}
           />
         ) : null}
@@ -187,7 +189,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       gap: CHEVRON_GAP,
       height: GLASS_BUTTON_SIZE,
-      paddingHorizontal: CAPSULE_PADDING,
+      paddingHorizontal: TITLE_CAPSULE_PADDING,
     },
     titleText: {
       flexShrink: 1,
@@ -206,7 +208,7 @@ const createStyles = (theme: Theme) =>
     },
     lock: {
       color: theme.text.accent,
-      marginRight: LOCK_GAP - CHEVRON_GAP,
+      marginRight: TITLE_LOCK_GAP - CHEVRON_GAP,
     },
     chevron: {
       color: theme.text.primary,

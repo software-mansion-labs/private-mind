@@ -1,85 +1,102 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { fontFamily } from '../../styles/fontStyles';
-import { space } from '../../constants/design-system';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
-  GLASS_BADGE_HEIGHT,
-  GLASS_BADGE_LINE_HEIGHT,
-  GLASS_BADGE_TEXT_SIZE,
-} from '../../constants/glass-badge';
+  GLASS_BUTTON_SIZE,
+  TITLE_CAPSULE_PADDING,
+  TITLE_ICON_HEIGHT,
+  TITLE_ICON_WIDTH,
+  TITLE_LOCK_GAP,
+} from '../../constants/header-actions';
 import { Glass } from '../Glass';
 import LockIcon from '../../assets/icons/lock-solid.svg';
 import { pressedOpacity } from '../../styles/pressable';
 import { usePrivacySheetStore } from '../../store/privacySheetStore';
 import { Feedback } from '../../utils/Feedback';
 
-const LOCK_WIDTH = 10;
-const LOCK_HEIGHT = 12;
-const PILL_HIT_SLOP = 6;
+export const ON_DEVICE_PILL = 'Private and offline';
 
-export const ON_DEVICE_PILL = 'Private and offline, on your device';
-export const ON_DEVICE_PILL_HEIGHT = GLASS_BADGE_HEIGHT;
+interface Props {
+  reveal?: SharedValue<number>;
+}
 
-export default function OnDevicePill() {
-  const { styles, theme } = useThemedStyles(createStyles);
+export default function OnDevicePill({ reveal }: Props) {
+  const { styles } = useThemedStyles(createStyles);
   const openPrivacySheet = usePrivacySheetStore(
     (state) => state.openPrivacySheet
   );
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: reveal ? reveal.get() : 1,
+  }));
 
   return (
-    <Glass
-      radius={ON_DEVICE_PILL_HEIGHT / 2}
-      fallbackTint={theme.bg.chatBar}
-      style={styles.glass}
+    <Animated.View
+      style={[styles.reveal, revealStyle]}
+      testID="on-device-pill-reveal"
     >
-      <Pressable
-        onPress={() => {
-          Feedback.sheetOpen();
-          openPrivacySheet();
-        }}
-        style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
-        hitSlop={PILL_HIT_SLOP}
-        accessibilityRole="button"
-        accessibilityHint="Shows how your chats stay private"
-        testID="on-device-pill"
-      >
-        <LockIcon width={LOCK_WIDTH} height={LOCK_HEIGHT} style={styles.lock} />
-        <Text
-          style={styles.text}
-          numberOfLines={1}
-          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      <Glass radius={GLASS_BUTTON_SIZE / 2} style={styles.capsule}>
+        <Pressable
+          onPress={() => {
+            Feedback.sheetOpen();
+            openPrivacySheet();
+          }}
+          style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityHint="Shows how your chats stay private"
+          testID="on-device-pill"
         >
-          {ON_DEVICE_PILL}
-        </Text>
-      </Pressable>
-    </Glass>
+          <LockIcon
+            width={TITLE_ICON_WIDTH}
+            height={TITLE_ICON_HEIGHT}
+            style={styles.lock}
+          />
+          <Text
+            style={styles.text}
+            numberOfLines={1}
+            maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+          >
+            {ON_DEVICE_PILL}
+          </Text>
+        </Pressable>
+      </Glass>
+    </Animated.View>
   );
 }
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    glass: {
+    reveal: {
       flexShrink: 1,
+    },
+    capsule: {
+      flexShrink: 1,
+      height: GLASS_BUTTON_SIZE,
     },
     pill: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       flexShrink: 1,
-      height: ON_DEVICE_PILL_HEIGHT,
-      gap: space.two,
-      paddingHorizontal: space.three,
+      gap: TITLE_LOCK_GAP,
+      height: GLASS_BUTTON_SIZE,
+      paddingHorizontal: TITLE_CAPSULE_PADDING,
     },
     lock: {
       color: theme.text.accent,
     },
     text: {
       flexShrink: 1,
-      fontFamily: fontFamily.regular,
-      fontSize: GLASS_BADGE_TEXT_SIZE,
-      lineHeight: GLASS_BADGE_LINE_HEIGHT,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      fontFamily: fontFamily.medium,
       color: theme.text.primary,
     },
   });
