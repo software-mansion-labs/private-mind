@@ -41,6 +41,7 @@ import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
+import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 
 const ACTION_ICON_SIZE = 16;
 const CANCEL_ICON_SIZE = 13.33;
@@ -189,6 +190,13 @@ const ModelDownloadRow = ({
       accessibilityLabel={`Update ${model.modelName}`}
       testID="model-download-row-update"
     >
+      <View style={styles.updateCircle}>
+        <RotateLeftIcon
+          width={ACTION_ICON_SIZE}
+          height={ACTION_ICON_SIZE}
+          color={theme.text.accent}
+        />
+      </View>
       <Text
         style={styles.updateButtonText}
         maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
@@ -377,19 +385,25 @@ const createStyles = (
     },
     actions: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.two,
+      alignItems: 'flex-start',
+      gap: space.three,
     },
     updateButton: {
-      minHeight: CIRCLE_BUTTON_SIZE,
+      alignItems: 'center',
+      gap: space.one,
+    },
+    updateCircle: {
+      width: CIRCLE_BUTTON_SIZE,
+      height: CIRCLE_BUTTON_SIZE,
+      borderRadius: radius.eighteen,
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: space.three,
-      borderRadius: radius.full,
       backgroundColor: theme.bg.accentSoft,
     },
     updateButtonText: {
+      marginHorizontal: -space.two,
       fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
+      fontSize: fontSizes.xs,
       color: theme.text.accent,
     },
   });
