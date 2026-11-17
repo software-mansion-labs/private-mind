@@ -43,7 +43,7 @@ const ModelFamilyTile = ({ family, size, iconColor, bareIconSize }: Props) => {
       style={[
         styles.tile,
         !FamilyIcon && styles.initialTile,
-        iconOnly && [styles.bareTile, { width: iconSize, height: iconSize }],
+        iconOnly && { width: iconSize, height: iconSize },
       ]}
       testID="model-family-tile"
       accessibilityElementsHidden
@@ -76,13 +76,10 @@ const createStyles = (theme: Theme, size: ModelFamilyTileSize) => {
       borderRadius: spec.radius,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.bg.tile,
+      backgroundColor: 'transparent',
     },
     initialTile: {
       backgroundColor: theme.label[UNKNOWN_FAMILY_COLOR].background,
-    },
-    bareTile: {
-      backgroundColor: 'transparent',
     },
     initial: {
       fontFamily: fontFamily.bold,
