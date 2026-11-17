@@ -42,12 +42,14 @@ const FIELD_HEIGHT = TITLE_BLOCK_HEIGHT;
 const FIELD_BORDER = 1.5;
 const ROW_LABEL_SIZE = 15;
 const PRIVACY_LOCK_TILE = 28;
+const PRIVACY_HEADING_GAP = space.two;
+const PRIVACY_TEXT_INSET = PRIVACY_LOCK_TILE + PRIVACY_HEADING_GAP;
 const PRIVACY_LOCK_WIDTH = 10;
 const PRIVACY_LOCK_HEIGHT = 12;
 const PRIVACY_LINK_HIT_SLOP = 8;
 
 export const PRIVATE_CHAT_DETAIL =
-  'This chat runs on your device. It is stored here and works offline.';
+  'Everything happens on your device, even offline';
 
 interface Props {
   visible: boolean;
@@ -371,7 +373,7 @@ const createStyles = (theme: Theme) =>
     privacyHeading: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: space.two,
+      gap: PRIVACY_HEADING_GAP,
     },
     privacyLockTile: {
       width: PRIVACY_LOCK_TILE,
@@ -387,10 +389,12 @@ const createStyles = (theme: Theme) =>
     },
     privacyDetail: {
       ...textStyles.bodySecondaryRegular,
+      marginLeft: PRIVACY_TEXT_INSET,
       color: theme.text.defaultSecondary,
     },
     privacyLink: {
       alignSelf: 'flex-start',
+      marginLeft: PRIVACY_TEXT_INSET,
     },
     privacyLinkLabel: {
       ...textStyles.bodySecondaryMedium,

@@ -14,7 +14,7 @@ const LOCK_HEIGHT = 12;
 const NOTE_MAX_WIDTH = 260;
 
 export const ON_DEVICE_NOTE =
-  'This chat runs on your device. It works offline and is stored only here.';
+  'Everything happens on your device, even offline.';
 export const LEARN_MORE = 'Learn\u00a0more';
 
 export default function OnDeviceNote() {

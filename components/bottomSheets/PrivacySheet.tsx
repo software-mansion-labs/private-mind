@@ -62,8 +62,8 @@ const PRIVACY_ROWS: Row[] = [
   {
     key: 'stored',
     icon: FolderIcon,
-    title: 'Stored only here',
-    detail: 'Chats and files are saved on this device. No account needed.',
+    title: 'Saved on your device',
+    detail: 'Your chats and files stay with you. No account needed.',
   },
 ];
 
