@@ -79,4 +79,20 @@ describe('ChatTitle', () => {
 
     expect(getByText(TITLE)).toBeTruthy();
   });
+
+  it('shows a lock beside the title', () => {
+    const { getByTestId } = render(<ChatTitle title="Lisbon weekend" />);
+
+    expect(getByTestId('chat-title-lock')).toBeTruthy();
+  });
+
+  it('tells screen readers the chat runs on this device', () => {
+    const { getByRole } = render(
+      <ChatTitle title="Lisbon weekend" onPress={jest.fn()} />
+    );
+
+    expect(getByRole('button').props.accessibilityLabel).toBe(
+      'Lisbon weekend. Private, runs on this device. Chat options'
+    );
+  });
 });

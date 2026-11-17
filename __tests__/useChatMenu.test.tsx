@@ -65,6 +65,8 @@ import Toast from 'react-native-toast-message';
 
 import { useChatMenu } from '../components/chat-menu/useChatMenu';
 import { MAX_CHAT_TITLE_LENGTH } from '../utils/chatLabel';
+import { usePrivacySheetStore } from '../store/privacySheetStore';
+import { PRIVATE_CHAT_DETAIL } from '../components/chat-menu/ChatMenuPopover';
 
 const TARGET = {
   x: 16,
@@ -77,12 +79,15 @@ const TARGET = {
 const Harness = ({
   chatTitle = 'My Chat',
   onActiveChange,
+  showPrivacy,
 }: {
   chatTitle?: string;
   onActiveChange?: (active: boolean) => void;
+  showPrivacy?: boolean;
 }) => {
   const { openMenu, openChatId, MenuElements } = useChatMenu({
     onActiveChange,
+    showPrivacy,
   });
   return (
     <>
@@ -366,5 +371,37 @@ describe('keeping the chat still while renaming', () => {
     useKeyboardOwnerStore.setState({ modalOwnsKeyboard: true });
     render(<Harness />);
     expect(ownsKeyboard()).toBe(true);
+  });
+});
+
+describe('the private chat row', () => {
+  const mockOpenPrivacySheet = jest.fn();
+  beforeEach(() =>
+    usePrivacySheetStore.setState({ openPrivacySheet: mockOpenPrivacySheet })
+  );
+
+  it('stays out of menus that do not ask for it', () => {
+    openMenu();
+
+    expect(screen.queryByTestId('chat-menu-privacy')).toBeNull();
+  });
+
+  it('tells the chat stays on the device, above the chat actions', () => {
+    render(<Harness showPrivacy />);
+    fireEvent.press(screen.getByTestId('open-menu'));
+
+    expect(screen.getByText('Private chat')).toBeTruthy();
+    expect(screen.getByText(PRIVATE_CHAT_DETAIL)).toBeTruthy();
+    expect(screen.getByText('How this works')).toBeTruthy();
+  });
+
+  it('closes the menu and opens the privacy sheet', () => {
+    render(<Harness showPrivacy />);
+    fireEvent.press(screen.getByTestId('open-menu'));
+
+    fireEvent.press(screen.getByTestId('chat-menu-privacy'));
+
+    expect(screen.getByText('menu:closed')).toBeTruthy();
+    expect(mockOpenPrivacySheet).toHaveBeenCalledTimes(1);
   });
 });

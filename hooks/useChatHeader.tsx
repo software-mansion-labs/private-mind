@@ -30,7 +30,9 @@ export default function useChatHeader({
   const insets = useSafeAreaInsets();
   const titleMaxWidth = headerTitleMaxWidth(width, insets);
 
-  const { openMenu, openChatId, MenuElements } = useChatMenu();
+  const { openMenu, openChatId, MenuElements } = useChatMenu({
+    showPrivacy: true,
+  });
   const isOpen = openChatId === chatId;
   const menuTitle = chatLabel({ id: chatId, title: chatTitle });
 

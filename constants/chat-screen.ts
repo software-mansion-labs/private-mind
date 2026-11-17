@@ -4,6 +4,7 @@ import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from './header-actions';
 
 export const NEW_CHAT_HEADING = 'How can I help?';
 export const NEW_CHAT_REST_BOTTOM_FRACTION = 0.405;
+export const KEYBOARD_FADE_DISTANCE = 60;
 
 export const SUPPORTS_USER_ACTION_MENU = Platform.OS === 'android';
 

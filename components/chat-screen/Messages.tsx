@@ -50,6 +50,7 @@ import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
+import OnDeviceNote from './OnDeviceNote';
 import StoppedMarker from './StoppedMarker';
 import { endsTurnCutShort } from './cutShortTurn';
 import {
@@ -1257,6 +1258,7 @@ const Messages = ({
           scrollEventThrottle={16}
           style={styles.container}
         >
+          {hasMessages && firstRenderedIndex === 0 && <OnDeviceNote />}
           {messageRows}
           {generationError && (
             <View style={pinFloorStyle} collapsable={false}>

@@ -17,12 +17,17 @@ import { space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
+import LockIcon from '../../assets/icons/lock-solid.svg';
 import { Glass } from '../Glass';
 import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
 
-const CHEVRON_WIDTH = 10;
-const CHEVRON_HEIGHT = 6;
-const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.four * 2;
+const ICON_WIDTH = 10;
+const ICON_HEIGHT = 12;
+const CHEVRON_GAP = space.one;
+const LOCK_GAP = space.two;
+const ICONS_SPACE = ICON_WIDTH * 2 + CHEVRON_GAP + LOCK_GAP;
+const CAPSULE_PADDING = space.four;
+const ON_DEVICE_LABEL = 'Private, runs on this device';
 const ELLIPSIS = '\u2026';
 
 interface Props {
@@ -82,7 +87,9 @@ const ChatTitle = ({
     return () => cancelAnimationFrame(frame);
   }, [handleLayout, onBottomMeasured, windowWidth, windowHeight]);
 
-  const titleWidth = maxWidth ? maxWidth - CHEVRON_SPACE : undefined;
+  const titleWidth = maxWidth
+    ? maxWidth - ICONS_SPACE - CAPSULE_PADDING * 2
+    : undefined;
 
   return (
     <Glass radius={GLASS_BUTTON_SIZE / 2} style={styles.capsule}>
@@ -94,7 +101,9 @@ const ChatTitle = ({
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={
-          onPress ? `${shownTitle}. Chat options` : shownTitle
+          onPress
+            ? `${shownTitle}. ${ON_DEVICE_LABEL}. Chat options`
+            : `${shownTitle}. ${ON_DEVICE_LABEL}`
         }
         accessibilityState={{ expanded: open }}
         style={({ pressed }) => [
@@ -140,6 +149,12 @@ const ChatTitle = ({
             ) : null}
           </View>
         ) : null}
+        <LockIcon
+          width={ICON_WIDTH}
+          height={ICON_HEIGHT}
+          style={styles.lock}
+          testID="chat-title-lock"
+        />
         <Text
           numberOfLines={1}
           style={styles.titleText}
@@ -149,8 +164,8 @@ const ChatTitle = ({
         </Text>
         {onPress ? (
           <ChevronDownIcon
-            width={CHEVRON_WIDTH}
-            height={CHEVRON_HEIGHT}
+            width={ICON_WIDTH}
+            height={ICON_HEIGHT}
             style={[styles.chevron, open && styles.chevronOpen]}
           />
         ) : null}
@@ -170,9 +185,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: space.one,
+      gap: CHEVRON_GAP,
       height: GLASS_BUTTON_SIZE,
-      paddingHorizontal: space.four,
+      paddingHorizontal: CAPSULE_PADDING,
     },
     titleText: {
       flexShrink: 1,
@@ -188,6 +203,10 @@ const createStyles = (theme: Theme) =>
     },
     ellipsis: {
       alignSelf: 'flex-start',
+    },
+    lock: {
+      color: theme.text.accent,
+      marginRight: LOCK_GAP - CHEVRON_GAP,
     },
     chevron: {
       color: theme.text.primary,

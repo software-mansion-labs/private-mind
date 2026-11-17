@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import Animated, {
   FadeOut,
+  interpolate,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -15,18 +16,33 @@ import { Theme } from '../../styles/colors';
 import { space, textStyles } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
+  KEYBOARD_FADE_DISTANCE,
   NEW_CHAT_HEADING,
   NEW_CHAT_REST_BOTTOM_FRACTION,
 } from '../../constants/chat-screen';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 import WhatsNewBadge from '../WhatsNewBadge';
+import OnDevicePill, { ON_DEVICE_PILL_HEIGHT } from './OnDevicePill';
 import { GUTTER } from './attachments/constants';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 
 const GAP_ABOVE_BAR = space.four;
+const HERO_GAP = space.four;
+const PILL_SPACE = HERO_GAP + ON_DEVICE_PILL_HEIGHT;
 
 export const heroPushUp = (barTop: number, restBottom: number): number => {
   'worklet';
   return Math.min(0, barTop - GAP_ABOVE_BAR - restBottom);
+};
+
+const keyboardShown = (keyboardLift: number): number => {
+  'worklet';
+  return interpolate(
+    keyboardLift,
+    [-KEYBOARD_FADE_DISTANCE, 0],
+    [1, 0],
+    'clamp'
+  );
 };
 
 interface Props {
@@ -50,7 +66,7 @@ const NewChatHero = ({
   headingReveal,
   badgeReveal,
 }: Props) => {
-  const restBottom = screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION;
+  const restBottom = screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION + PILL_SPACE;
   const { styles } = useThemedStyles(createStyles, screenHeight - restBottom);
 
   const pushStyle = useAnimatedStyle(() => ({
@@ -58,7 +74,7 @@ const NewChatHero = ({
       {
         translateY: heroPushUp(
           screenHeight - barHeight.get() + keyboardLift.get(),
-          restBottom
+          restBottom - PILL_SPACE * keyboardShown(keyboardLift.get())
         ),
       },
     ],
@@ -69,6 +85,13 @@ const NewChatHero = ({
   }));
   const badgeStyle = useAnimatedStyle(() => ({
     opacity: badgeReveal ? badgeReveal.get() : 1,
+  }));
+  const keyboardVisible = useKeyboardState((state) => state.isVisible);
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(
+      badgeReveal ? badgeReveal.get() : 1,
+      1 - keyboardShown(keyboardLift.get())
+    ),
   }));
 
   return (
@@ -90,6 +113,13 @@ const NewChatHero = ({
       >
         {NEW_CHAT_HEADING}
       </Animated.Text>
+      <Animated.View
+        style={pillStyle}
+        pointerEvents={keyboardVisible ? 'none' : 'auto'}
+        testID="on-device-pill-reveal"
+      >
+        <OnDevicePill />
+      </Animated.View>
     </Animated.View>
   );
 };
@@ -104,7 +134,7 @@ const createStyles = (theme: Theme, distanceFromBottom: number) =>
       right: GUTTER,
       bottom: distanceFromBottom,
       alignItems: 'center',
-      gap: space.four,
+      gap: HERO_GAP,
       zIndex: 1,
       elevation: 1,
     },

@@ -6,6 +6,7 @@ import { useChatActions } from '../../hooks/useChatActions';
 import { chatLabel, toChatTitle } from '../../utils/chatLabel';
 import { Feedback } from '../../utils/Feedback';
 import ChatMenuPopover from './ChatMenuPopover';
+import { usePrivacySheetStore } from '../../store/privacySheetStore';
 import { MenuPlacement, MenuTarget, chooseSide } from './placement';
 
 interface MenuChat {
@@ -20,9 +21,13 @@ interface OpenMenu {
 
 interface Options {
   onActiveChange?: (active: boolean) => void;
+  showPrivacy?: boolean;
 }
 
-export const useChatMenu = ({ onActiveChange }: Options = {}) => {
+export const useChatMenu = ({
+  onActiveChange,
+  showPrivacy = false,
+}: Options = {}) => {
   const router = useRouter();
   const pathname = usePathname();
   const { height: windowHeight } = useWindowDimensions();
@@ -92,6 +97,11 @@ export const useChatMenu = ({ onActiveChange }: Options = {}) => {
     if (chat) closeForAction(() => confirmDelete(chat.id));
   }, [chat, closeForAction, confirmDelete]);
 
+  const handlePrivacy = useCallback(() => {
+    closeMenu();
+    usePrivacySheetStore.getState().openPrivacySheet();
+  }, [closeMenu]);
+
   const MenuElements = (
     <>
       {menu && (
@@ -102,6 +112,7 @@ export const useChatMenu = ({ onActiveChange }: Options = {}) => {
           onRename={handleRename}
           onShare={handleShare}
           onDelete={handleDelete}
+          onPrivacy={showPrivacy ? handlePrivacy : undefined}
           onClose={closeMenu}
         />
       )}
