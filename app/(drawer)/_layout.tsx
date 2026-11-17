@@ -9,11 +9,11 @@ import {
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useDisplayCornerRadius } from '../../hooks/useDisplayCornerRadius';
-import { Theme } from '../../styles/colors';
+import { isDarkTheme, Theme, withAlpha } from '../../styles/colors';
 import CustomDrawer from '../../components/drawer/CustomDrawer';
 import DrawerEntrance from '../../components/drawer/DrawerEntrance';
 import DrawerProgressBridge from '../../components/drawer/DrawerProgressBridge';
-import DrawerScreenDim from '../../components/drawer/DrawerScreenDim';
+import DrawerScreenShadow from '../../components/drawer/DrawerScreenShadow';
 import { getDrawerWidth } from '../../constants/drawer-layout';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import WebScrapeSheet from '../../components/bottomSheets/WebScrapeSheet';
@@ -23,6 +23,17 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 
 const DRAWER_BELOW_SCREEN = -1;
 const DRAWER_ABOVE_SCREEN = 3;
+
+const RAISED_SCREEN_EDGE_WIDTH = 0.5;
+
+const getRaisedScreenEdge = (theme: Theme) =>
+  isDarkTheme(theme)
+    ? {
+        backgroundColor: theme.bg.softPrimary,
+        borderWidth: RAISED_SCREEN_EDGE_WIDTH,
+        borderColor: withAlpha(theme.bg.strongPrimary, 0.06),
+      }
+    : { backgroundColor: withAlpha(theme.bg.strongPrimary, 0.16) };
 
 const renderHeaderTitle = (props: ComponentProps<typeof HeaderTitle>) => (
   <HeaderTitle {...props} maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE} />
@@ -61,29 +72,45 @@ const DrawerLayout = () => {
             onSearchingChange={setSearching}
           />
         </DrawerEntrance>
+        <DrawerScreenShadow
+          progress={drawerProgress}
+          searchExpansion={searchExpansion}
+          drawerWidth={drawerWidth}
+          cornerRadius={cornerRadius}
+        />
       </>
     ),
-    [drawerProgress, searchExpansion]
+    [drawerProgress, searchExpansion, drawerWidth, cornerRadius]
   );
 
   return (
     <View style={styles.root}>
+      <DrawerScreenShadow
+        progress={drawerProgress}
+        searchExpansion={searchExpansion}
+        drawerWidth={drawerWidth}
+        cornerRadius={cornerRadius}
+      />
       <Drawer
         drawerContent={renderDrawerContent}
         screenOptions={{
           overlayColor: 'transparent',
-          sceneStyle: {
-            borderRadius: screenDisplaced ? cornerRadius : 0,
-            borderCurve: 'continuous',
-            overflow: 'hidden',
-          },
+          sceneStyle: [
+            {
+              backgroundColor: theme.bg.softPrimary,
+              borderRadius: screenDisplaced ? cornerRadius : 0,
+              borderCurve: 'continuous',
+              overflow: 'hidden',
+            },
+            screenDisplaced && getRaisedScreenEdge(theme),
+          ],
           swipeEnabled: !turnInFlight && !searching,
           swipeEdgeWidth: width,
           drawerStyle: [
             {
               width: drawerWidth,
               overflow: 'hidden',
-              backgroundColor: theme.bg.softPrimary,
+              backgroundColor: theme.bg.drawer,
             },
             expandingDrawerStyle as ViewStyle,
           ],
@@ -142,12 +169,6 @@ const DrawerLayout = () => {
           }}
         />
       </Drawer>
-      <DrawerScreenDim
-        progress={drawerProgress}
-        searchExpansion={searchExpansion}
-        drawerWidth={drawerWidth}
-        cornerRadius={cornerRadius}
-      />
       {WEB_SEARCH_ENABLED && <WebScrapeSheet />}
     </View>
   );
@@ -159,6 +180,6 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.drawer,
     },
   });

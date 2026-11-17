@@ -43,6 +43,7 @@ export const DrawerFooterDock = ({
       <GlassScrollEdge
         edge="bottom"
         anchor={getDrawerFooterHeight(theme.insets.bottom)}
+        surface={theme.bg.drawer}
       />
       <View style={[styles.footer, { width }]}>
         <DrawerFooter
