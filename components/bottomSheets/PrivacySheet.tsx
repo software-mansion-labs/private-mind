@@ -17,15 +17,15 @@ import {
   usePrivacySheetStore,
 } from '../../store/privacySheetStore';
 import { SvgComponent } from '../../utils/SvgComponent';
-import LockIcon from '../../assets/icons/lock-solid.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 import ProcessorIcon from '../../assets/icons/processor.svg';
 import AirplaneIcon from '../../assets/icons/airplane.svg';
 import FolderIcon from '../../assets/icons/folder.svg';
 import WebIcon from '../../assets/icons/web.svg';
 
 const HEADER_TILE_SIZE = 56;
-const HEADER_LOCK_WIDTH = 20;
-const HEADER_LOCK_HEIGHT = 24;
+const HEADER_SHIELD_WIDTH = 20;
+const HEADER_SHIELD_HEIGHT = 24;
 const ICON_TILE_SIZE = 32;
 const ICON_TILE_RADIUS = 10;
 const ICON_SIZE = 16;
@@ -113,10 +113,10 @@ const PrivacySheet = () => {
       <BottomSheetView style={styles.sheet} testID="privacy-sheet">
         <View style={styles.header}>
           <View style={styles.headerTile}>
-            <LockIcon
-              width={HEADER_LOCK_WIDTH}
-              height={HEADER_LOCK_HEIGHT}
-              style={styles.headerLock}
+            <ShieldIcon
+              width={HEADER_SHIELD_WIDTH}
+              height={HEADER_SHIELD_HEIGHT}
+              style={styles.headerShield}
             />
           </View>
           <Text style={styles.title} accessibilityRole="header">
@@ -174,7 +174,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       backgroundColor: theme.bg.accentSoft,
     },
-    headerLock: {
+    headerShield: {
       color: theme.text.accent,
     },
     title: {

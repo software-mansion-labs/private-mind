@@ -4,13 +4,13 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { space } from '../../constants/design-system';
-import LockIcon from '../../assets/icons/lock-solid.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 import { pressedOpacity } from '../../styles/pressable';
 import { usePrivacySheetStore } from '../../store/privacySheetStore';
 import { Feedback } from '../../utils/Feedback';
 
-const LOCK_WIDTH = 10;
-const LOCK_HEIGHT = 12;
+const SHIELD_WIDTH = 10;
+const SHIELD_HEIGHT = 12;
 const NOTE_MAX_WIDTH = 260;
 
 export const ON_DEVICE_NOTE =
@@ -35,7 +35,11 @@ export default function OnDeviceNote() {
       accessibilityHint="Shows how your chats stay private"
       testID="on-device-note"
     >
-      <LockIcon width={LOCK_WIDTH} height={LOCK_HEIGHT} style={styles.lock} />
+      <ShieldIcon
+        width={SHIELD_WIDTH}
+        height={SHIELD_HEIGHT}
+        style={styles.shield}
+      />
       <Text style={styles.text}>
         {ON_DEVICE_NOTE} <Text style={styles.link}>{LEARN_MORE}</Text>
       </Text>
@@ -52,7 +56,7 @@ const createStyles = (theme: Theme) =>
       gap: space.one + space.half,
       marginBottom: space.six,
     },
-    lock: {
+    shield: {
       color: theme.text.accent,
     },
     text: {

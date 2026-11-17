@@ -80,10 +80,10 @@ describe('ChatTitle', () => {
     expect(getByText(TITLE)).toBeTruthy();
   });
 
-  it('shows a lock beside the title', () => {
+  it('shows a shield beside the title', () => {
     const { getByTestId } = render(<ChatTitle title="Lisbon weekend" />);
 
-    expect(getByTestId('chat-title-lock')).toBeTruthy();
+    expect(getByTestId('chat-title-shield')).toBeTruthy();
   });
 
   it('tells screen readers the chat runs on this device', () => {

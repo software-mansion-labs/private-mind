@@ -17,18 +17,21 @@ import { space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
-import LockIcon from '../../assets/icons/lock-solid.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 import { Glass } from '../Glass';
 import {
   GLASS_BUTTON_SIZE,
   TITLE_CAPSULE_PADDING,
   TITLE_ICON_HEIGHT,
   TITLE_ICON_WIDTH,
-  TITLE_LOCK_GAP,
+  TITLE_SHIELD_HEIGHT,
+  TITLE_SHIELD_WIDTH,
+  TITLE_SHIELD_GAP,
 } from '../../constants/header-actions';
 
 const CHEVRON_GAP = space.one;
-const ICONS_SPACE = TITLE_ICON_WIDTH * 2 + CHEVRON_GAP + TITLE_LOCK_GAP;
+const ICONS_SPACE =
+  TITLE_SHIELD_WIDTH + TITLE_ICON_WIDTH + CHEVRON_GAP + TITLE_SHIELD_GAP;
 const ON_DEVICE_LABEL = 'Private, runs on this device';
 const ELLIPSIS = '\u2026';
 
@@ -151,11 +154,11 @@ const ChatTitle = ({
             ) : null}
           </View>
         ) : null}
-        <LockIcon
-          width={TITLE_ICON_WIDTH}
-          height={TITLE_ICON_HEIGHT}
-          style={styles.lock}
-          testID="chat-title-lock"
+        <ShieldIcon
+          width={TITLE_SHIELD_WIDTH}
+          height={TITLE_SHIELD_HEIGHT}
+          style={styles.shield}
+          testID="chat-title-shield"
         />
         <Text
           numberOfLines={1}
@@ -206,9 +209,9 @@ const createStyles = (theme: Theme) =>
     ellipsis: {
       alignSelf: 'flex-start',
     },
-    lock: {
+    shield: {
       color: theme.text.accent,
-      marginRight: TITLE_LOCK_GAP - CHEVRON_GAP,
+      marginRight: TITLE_SHIELD_GAP - CHEVRON_GAP,
     },
     chevron: {
       color: theme.text.primary,

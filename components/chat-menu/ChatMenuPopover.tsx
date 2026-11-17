@@ -30,7 +30,7 @@ import PopoverRow from '../menu/PopoverRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import ShareIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
-import LockIcon from '../../assets/icons/lock-solid.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 
 const ICON_BUTTON_SIZE = 36;
 const ICON_SIZE = 16;
@@ -41,11 +41,11 @@ const TITLE_BLOCK_HEIGHT = lineHeights.xs + NAME_LINE_HEIGHT;
 const FIELD_HEIGHT = TITLE_BLOCK_HEIGHT;
 const FIELD_BORDER = 1.5;
 const ROW_LABEL_SIZE = 15;
-const PRIVACY_LOCK_TILE = 28;
+const PRIVACY_SHIELD_TILE = 28;
 const PRIVACY_HEADING_GAP = space.two;
-const PRIVACY_TEXT_INSET = PRIVACY_LOCK_TILE + PRIVACY_HEADING_GAP;
-const PRIVACY_LOCK_WIDTH = 10;
-const PRIVACY_LOCK_HEIGHT = 12;
+const PRIVACY_TEXT_INSET = PRIVACY_SHIELD_TILE + PRIVACY_HEADING_GAP;
+const PRIVACY_SHIELD_WIDTH = 10;
+const PRIVACY_SHIELD_HEIGHT = 12;
 const PRIVACY_LINK_HIT_SLOP = 8;
 
 export const PRIVATE_CHAT_DETAIL =
@@ -179,10 +179,10 @@ const ChatMenuPopover = ({
         <>
           <View style={styles.privacy} testID="chat-menu-privacy-info">
             <View style={styles.privacyHeading}>
-              <View style={styles.privacyLockTile}>
-                <LockIcon
-                  width={PRIVACY_LOCK_WIDTH}
-                  height={PRIVACY_LOCK_HEIGHT}
+              <View style={styles.privacyShieldTile}>
+                <ShieldIcon
+                  width={PRIVACY_SHIELD_WIDTH}
+                  height={PRIVACY_SHIELD_HEIGHT}
                   style={styles.accentIcon}
                 />
               </View>
@@ -375,9 +375,9 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: PRIVACY_HEADING_GAP,
     },
-    privacyLockTile: {
-      width: PRIVACY_LOCK_TILE,
-      height: PRIVACY_LOCK_TILE,
+    privacyShieldTile: {
+      width: PRIVACY_SHIELD_TILE,
+      height: PRIVACY_SHIELD_TILE,
       borderRadius: radius.full,
       alignItems: 'center',
       justifyContent: 'center',

@@ -11,12 +11,12 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import {
   GLASS_BUTTON_SIZE,
   TITLE_CAPSULE_PADDING,
-  TITLE_ICON_HEIGHT,
-  TITLE_ICON_WIDTH,
-  TITLE_LOCK_GAP,
+  TITLE_SHIELD_GAP,
+  TITLE_SHIELD_HEIGHT,
+  TITLE_SHIELD_WIDTH,
 } from '../../constants/header-actions';
 import { Glass } from '../Glass';
-import LockIcon from '../../assets/icons/lock-solid.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 import { pressedOpacity } from '../../styles/pressable';
 import { usePrivacySheetStore } from '../../store/privacySheetStore';
 import { Feedback } from '../../utils/Feedback';
@@ -53,10 +53,10 @@ export default function OnDevicePill({ reveal }: Props) {
           accessibilityHint="Shows how your chats stay private"
           testID="on-device-pill"
         >
-          <LockIcon
-            width={TITLE_ICON_WIDTH}
-            height={TITLE_ICON_HEIGHT}
-            style={styles.lock}
+          <ShieldIcon
+            width={TITLE_SHIELD_WIDTH}
+            height={TITLE_SHIELD_HEIGHT}
+            style={styles.shield}
           />
           <Text
             style={styles.text}
@@ -85,11 +85,11 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 1,
-      gap: TITLE_LOCK_GAP,
+      gap: TITLE_SHIELD_GAP,
       height: GLASS_BUTTON_SIZE,
       paddingHorizontal: TITLE_CAPSULE_PADDING,
     },
-    lock: {
+    shield: {
       color: theme.text.accent,
     },
     text: {

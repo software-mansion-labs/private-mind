@@ -19,7 +19,11 @@ export const TITLE_ICON_WIDTH = 10;
 
 export const TITLE_ICON_HEIGHT = 12;
 
-export const TITLE_LOCK_GAP = space.two;
+export const TITLE_SHIELD_WIDTH = 13;
+
+export const TITLE_SHIELD_HEIGHT = 16;
+
+export const TITLE_SHIELD_GAP = space.two;
 
 export const TITLE_CAPSULE_PADDING = space.four;
 
