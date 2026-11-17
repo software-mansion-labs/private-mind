@@ -61,6 +61,7 @@ import PromptSuggestions from './PromptSuggestions';
 import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import ModelUpdateBanner from './ModelUpdateBanner';
 import { useModelStore } from '../../store/modelStore';
+import { requiresUpdate } from '../../utils/modelUpdate';
 import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
@@ -92,8 +93,7 @@ const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'image-not-saved': null,
   'image-unsupported':
     "This model can't see images. Remove the photo or pick a model with Vision.",
-  'model-needs-update':
-    'This model needs a one-time update first. Tap Update at the top of the chat.',
+  'model-needs-update': 'This model needs a one-time update first. Tap Update.',
 };
 
 interface Props {
@@ -649,6 +649,20 @@ const ChatBar = ({
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <ModelUpdateBanner model={model} replaces={retiredBy} />
+      </View>
+    );
+  }
+
+  const updateBlocksInput =
+    !!model && requiresUpdate(model) && (modelLocked ? !!chatId : !hasMessages);
+
+  if (model && updateBlocksInput) {
+    return (
+      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
+        <ModelUpdateBanner
+          model={model}
+          onChooseModel={modelLocked ? undefined : onSelectModel}
+        />
       </View>
     );
   }

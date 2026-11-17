@@ -14,6 +14,9 @@ export const MODEL_UPDATE_TEXT = {
   chatBanner: (modelName: string) =>
     `${modelName} needs a one-time update to run on the new engine.`,
   chatBannerAction: 'Update',
+  pickerSectionTitle: 'Needs an update',
+  pickerSectionBody:
+    'These models need a one-time update to run on the new engine.',
   newerVersionBanner: (modelName: string) =>
     `A newer version of ${modelName} is available.`,
   replacementBanner: (removed: string, replacement: string) =>

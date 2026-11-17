@@ -17,17 +17,8 @@ import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import { composerControlSurface } from './composerControl';
 import { Glass } from '../Glass';
 import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
-import {
-  BADGE_HEIGHT,
-  CHEVRON_HEIGHT,
-  CHEVRON_OPACITY,
-  CHEVRON_WIDTH,
-  LOADER_SCALE,
-} from './ComposerModelBadge';
-import ModelsIcon from '../../assets/icons/models.svg';
-import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
-
-const MODELS_ICON_SIZE = 14;
+import { BADGE_HEIGHT, LOADER_SCALE } from './ComposerModelBadge';
+import ChooseModelPill from './ChooseModelPill';
 
 const unavailableMessage = (model?: Model) =>
   `${model?.modelName ?? "This chat's model"} isn't on this device anymore`;
@@ -80,25 +71,7 @@ const ModelUnavailableCard = ({ model, pendingModel, onPress }: Props) => {
             />
           </View>
         ) : (
-          <View style={[styles.pill, styles.choosePill]}>
-            <ModelsIcon
-              width={MODELS_ICON_SIZE}
-              height={MODELS_ICON_SIZE}
-              style={styles.icon}
-            />
-            <Text
-              style={styles.pillLabel}
-              numberOfLines={1}
-              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-            >
-              Choose a model
-            </Text>
-            <ChevronDownIcon
-              width={CHEVRON_WIDTH}
-              height={CHEVRON_HEIGHT}
-              style={styles.chevron}
-            />
-          </View>
+          <ChooseModelPill />
         )}
       </Pressable>
     </Glass>
@@ -129,12 +102,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: radius.full,
       ...composerControlSurface(theme),
     },
-    choosePill: {
-      paddingLeft: space.twoHalf,
-    },
-    icon: {
-      color: theme.text.onChatBar,
-    },
     pillLabel: {
       flexShrink: 1,
       ...textStyles.bodySecondaryMedium,
@@ -142,9 +109,5 @@ const createStyles = (theme: Theme) =>
     },
     loader: {
       transform: [{ scale: LOADER_SCALE }],
-    },
-    chevron: {
-      color: theme.text.onChatBar,
-      opacity: CHEVRON_OPACITY,
     },
   });

@@ -9,7 +9,8 @@ import { router } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { useModelUpdate } from '../../hooks/useModelUpdate';
+import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import {
   radius,
@@ -18,6 +19,8 @@ import {
   textStyles,
 } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
+import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
+import { requiresUpdate } from '../../utils/modelUpdate';
 import ModelPickerRow from '../model-hub/ModelPickerRow';
 import PrimaryButton from '../PrimaryButton';
 import BottomSheetSearchInput from './BottomSheetSearchInput';
@@ -27,6 +30,22 @@ import CubeIcon from '../../assets/icons/cube.svg';
 import SearchOffIcon from '../../assets/icons/search-off.svg';
 
 const LIST_SNAP_POINTS = ['50%', '90%'];
+const UPDATE_SECTION_KEY = 'needs-update';
+
+type SheetItem = { kind: 'model'; model: Model } | { kind: 'updateSection' };
+
+const toItem = (model: Model): SheetItem => ({ kind: 'model', model });
+
+const groupForPicker = (models: Model[]): SheetItem[] => {
+  const ready = models.filter((model) => !requiresUpdate(model));
+  const outdated = models.filter(requiresUpdate);
+  if (outdated.length === 0) return ready.map(toItem);
+  return [
+    ...ready.map(toItem),
+    { kind: 'updateSection' },
+    ...outdated.map(toItem),
+  ];
+};
 const ICON_CIRCLE_SIZE = 56;
 
 interface Props {
@@ -44,14 +63,17 @@ const ModelSelectSheet = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const downloadedModels = useModelStore((state) => state.downloadedModels);
+  const { updateModel, ConfirmElement } = useModelUpdate();
   const [search, setSearch] = useState('');
   const [snapIndex, setSnapIndex] = useState(0);
   const hasModels = downloadedModels.length > 0;
 
-  const filteredModels = useMemo(() => {
+  const items = useMemo(() => {
     const needle = search.toLowerCase();
-    return downloadedModels.filter((model) =>
-      model.modelName.toLowerCase().includes(needle)
+    return groupForPicker(
+      downloadedModels.filter((model) =>
+        model.modelName.toLowerCase().includes(needle)
+      )
     );
   }, [downloadedModels, search]);
 
@@ -92,8 +114,12 @@ const ModelSelectSheet = ({
           </View>
 
           <BottomSheetFlatList
-            data={filteredModels}
-            keyExtractor={(item) => item.id.toString()}
+            data={items}
+            keyExtractor={(item) =>
+              item.kind === 'model'
+                ? item.model.id.toString()
+                : UPDATE_SECTION_KEY
+            }
             contentContainerStyle={{ paddingBottom: theme.insets.bottom + 16 }}
             keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
@@ -126,18 +152,30 @@ const ModelSelectSheet = ({
                 </View>
               </View>
             }
-            renderItem={({ item }) => (
-              <ModelPickerRow
-                model={item}
-                current={item.id === currentModelId}
-                accessibilityRole="button"
-                testIDPrefix="model-select"
-                onPress={() => {
-                  onModelPicked(item);
-                  bottomSheetModalRef.current?.dismiss();
-                }}
-              />
-            )}
+            renderItem={({ item }) =>
+              item.kind === 'updateSection' ? (
+                <View style={styles.updateSection} accessibilityRole="header">
+                  <Text style={styles.updateSectionTitle}>
+                    {MODEL_UPDATE_TEXT.pickerSectionTitle}
+                  </Text>
+                  <Text style={styles.updateSectionBody}>
+                    {MODEL_UPDATE_TEXT.pickerSectionBody}
+                  </Text>
+                </View>
+              ) : (
+                <ModelPickerRow
+                  model={item.model}
+                  current={item.model.id === currentModelId}
+                  accessibilityRole="button"
+                  testIDPrefix="model-select"
+                  onPress={() => {
+                    onModelPicked(item.model);
+                    bottomSheetModalRef.current?.dismiss();
+                  }}
+                  onUpdate={() => updateModel(item.model)}
+                />
+              )
+            }
           />
         </View>
       ) : (
@@ -149,6 +187,7 @@ const ModelSelectSheet = ({
           <PrimaryButton text="Download a Model" onPress={goToModelHub} />
         </BottomSheetView>
       )}
+      {ConfirmElement}
     </BackDismissibleSheetModal>
   );
 };
@@ -206,6 +245,24 @@ const createStyles = (theme: Theme) =>
       borderRadius: radius.full,
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
+    },
+    updateSection: {
+      marginTop: space.four,
+      marginBottom: space.one,
+      paddingHorizontal: space.four,
+      gap: space.half,
+    },
+    updateSectionTitle: {
+      fontFamily: fontFamily.bold,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultTertiary,
+    },
+    updateSectionBody: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultSecondary,
     },
     actionIcon: {
       color: theme.text.primary,

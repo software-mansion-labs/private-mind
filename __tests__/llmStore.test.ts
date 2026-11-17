@@ -3,7 +3,9 @@ import {
   MODEL_WARMUP_TIMEOUT_MS,
   useLLMStore,
   FIRST_TOKEN_TIMEOUT_MS,
+  modelNeedsUpdateCopy,
 } from '../store/llmStore';
+import Toast from 'react-native-toast-message';
 import { LLMEngine } from '../utils/llmEngine';
 import * as chatRepository from '../database/chatRepository';
 import type { Message } from '../database/chatRepository';
@@ -192,6 +194,22 @@ describe('loadModel', () => {
       updateRequired: true,
     });
     expect(mockLLMEngine.load).not.toHaveBeenCalled();
+  });
+
+  it('tells the user a model needs its update instead of failing quietly', async () => {
+    const toast = jest.spyOn(Toast, 'show');
+    await useLLMStore.getState().loadModel({
+      ...baseModel,
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.9.0/model.pte'],
+      updateRequired: true,
+    });
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: modelNeedsUpdateCopy(baseModel.modelName),
+      })
+    );
+    toast.mockRestore();
   });
 
   it('reloads a model whose files changed under it, after an update to a newer export', async () => {

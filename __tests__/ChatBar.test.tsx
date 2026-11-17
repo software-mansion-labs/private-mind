@@ -256,6 +256,14 @@ jest.mock('../components/chat-screen/ChatBarActions', () => {
   );
 });
 
+const mockUpdateModel = jest.fn();
+jest.mock('../hooks/useModelUpdate', () => ({
+  useModelUpdate: () => ({
+    updateModel: mockUpdateModel,
+    ConfirmElement: null,
+  }),
+}));
+
 jest.mock('../utils/modelCompatibility', () => ({
   ...jest.requireActual('../utils/modelCompatibility'),
   isMemoryConstrained: () => false,
@@ -265,6 +273,7 @@ jest.mock('../utils/modelCompatibility', () => ({
 // ── imports ───────────────────────────────────────────────────────────────────
 
 import ChatBar from '../components/chat-screen/ChatBar';
+import { MODEL_UPDATE_TEXT } from '../constants/model-update';
 import { useLLMStore } from '../store/llmStore';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { AudioManager } from 'react-native-audio-api';
@@ -388,6 +397,67 @@ describe('model unavailable', () => {
     expect(screen.queryByText('Choose a model')).toBeNull();
     fireEvent.press(screen.getByTestId('model-unavailable-card'));
     expect(onSelectModel).not.toHaveBeenCalled();
+  });
+});
+
+describe('model that must be updated before it can answer', () => {
+  const mustUpdate = {
+    ...downloadedModel,
+    outdatedSources: ['model'],
+    updateRequired: true,
+  };
+
+  it('offers the update in place of the input', () => {
+    renderBar({ model: mustUpdate, modelLocked: true } as Partial<
+      typeof defaultProps
+    >);
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
+    expect(screen.getByTestId('model-update-banner')).toBeTruthy();
+    expect(screen.getByText('Update')).toBeTruthy();
+  });
+
+  it('offers no other model in a chat that is locked to this one', () => {
+    renderBar({ model: mustUpdate, modelLocked: true } as Partial<
+      typeof defaultProps
+    >);
+    expect(screen.queryByTestId('model-update-banner-choose')).toBeNull();
+  });
+
+  it('offers the update in place of the input in a new chat too', () => {
+    renderBar({ model: mustUpdate, modelLocked: false } as Partial<
+      typeof defaultProps
+    >);
+    expect(screen.queryByPlaceholderText('Ask anything')).toBeNull();
+    expect(
+      screen.getByText(MODEL_UPDATE_TEXT.chatBanner(mustUpdate.modelName))
+    ).toBeTruthy();
+  });
+
+  it('updates the model from the banner in a new chat', () => {
+    renderBar({ model: mustUpdate, modelLocked: false } as Partial<
+      typeof defaultProps
+    >);
+    fireEvent.press(screen.getByTestId('model-update-banner-action'));
+    expect(mockUpdateModel).toHaveBeenCalledWith(mustUpdate);
+  });
+
+  it('lets a new chat pick another model instead', () => {
+    const onSelectModel = jest.fn();
+    renderBar({
+      model: mustUpdate,
+      modelLocked: false,
+      onSelectModel,
+    } as Partial<typeof defaultProps>);
+    fireEvent.press(screen.getByTestId('model-update-banner-choose'));
+    expect(onSelectModel).toHaveBeenCalled();
+  });
+
+  it('keeps the input when the newer files are optional', () => {
+    renderBar({
+      model: { ...mustUpdate, updateRequired: false },
+      modelLocked: true,
+    } as Partial<typeof defaultProps>);
+    expect(screen.getByPlaceholderText('Ask anything')).toBeTruthy();
   });
 });
 

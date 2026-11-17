@@ -8,32 +8,31 @@ import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { type Model } from '../../database/modelRepository';
 import { ModelState, useModelStore } from '../../store/modelStore';
 import { pressedOpacity } from '../../styles/pressable';
-import { useUpdateNetworkCheck } from '../../hooks/useUpdateNetworkCheck';
+import { useModelUpdate } from '../../hooks/useModelUpdate';
+import { Glass } from '../Glass';
+import { COMPOSER, COMPOSER_CARD_RADIUS } from './attachments/constants';
+import ChooseModelPill, { CHOOSE_MODEL_LABEL } from './ChooseModelPill';
 
 interface Props {
   model: Model;
   replaces?: string;
+  floating?: boolean;
+  onChooseModel?: () => void;
 }
 
-const ModelUpdateBanner = ({ model, replaces }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+const ModelUpdateBanner = ({
+  model,
+  replaces,
+  floating = false,
+  onChooseModel,
+}: Props) => {
+  const { styles, theme } = useThemedStyles(createStyles);
   const download = useModelStore((state) => state.downloadStates[model.id]);
-  const updateOutdatedModel = useModelStore(
-    (state) => state.updateOutdatedModel
-  );
-  const downloadModel = useModelStore((state) => state.downloadModel);
   const updating = download?.status === ModelState.Downloading;
-  const { canDownload, ConfirmElement } = useUpdateNetworkCheck();
+  const { updateModel, downloadReplacement, ConfirmElement } = useModelUpdate();
 
-  const handleUpdate = async () => {
-    const network = await canDownload(model.modelSize ?? 0);
-    if (!network) return;
-    await useModelStore
-      .getState()
-      .rememberUpdateConsent([model.modelName], network === 'mobile-data');
-    if (replaces) downloadModel(model);
-    else updateOutdatedModel(model);
-  };
+  const handleUpdate = () =>
+    replaces ? downloadReplacement(model) : updateModel(model);
 
   const message = () => {
     if (replaces)
@@ -50,21 +49,51 @@ const ModelUpdateBanner = ({ model, replaces }: Props) => {
   };
 
   return (
-    <View
-      style={[styles.banner, !replaces && styles.floating]}
+    <Glass
+      radius={floating ? radius.eighteen : COMPOSER_CARD_RADIUS}
+      interactive={false}
+      tint={floating ? theme.bg.toastGlassTint : undefined}
+      fallbackTint={floating ? theme.bg.toast : theme.bg.chatBar}
+      style={[
+        styles.banner,
+        floating ? styles.floating : styles.docked,
+        onChooseModel && styles.stacked,
+      ]}
       testID="model-update-banner"
     >
-      <Text style={styles.text}>{message()}</Text>
-      <Pressable
-        onPress={handleUpdate}
-        disabled={updating}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
+      <Text
+        style={[
+          styles.text,
+          !floating && styles.dockedText,
+          onChooseModel && styles.stackedText,
+        ]}
       >
-        <Text style={styles.actionText}>{actionLabel()}</Text>
-      </Pressable>
+        {message()}
+      </Text>
+      <View style={styles.actions}>
+        <Pressable
+          onPress={handleUpdate}
+          disabled={updating}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.action, pressed && pressedOpacity]}
+          testID="model-update-banner-action"
+        >
+          <Text style={styles.actionText}>{actionLabel()}</Text>
+        </Pressable>
+        {onChooseModel && (
+          <Pressable
+            onPress={onChooseModel}
+            accessibilityRole="button"
+            accessibilityLabel={CHOOSE_MODEL_LABEL}
+            style={({ pressed }) => [styles.choose, pressed && pressedOpacity]}
+            testID="model-update-banner-choose"
+          >
+            <ChooseModelPill />
+          </Pressable>
+        )}
+      </View>
       {ConfirmElement}
-    </View>
+    </Glass>
   );
 };
 
@@ -76,20 +105,29 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.three,
-      padding: space.three,
-      borderRadius: radius.twelve,
-      backgroundColor: theme.bg.softTertiary,
+    },
+    stacked: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
+    stackedText: {
+      flex: 0,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: space.two,
+    },
+    choose: {
+      flexShrink: 1,
+    },
+    docked: {
+      padding: COMPOSER.cardPadding,
     },
     floating: {
       width: '90%',
       padding: space.four,
-      borderRadius: radius.eighteen,
-      backgroundColor: theme.bg.toast,
-      shadowColor: theme.bg.shadow,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: theme.shadow.floatingOpacity,
-      shadowRadius: 20,
-      elevation: 12,
     },
     text: {
       flex: 1,
@@ -97,6 +135,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.sm,
       lineHeight: lineHeights.sm,
       color: theme.text.primary,
+    },
+    dockedText: {
+      color: theme.text.onChatBar,
     },
     action: {
       paddingVertical: space.two,
