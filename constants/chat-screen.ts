@@ -30,6 +30,8 @@ export const MESSAGE_PIN_SETTLE_MS = 500;
 
 export const PIN_LANDING_GRACE_MS = 600;
 
+export const ON_DEVICE_NOTE_FADE_MS = 250;
+
 export const REVEAL_FALLBACK_MS = 900;
 
 export const navBarInset = (theme: Theme) =>
