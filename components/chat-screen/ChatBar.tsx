@@ -52,6 +52,10 @@ import ModelUnavailableCard from './ModelUnavailableCard';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
+import {
+  dismissKeyboardAfterUiUpdates,
+  runAfterUiUpdates,
+} from '../../utils/afterUiUpdates';
 import { showPermissionToast } from '../../utils/permissionToast';
 import { Feedback } from '../../utils/Feedback';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
@@ -354,6 +358,15 @@ const ChatBar = ({
   // remounting is the only reliable way to make it grow to fit the
   // new content.
   const [iosInputKey, setIosInputKey] = useState(0);
+  const mountedInputKey = useRef(iosInputKey);
+  mountedInputKey.current = iosInputKey;
+  const newestRetiredInputKey = useRef(-1);
+  const handleChangeTextFromInput = useMemo(() => {
+    const inputKey = iosInputKey;
+    return (text: string) => {
+      if (inputKey > newestRetiredInputKey.current) handleChangeText(text);
+    };
+  }, [handleChangeText, iosInputKey]);
 
   useImperativeHandle(
     ref,
@@ -433,8 +446,11 @@ const ChatBar = ({
         ? { text: sentText, at: Date.now() }
         : null;
       if (Platform.OS === 'ios') {
-        textInputRef.current?.blur();
-        setIosInputKey((key) => key + 1);
+        newestRetiredInputKey.current = mountedInputKey.current;
+        runAfterUiUpdates(() => {
+          textInputRef.current?.blur();
+          setIosInputKey((key) => key + 1);
+        });
       }
       setUserInput('');
       clearAll({ cleanupSources: false });
@@ -499,7 +515,7 @@ const ChatBar = ({
     const holdUntilSwitchLands = modelSwitching;
     setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
-    Keyboard.dismiss();
+    dismissKeyboardAfterUiUpdates();
     if (disabled || modelSwitching) setSendPending(true);
 
     if (holdUntilSwitchLands) {
@@ -620,7 +636,7 @@ const ChatBar = ({
           transcript,
           attachmentsToSend
         );
-        Keyboard.dismiss();
+        dismissKeyboardAfterUiUpdates();
       }
     };
 
@@ -772,7 +788,7 @@ const ChatBar = ({
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
                     editable={!isHoldingInput}
-                    onChangeText={handleChangeText}
+                    onChangeText={handleChangeTextFromInput}
                   />
                 </TextInputWrapper>
               </View>

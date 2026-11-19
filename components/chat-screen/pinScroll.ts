@@ -26,6 +26,33 @@ export const pinFloorFor = ({
       listBottomPadding
   );
 
+export const pinOffsetFor = (questionTop: number, listTopPadding: number) =>
+  Math.max(0, questionTop - listTopPadding + MESSAGE_PIN_OFFSET);
+
+export const pinIsReachable = (
+  contentHeight: number,
+  pinOffset: number,
+  containerHeight: number
+) => contentHeight >= pinOffset + containerHeight - PIN_READY_SLACK_PX;
+
+export const pinHasMoved = (landedAt: number | null, pinOffset: number) =>
+  landedAt === null || Math.abs(landedAt - pinOffset) > PIN_READY_SLACK_PX;
+
+export interface TurnEndGeometry {
+  contentHeight: number;
+  listBottomPadding: number;
+  floor: number;
+  rowHeight: number;
+}
+
+export const turnEndFor = ({
+  contentHeight,
+  listBottomPadding,
+  floor,
+  rowHeight,
+}: TurnEndGeometry): number =>
+  contentHeight - listBottomPadding - Math.max(0, floor - rowHeight);
+
 export interface PinLanding {
   jumpTo: number | null;
   animateTo: number;

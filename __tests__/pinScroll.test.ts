@@ -3,10 +3,14 @@ import {
   floorIsOutgrown,
   lastTurnRows,
   pinFloorFor,
+  pinHasMoved,
+  pinIsReachable,
   pinLandingFrom,
+  pinOffsetFor,
   pinReleaseTarget,
   scrollButtonShows,
   stoppedTurnLandsShort,
+  turnEndFor,
 } from '../components/chat-screen/pinScroll';
 import {
   MESSAGE_PIN_LANDING_PX,
@@ -38,6 +42,101 @@ describe('pinFloorFor', () => {
 
   it('reserves nothing once the question alone fills the viewport', () => {
     expect(pinFloorFor({ ...geometry, userHeight: 900 })).toBe(0);
+  });
+});
+
+describe('pinOffsetFor', () => {
+  it('rests the question just under the top padding, wherever the row was measured', () => {
+    expect(pinOffsetFor(600, 100)).toBe(500 + MESSAGE_PIN_OFFSET);
+  });
+
+  it('gives the same pin for the same rows above, whatever the top padding', () => {
+    const above = 500;
+    expect(pinOffsetFor(100 + above, 100)).toBe(pinOffsetFor(160 + above, 160));
+  });
+
+  it('pins to the floor it reserves, however tall the answer row was when it was measured', () => {
+    const geometry = {
+      containerHeight: 800,
+      userHeight: 60,
+      listTopPadding: 100,
+      listBottomPadding: 120,
+    };
+    const questionTop = geometry.listTopPadding + 500;
+    const contentHeight =
+      questionTop +
+      geometry.userHeight +
+      pinFloorFor(geometry) +
+      geometry.listBottomPadding;
+
+    expect(
+      pinIsReachable(
+        contentHeight,
+        pinOffsetFor(questionTop, geometry.listTopPadding),
+        geometry.containerHeight
+      )
+    ).toBe(true);
+  });
+
+  it('never asks for a negative offset on the first message', () => {
+    expect(pinOffsetFor(100, 140)).toBe(0);
+  });
+});
+
+describe('turnEndFor', () => {
+  const geometry = {
+    contentHeight: 2000,
+    listBottomPadding: 120,
+    floor: 0,
+    rowHeight: 300,
+  };
+
+  it('is where the list content stops above the bottom padding', () => {
+    expect(turnEndFor(geometry)).toBe(1880);
+  });
+
+  it('leaves out the blank space a floor still reserves under a short answer', () => {
+    expect(turnEndFor({ ...geometry, floor: 700 })).toBe(1880 - 400);
+  });
+
+  it('ignores a floor the answer has outgrown', () => {
+    expect(turnEndFor({ ...geometry, floor: 250 })).toBe(1880);
+  });
+
+  it('predicts the pin the next question lands on, before that question exists', () => {
+    const listTopPadding = 100;
+    const nextQuestionTop = turnEndFor({ ...geometry, floor: 700 });
+
+    expect(pinOffsetFor(nextQuestionTop, listTopPadding)).toBe(
+      nextQuestionTop - listTopPadding + MESSAGE_PIN_OFFSET
+    );
+  });
+});
+
+describe('pinIsReachable', () => {
+  it('holds once the list ends a full viewport below the pin', () => {
+    expect(pinIsReachable(1300, 500, 800)).toBe(true);
+    expect(pinIsReachable(1299.5, 500, 800)).toBe(true);
+  });
+
+  it('fails while the list is still too short to scroll that far', () => {
+    expect(pinIsReachable(1200, 500, 800)).toBe(false);
+  });
+});
+
+describe('pinHasMoved', () => {
+  it('asks for a landing when the list has not landed yet', () => {
+    expect(pinHasMoved(null, 500)).toBe(true);
+  });
+
+  it('leaves a landed pin alone', () => {
+    expect(pinHasMoved(500, 500)).toBe(false);
+    expect(pinHasMoved(500, 500.5)).toBe(false);
+  });
+
+  it('asks again once the question has shifted under the landed list', () => {
+    expect(pinHasMoved(500, 540)).toBe(true);
+    expect(pinHasMoved(500, 460)).toBe(true);
   });
 });
 

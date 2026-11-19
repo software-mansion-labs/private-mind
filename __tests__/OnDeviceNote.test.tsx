@@ -47,6 +47,7 @@ const renderMessages = (chatHistory: Message[]) =>
       chatHistory={chatHistory}
       extraContentPadding={{ value: 0 } as SharedValue<number>}
       isGenerating={false}
+      turnInFlight={false}
       bottomOffset={0}
       chatBarInset={0}
       topInset={0}

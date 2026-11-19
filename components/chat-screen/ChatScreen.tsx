@@ -96,6 +96,9 @@ export default function ChatScreen({
   const { vectorStore, embeddings } = useVectorStore();
   const isModelLoading = useLLMStore((state) => state.isLoading);
   const isGenerating = useLLMStore((state) => state.isGenerating);
+  const turnInFlight = useLLMStore(
+    (state) => state.isGenerating || state.isProcessingPrompt
+  );
   const loadModel = useLLMStore((state) => state.loadModel);
   const generationError = useLLMStore((state) => state.generationError);
   const retryLastGeneration = useLLMStore((state) => state.retryLastGeneration);
@@ -284,7 +287,7 @@ export default function ChatScreen({
     generationError?.chatId === chatId ? generationError.message : undefined;
 
   const handleRetryGeneration = useCallback(() => {
-    messagesRef.current?.onMessageSent();
+    messagesRef.current?.onMessageSent({ questionAlreadyShown: true });
     retryWithPinnedModel(
       isSwitching ? undefined : model,
       retryLastGeneration
@@ -374,6 +377,7 @@ export default function ChatScreen({
           chatHistory={messageHistory}
           extraContentPadding={extraContentPadding}
           isGenerating={isGenerating}
+          turnInFlight={turnInFlight}
           generationError={chatGenerationError}
           onRetryGeneration={handleRetryGeneration}
           canRetryGeneration={retryArmedForChatId === chatId}

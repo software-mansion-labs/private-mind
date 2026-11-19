@@ -19,6 +19,12 @@ const mockRunWithModelOffloaded = jest.fn(
   async (operation: () => Promise<unknown>) => operation()
 );
 
+jest.mock('../utils/afterUiUpdates', () => ({
+  runAfterUiUpdates: (callback: () => void) => callback(),
+  dismissKeyboardAfterUiUpdates: () =>
+    jest.requireActual('react-native').Keyboard.dismiss(),
+}));
+
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
     theme: {
@@ -536,6 +542,18 @@ describe('downloaded model — text input', () => {
     expect(textInput().props.value).toBe('');
 
     fireEvent.changeText(textInput(), 'czesc test wysylki');
+    expect(textInput().props.value).toBe('');
+  });
+
+  it('stays empty when the input it retired on send reports an autocorrected copy of the sent text', () => {
+    renderBar();
+    const textInput = () => screen.getByPlaceholderText('Ask anything');
+    fireEvent.changeText(textInput(), 'what about Lodz');
+    const reportFromRetiredInput = textInput().props.onChangeText;
+    fireEvent.press(screen.getByTestId('send-btn'));
+
+    act(() => reportFromRetiredInput('what about Łódź'));
+
     expect(textInput().props.value).toBe('');
   });
 

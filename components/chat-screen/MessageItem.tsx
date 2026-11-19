@@ -81,6 +81,7 @@ const splitDocumentName = (name: string) => {
 };
 
 const REFINED_SWAP_MS = 320;
+const SENT_FADE_IN_MS = 180;
 
 export const MODEL_STARTING_LABEL = 'Starting the model on your device…';
 
@@ -128,6 +129,7 @@ const MessageItem = memo(
     const showPerformanceMetrics = useSettingsStore(
       (state) => state.showPerformanceMetrics
     );
+    const [sentJustNow] = useState(() => role === 'user' && message.id < 0);
     const [lightboxVisible, setLightboxVisible] = useState(false);
     const [userRowWidth, setUserRowWidth] = useState<number | null>(null);
     const handleUserRowLayout = useCallback(
@@ -268,7 +270,13 @@ const MessageItem = memo(
             </Text>
           </View>
         ) : role === 'user' ? (
-          <View style={styles.userMessageGroup} onLayout={handleUserRowLayout}>
+          <Animated.View
+            style={styles.userMessageGroup}
+            onLayout={handleUserRowLayout}
+            entering={
+              sentJustNow ? FadeIn.duration(SENT_FADE_IN_MS) : undefined
+            }
+          >
             {imagePath && (
               <View
                 style={[styles.userBubble, userBubbleWidth]}
@@ -324,7 +332,7 @@ const MessageItem = memo(
                 </View>
               </View>
             )}
-          </View>
+          </Animated.View>
         ) : (
           <View style={styles.aiMessage}>
             <View style={styles.bubbleContent}>

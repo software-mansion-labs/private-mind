@@ -1,4 +1,3 @@
-import { Keyboard } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -62,6 +61,7 @@ import { useWebSearchStore } from '../../store/webSearchStore';
 import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
 import { useCpuSupportStore } from '../../store/cpuSupportStore';
 import type { MessagesHandle } from './Messages';
+import { dismissKeyboardAfterUiUpdates } from '../../utils/afterUiUpdates';
 
 interface UseSendChatMessageOptions {
   chatId: number;
@@ -147,7 +147,7 @@ export const useSendChatMessage = ({
     loadModelPinnedToChat(pinnedModel);
 
     messagesRef.current?.onMessageSent();
-    Keyboard.dismiss();
+    dismissKeyboardAfterUiUpdates();
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));

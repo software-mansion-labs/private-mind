@@ -13,6 +13,12 @@ import type { Attachment } from '../hooks/useAttachment';
 import { WEB_SKIP_COPY } from '../constants/web-copy';
 import { useCpuSupportStore } from '../store/cpuSupportStore';
 
+jest.mock('../utils/afterUiUpdates', () => ({
+  runAfterUiUpdates: (callback: () => void) => callback(),
+  dismissKeyboardAfterUiUpdates: () =>
+    jest.requireActual('react-native').Keyboard.dismiss(),
+}));
+
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 jest.mock('../utils/cpuSupport', () => ({
   cpuLacksLseAtomics: async () => false,
