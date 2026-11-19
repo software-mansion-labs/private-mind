@@ -8,6 +8,8 @@ import { radius, rowChevron, space } from '../../constants/design-system';
 import { type SwmModelRole } from '../../constants/family-descriptions';
 import {
   ATTRIBUTION_CARD_HINT,
+  SWM_AI_LABS_NAME,
+  SWM_ROLE_PREFIXES,
   SWM_ROLE_TITLES,
 } from '../../constants/model-attribution';
 import SwmLogo from '../../assets/icons/swm-ai-labs-mark.svg';
@@ -16,6 +18,7 @@ import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 const LOGO_WIDTH = 27;
 const LOGO_HEIGHT = 22;
 const CHEVRON_OPACITY = 0.5;
+const NAME_MIN_FONT_SCALE = 0.8;
 
 interface Props {
   role: SwmModelRole;
@@ -43,7 +46,15 @@ const SwmAttributionCard = ({ role, provider, onPress }: Props) => {
         style={{ color: theme.text.primary }}
       />
       <View style={styles.text}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.prefix}>{SWM_ROLE_PREFIXES[role]}</Text>
+        <Text
+          style={styles.title}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={NAME_MIN_FONT_SCALE}
+        >
+          {SWM_AI_LABS_NAME}
+        </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
       <ChevronRightIcon
@@ -70,6 +81,12 @@ const createStyles = (theme: Theme) =>
     text: {
       flex: 1,
       gap: space.half,
+    },
+    prefix: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      lineHeight: lineHeights.sm,
+      color: theme.text.defaultTertiary,
     },
     title: {
       fontFamily: fontFamily.medium,

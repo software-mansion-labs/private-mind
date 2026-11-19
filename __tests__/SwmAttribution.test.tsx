@@ -117,7 +117,28 @@ describe('huggingFaceRepoUrl', () => {
 });
 
 describe('SwmAttributionCard', () => {
-  it('reads "Optimized by Software Mansion AI Labs" over the original author from data', () => {
+  it('reads "Optimized by" above the Software Mansion AI Labs name and the original author', () => {
+    render(
+      <SwmAttributionCard
+        role="optimized"
+        provider="Google"
+        onPress={jest.fn()}
+      />
+    );
+    expect(screen.getByText('Optimized by')).toBeTruthy();
+    expect(screen.getByText('Software Mansion AI Labs')).toBeTruthy();
+    expect(screen.getByText('Original model by Google')).toBeTruthy();
+  });
+
+  it('says "Prepared for mobile" for the prepared role', () => {
+    render(
+      <SwmAttributionCard role="prepared" provider="Meta" onPress={jest.fn()} />
+    );
+    expect(screen.getByText('Prepared for mobile by')).toBeTruthy();
+    expect(screen.getByText('Original model by Meta')).toBeTruthy();
+  });
+
+  it('keeps the Software Mansion AI Labs name on one line', () => {
     render(
       <SwmAttributionCard
         role="optimized"
@@ -126,19 +147,8 @@ describe('SwmAttributionCard', () => {
       />
     );
     expect(
-      screen.getByText('Optimized by Software Mansion AI Labs')
-    ).toBeTruthy();
-    expect(screen.getByText('Original model by Google')).toBeTruthy();
-  });
-
-  it('says "Prepared for mobile" for the prepared role', () => {
-    render(
-      <SwmAttributionCard role="prepared" provider="Meta" onPress={jest.fn()} />
-    );
-    expect(
-      screen.getByText('Prepared for mobile by Software Mansion AI Labs')
-    ).toBeTruthy();
-    expect(screen.getByText('Original model by Meta')).toBeTruthy();
+      screen.getByText('Software Mansion AI Labs').props.numberOfLines
+    ).toBe(1);
   });
 
   it('is one button for screen readers that announces both lines', () => {
@@ -187,12 +197,16 @@ describe('SwmAttributionSheet', () => {
 
   it('names the prepared role in the second row', () => {
     renderSheet({ ...gemma, role: 'prepared' });
+    expect(screen.getByText('Prepared for mobile by')).toBeTruthy();
+    expect(screen.queryByText('Optimized by')).toBeNull();
+  });
+
+  it('keeps the Software Mansion AI Labs name on one line under its role', () => {
+    renderSheet(gemma);
+    expect(screen.getByText('Optimized by')).toBeTruthy();
     expect(
-      screen.getByText('Prepared for mobile by Software Mansion AI Labs')
-    ).toBeTruthy();
-    expect(
-      screen.queryByText('Optimized by Software Mansion AI Labs')
-    ).toBeNull();
+      screen.getByText('Software Mansion AI Labs').props.numberOfLines
+    ).toBe(1);
   });
 
   it('opens the model page and the UTM-tagged Software Mansion page as links', () => {
