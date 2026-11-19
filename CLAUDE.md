@@ -2,8 +2,8 @@
 
 ## Themed styles — use the `useThemedStyles` hook
 
-Components that build a `StyleSheet` from the theme MUST obtain it via
-[`useThemedStyles`](hooks/useThemedStyles.ts). Do NOT hand-roll the
+Components that build a `StyleSheet` from the theme get it from
+[`useThemedStyles`](hooks/useThemedStyles.ts) instead of hand-rolling the
 `useTheme()` + `useMemo(() => createStyles(theme), [theme])` boilerplate.
 
 ```tsx
