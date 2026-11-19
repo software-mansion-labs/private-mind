@@ -1,0 +1,174 @@
+diff --git a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+index a16d68b..3fe3255 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/rnexecutorch/models/llm/LLM.cpp
+@@ -179,7 +179,7 @@ std::string LLM::generateMultimodal(std::string prompt,
+ }
+ 
+ void LLM::interrupt() {
+-    if (!runner_ || !runner_->is_loaded()) {
++    if (!runner_) {
+         throw RnExecutorchError(RnExecutorchErrorCode::ModuleNotLoaded,
+                                 "Can't interrupt a model that's not loaded");
+     }
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/mlx_memory.h b/node_modules/react-native-executorch/legacy/cpp/runner/mlx_memory.h
+new file mode 100644
+index 0000000..7362572
+--- /dev/null
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/mlx_memory.h
+@@ -0,0 +1,52 @@
++#pragma once
++
++#include <cstddef>
++
++#if defined(__APPLE__)
++#include <TargetConditionals.h>
++#endif
++
++#if defined(__APPLE__) && !TARGET_OS_SIMULATOR
++namespace mlx::core {
++void clear_cache();
++size_t set_cache_limit(size_t);
++}
++#endif
++
++namespace rne_legacy::extension::llm {
++
++inline void release_mlx_cache() {
++#if defined(__APPLE__) && !TARGET_OS_SIMULATOR
++    mlx::core::clear_cache();
++#endif
++}
++
++class MlxCacheScope {
++public:
++    explicit MlxCacheScope(bool enabled) : enabled_(enabled) {
++#if defined(__APPLE__) && !TARGET_OS_SIMULATOR
++        if (enabled_) {
++            previous_limit_ = mlx::core::set_cache_limit(0);
++            mlx::core::clear_cache();
++        }
++#endif
++    }
++
++    ~MlxCacheScope() {
++#if defined(__APPLE__) && !TARGET_OS_SIMULATOR
++        if (enabled_) {
++            mlx::core::clear_cache();
++            mlx::core::set_cache_limit(previous_limit_);
++        }
++#endif
++    }
++
++    MlxCacheScope(const MlxCacheScope &) = delete;
++    MlxCacheScope &operator=(const MlxCacheScope &) = delete;
++
++private:
++    [[maybe_unused]] bool enabled_;
++    [[maybe_unused]] size_t previous_limit_ = 0;
++};
++
++}
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
+index fb512b0..037eb28 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_prefiller.cpp
+@@ -11,6 +11,7 @@
+ 
+ #include "multimodal_prefiller.h"
+ #include "constants.h"
++#include "mlx_memory.h"
+ #include "util.h"
+ #include <algorithm>
+ #include <cstring>
+@@ -301,7 +302,13 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
+     bool enable_dynamic_shape = get_enable_dynamic_shape();
+     const int64_t prefill_total_cap =
+         enable_dynamic_shape ? max_context_len : max_seq_len;
+-    const int64_t decoder_chunk_size = max_seq_len;
++    const auto decoder_meta = module_->method_meta(kTextModelMethod);
++    const bool mlx_decoder =
++        decoder_meta.ok() && decoder_meta->uses_backend("MLXBackend");
++    constexpr int64_t mlx_prefill_chunk_size = 32;
++    const int64_t decoder_chunk_size = enable_dynamic_shape && mlx_decoder
++        ? std::min(max_seq_len, mlx_prefill_chunk_size)
++        : max_seq_len;
+ 
+     std::vector<int64_t> ids;
+     ids.reserve(static_cast<size_t>(prefill_total_cap));
+@@ -373,6 +380,23 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
+         }
+     }
+ 
++    Types::PLEEmbeddings ple_embeddings;
++    if (has_ple) {
++        auto res = initializePLE(embed_outputs, total_len, ple_embeddings);
++        if (res != ::executorch::runtime::Error::Ok) {
++            return res;
++        }
++    }
++    embed_outputs.clear();
++
++    const bool separate_vision_phase =
++        mlx_decoder && start_pos == 0 && !image_slots.empty();
++    if (separate_vision_phase) {
++        module_->unload_method(kTextModelMethod);
++        module_->unload_method(kTokenEmbeddingMethod);
++        release_mlx_cache();
++    }
++
+     // ------------------------------------------------------------
+     // Pass 2: encode images and splice their outputs into embeds_buf.
+     // ------------------------------------------------------------
+@@ -384,6 +408,14 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
+         }
+     }
+ 
++    if (separate_vision_phase) {
++        module_->unload_method(kVisionEncoderMethod);
++        release_mlx_cache();
++        ET_CHECK_OK_OR_RETURN_ERROR(module_->load_method(kTokenEmbeddingMethod));
++        ET_CHECK_OK_OR_RETURN_ERROR(module_->load_method(kTextModelMethod));
++        ET_CHECK_OK_OR_RETURN_ERROR(module_->load_method(kVisionEncoderMethod));
++    }
++
+     // ------------------------------------------------------------
+     // Pass 2b: splice encoded audio tokens into embeds_buf. Reads from the
+     // byte snapshot taken at encode time so post-encode execute() calls can't
+@@ -397,13 +429,6 @@ MultimodalPrefiller::prefill(const std::vector<MultimodalInput> &inputs,
+         }
+     }
+ 
+-    Types::PLEEmbeddings ple_embeddings;
+-    if (has_ple) {
+-        auto res = initializePLE(embed_outputs, total_len, ple_embeddings);
+-        if (res != ::executorch::runtime::Error::Ok) {
+-            return res;
+-        }
+-    }
+ 
+     std::vector<EValue> last_outs;
+     const int64_t chunk_cap =
+diff --git a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
+index e300fa8..540b314 100644
+--- a/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
++++ b/node_modules/react-native-executorch/legacy/cpp/runner/multimodal_runner.cpp
+@@ -1,6 +1,7 @@
+ // common/runner/multimodal_runner.cpp
+ #include "multimodal_runner.h"
+ #include "constants.h"
++#include "mlx_memory.h"
+ #include "util.h"
+ #include <rnexecutorch/Error.h>
+ 
+@@ -87,6 +88,10 @@ Error MultimodalRunner::generate_internal(
+         ET_CHECK_OK_OR_RETURN_ERROR(load());
+     }
+ 
++    const auto decoder_meta = module_->method_meta(kTextModelMethod);
++    MlxCacheScope memory_scope(
++        decoder_meta.ok() && decoder_meta->uses_backend("MLXBackend"));
++
+     mm_decoder_runner_->clear_stop();
+     mm_token_generator_->clear_stop();
+ 
