@@ -5,6 +5,7 @@ import {
   View,
   Pressable,
   useWindowDimensions,
+  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   type TextLayoutEventData,
 } from 'react-native';
@@ -16,12 +17,23 @@ import { space } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { firstLineOf } from '../../utils/chatLabel';
 import ChevronDownIcon from '../../assets/icons/chevron-down.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 import { Glass } from '../Glass';
-import { GLASS_BUTTON_SIZE } from '../../constants/header-actions';
+import {
+  GLASS_BUTTON_SIZE,
+  TITLE_CAPSULE_PADDING,
+  TITLE_ICON_HEIGHT,
+  TITLE_ICON_WIDTH,
+  TITLE_SHIELD_HEIGHT,
+  TITLE_SHIELD_WIDTH,
+  TITLE_SHIELD_GAP,
+} from '../../constants/header-actions';
 
-const CHEVRON_WIDTH = 10;
-const CHEVRON_HEIGHT = 6;
-const CHEVRON_SPACE = CHEVRON_WIDTH + space.one + space.four * 2;
+const CHEVRON_GAP = space.one;
+const ICONS_SPACE =
+  TITLE_SHIELD_WIDTH + TITLE_ICON_WIDTH + CHEVRON_GAP + TITLE_SHIELD_GAP;
+const ON_DEVICE_LABEL = 'Private, runs on this device';
+const ELLIPSIS = '\u2026';
 
 interface Props {
   title: string;
@@ -46,18 +58,32 @@ const ChatTitle = ({
     });
   }, [onBottomMeasured]);
 
-  const [fittedTitle, setFittedTitle] = useState<string | null>(null);
-  useEffect(() => setFittedTitle(null), [title, maxWidth]);
-  const handleTitleWrap = useCallback(
-    (event: NativeSyntheticEvent<TextLayoutEventData>) => {
-      setFittedTitle(firstLineOf(event.nativeEvent.lines, title));
-    },
+  const [fitsWhole, setFitsWhole] = useState<boolean | null>(null);
+  const [cutTitle, setCutTitle] = useState<string | null>(null);
+  const [ellipsisWidth, setEllipsisWidth] = useState<number | null>(null);
+  useEffect(() => {
+    setFitsWhole(null);
+    setCutTitle(null);
+  }, [title, maxWidth]);
+  const handleWholeWrap = useCallback(
+    (event: NativeSyntheticEvent<TextLayoutEventData>) =>
+      setFitsWhole(event.nativeEvent.lines.length <= 1),
+    []
+  );
+  const handleCutWrap = useCallback(
+    (event: NativeSyntheticEvent<TextLayoutEventData>) =>
+      setCutTitle(firstLineOf(event.nativeEvent.lines, title)),
     [title]
   );
+  const handleEllipsisLayout = useCallback(
+    (event: LayoutChangeEvent) =>
+      setEllipsisWidth(Math.ceil(event.nativeEvent.layout.width)),
+    []
+  );
   const shownTitle =
-    fittedTitle === null || fittedTitle === title
+    fitsWhole !== false || cutTitle === null || cutTitle === title
       ? title
-      : `${fittedTitle}\u2026`;
+      : `${cutTitle}${ELLIPSIS}`;
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   useEffect(() => {
@@ -66,7 +92,9 @@ const ChatTitle = ({
     return () => cancelAnimationFrame(frame);
   }, [handleLayout, onBottomMeasured, windowWidth, windowHeight]);
 
-  const titleWidth = maxWidth ? maxWidth - CHEVRON_SPACE : undefined;
+  const titleWidth = maxWidth
+    ? maxWidth - ICONS_SPACE - TITLE_CAPSULE_PADDING * 2
+    : undefined;
 
   return (
     <Glass radius={GLASS_BUTTON_SIZE / 2} style={styles.capsule}>
@@ -78,7 +106,9 @@ const ChatTitle = ({
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={
-          onPress ? `${shownTitle}. Chat options` : shownTitle
+          onPress
+            ? `${shownTitle}. ${ON_DEVICE_LABEL}. Chat options`
+            : `${shownTitle}. ${ON_DEVICE_LABEL}`
         }
         accessibilityState={{ expanded: open }}
         style={({ pressed }) => [
@@ -94,14 +124,42 @@ const ChatTitle = ({
             importantForAccessibility="no-hide-descendants"
           >
             <Text
-              style={[styles.titleText, { width: titleWidth }]}
-              onTextLayout={handleTitleWrap}
+              style={[styles.titleText, styles.ellipsis]}
+              onLayout={handleEllipsisLayout}
               maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              testID="chat-title-ellipsis"
+            >
+              {ELLIPSIS}
+            </Text>
+            <Text
+              style={[styles.titleText, { width: titleWidth }]}
+              onTextLayout={handleWholeWrap}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              testID="chat-title-whole"
             >
               {title}
             </Text>
+            {ellipsisWidth !== null ? (
+              <Text
+                style={[
+                  styles.titleText,
+                  { width: titleWidth - ellipsisWidth },
+                ]}
+                onTextLayout={handleCutWrap}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+                testID="chat-title-cut"
+              >
+                {title}
+              </Text>
+            ) : null}
           </View>
         ) : null}
+        <ShieldIcon
+          width={TITLE_SHIELD_WIDTH}
+          height={TITLE_SHIELD_HEIGHT}
+          style={styles.shield}
+          testID="chat-title-shield"
+        />
         <Text
           numberOfLines={1}
           style={styles.titleText}
@@ -111,8 +169,8 @@ const ChatTitle = ({
         </Text>
         {onPress ? (
           <ChevronDownIcon
-            width={CHEVRON_WIDTH}
-            height={CHEVRON_HEIGHT}
+            width={TITLE_ICON_WIDTH}
+            height={TITLE_ICON_HEIGHT}
             style={[styles.chevron, open && styles.chevronOpen]}
           />
         ) : null}
@@ -132,9 +190,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: space.one,
+      gap: CHEVRON_GAP,
       height: GLASS_BUTTON_SIZE,
-      paddingHorizontal: space.four,
+      paddingHorizontal: TITLE_CAPSULE_PADDING,
     },
     titleText: {
       flexShrink: 1,
@@ -147,6 +205,13 @@ const createStyles = (theme: Theme) =>
       position: 'absolute',
       opacity: 0,
       top: 0,
+    },
+    ellipsis: {
+      alignSelf: 'flex-start',
+    },
+    shield: {
+      color: theme.text.accent,
+      marginRight: TITLE_SHIELD_GAP - CHEVRON_GAP,
     },
     chevron: {
       color: theme.text.primary,

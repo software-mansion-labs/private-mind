@@ -61,6 +61,7 @@
       "^expo-file-system$": "<rootDir>/__mocks__/expo-file-system.ts",
       "^react-native-executorch$": "<rootDir>/__mocks__/react-native-executorch.ts",
       "^react-native-executorch/legacy$": "<rootDir>/__mocks__/react-native-executorch.ts",
+      "^react-native-executorch/llm$": "<rootDir>/__mocks__/react-native-executorch-llm.ts",
       "^react-native-executorch-expo-resource-fetcher$": "<rootDir>/__mocks__/react-native-executorch-expo-resource-fetcher.ts",
       "^react-native-executorch-expo-resource-fetcher/legacy$": "<rootDir>/__mocks__/react-native-executorch-expo-resource-fetcher.ts",
       "^@dr.pogodin/react-native-fs$": "<rootDir>/__mocks__/react-native-fs.ts",

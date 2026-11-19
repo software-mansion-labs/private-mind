@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import legacyCatalog from '../catalog/model-catalog.json';
 import catalog from '../catalog/model-catalog-v2.json';
+import rne011Catalog from '../catalog/model-catalog-v3.json';
+import { DEFAULT_MODELS } from '../constants/default-models';
+import { RETIRED_MODEL_NAMES } from '../constants/retired-models';
 import {
   modelCatalogEntrySchema,
   modelCatalogManifestSchema,
@@ -50,5 +53,46 @@ describe('catalog/model-catalog.json (apps up to 1.3.4)', () => {
     expect(new Set(names(legacyCatalog)).size).toBe(
       names(legacyCatalog).length
     );
+  });
+});
+
+const pathsOf = (model: (typeof rne011Catalog.models)[number]) =>
+  [model.modelPath, model.tokenizerPath, model.tokenizerConfigPath].flatMap(
+    (path) => (typeof path === 'string' ? [path] : Object.values(path))
+  );
+
+describe('catalog/model-catalog-v3.json (apps on the RNE 0.11 runner)', () => {
+  it('matches the manifest schema', () => {
+    expect(modelCatalogManifestSchema.safeParse(rne011Catalog).success).toBe(
+      true
+    );
+  });
+
+  it('lists every model of the /legacy catalog except the retired ones', () => {
+    expect(names(rne011Catalog)).toEqual(
+      names(catalog).filter((name) => !RETIRED_MODEL_NAMES.includes(name))
+    );
+  });
+
+  it('points every model at an export newer than v0.9', () => {
+    const preSchemaExport = /\/resolve\/v0\.(8|9)\.0\//;
+    const stuckOnOldExport = rne011Catalog.models
+      .filter((model) => pathsOf(model).some((p) => preSchemaExport.test(p)))
+      .map((model) => model.modelName);
+
+    expect(stuckOnOldExport).toEqual([]);
+  });
+
+  it('downloads the same files as the catalog built into the app', () => {
+    const iosPath = (path: string | { ios: string }) =>
+      typeof path === 'string' ? path : path.ios;
+    const builtIn = new Map(DEFAULT_MODELS.map((m) => [m.modelName, m]));
+    for (const model of rne011Catalog.models) {
+      expect(builtIn.get(model.modelName)).toMatchObject({
+        modelPath: iosPath(model.modelPath),
+        tokenizerPath: iosPath(model.tokenizerPath),
+        tokenizerConfigPath: iosPath(model.tokenizerConfigPath),
+      });
+    }
   });
 });

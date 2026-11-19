@@ -63,6 +63,7 @@ function raisedEdge(theme: Theme): ViewStyle {
 }
 
 export interface GlassProps extends ViewProps {
+  tint?: string;
   fallbackTint?: string;
   radius?: number;
   active?: boolean;
@@ -74,6 +75,7 @@ export interface GlassProps extends ViewProps {
 }
 
 export function Glass({
+  tint,
   fallbackTint,
   radius = 0,
   active = true,
@@ -138,7 +140,7 @@ export function Glass({
     <NativeGlass
       glassEffectStyle={glassEffectStyle}
       colorScheme={dark ? 'dark' : 'light'}
-      tintColor={schemeTint}
+      tintColor={tint ?? schemeTint}
       isInteractive={interactive}
       borderRadius={radius}
       style={[shapeOf(radius), style]}

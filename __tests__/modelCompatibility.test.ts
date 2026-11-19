@@ -169,6 +169,35 @@ describe('what each device is allowed to run', () => {
     ]);
   });
 
+  it('iPhone SE itself — Qwen 3 hung in load for over 15 minutes there', () => {
+    const mockGetDeviceId = DeviceInfo.getDeviceId as jest.Mock;
+    const mockGetModel = DeviceInfo.getModel as jest.Mock;
+    mockGetDeviceId.mockReturnValue('iPhone14,6');
+    mockGetModel.mockReturnValue('iPhone SE');
+
+    expect(allowed(3.8, 'ios')).toEqual([
+      'LFM 2.5 VL - 450M',
+      'Qwen 2.5 - 0.5B',
+      'LLaMA 3.2 - 1B - SpinQuant',
+      'LFM 2.5 - 1.2B',
+    ]);
+    expect(
+      incompatibilityLabel(
+        CATALOGUE.filter((model) => model.family === 'Qwen 3')
+      )
+    ).toBe("Doesn't run on iPhone SE");
+
+    mockGetModel.mockReturnValue('unknown');
+    expect(
+      incompatibilityLabel(
+        CATALOGUE.filter((model) => model.family === 'Qwen 3')
+      )
+    ).toBe("Doesn't run on this phone");
+
+    mockGetDeviceId.mockReturnValue('iPhone17,1');
+    mockGetModel.mockReturnValue('iPhone 16 Pro');
+  });
+
   it('Galaxy S20 FE, 6 GB — four foreground low-memory kills here', () => {
     expect(allowed(5.49, 'android')).toEqual([
       'LFM 2.5 VL - 450M',

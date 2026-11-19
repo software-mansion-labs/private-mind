@@ -14,7 +14,7 @@ import {
   textStyles,
 } from '../../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
-import ModelFamilyTile, { familyTileSize } from '../model-hub/ModelFamilyTile';
+import ModelFamilyTile from '../model-hub/ModelFamilyTile';
 import ModelCapabilityBadges from '../model-hub/ModelCapabilityBadges';
 import ModelRow from '../model-hub/ModelRow';
 import ModelRowText from '../model-hub/ModelRowText';
@@ -218,13 +218,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
     return (
       <>
         <ModelRow>
-          <View style={styles.familyIcon}>
-            <ModelFamilyTile
-              family={getModelFamily(model)}
-              size="card"
-              bareIconSize={FAMILY_ICON_SIZE}
-            />
-          </View>
+          <ModelFamilyTile family={getModelFamily(model)} size="card" />
           <ModelRowText
             title={model.modelName}
             titleLines={0}
@@ -283,8 +277,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
 
 export default ModelManagementSheet;
 
-const FAMILY_ICON_SIZE = 24;
-
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -292,12 +284,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + space.four,
       gap: space.three,
-    },
-    familyIcon: {
-      width: familyTileSize('card'),
-      height: familyTileSize('card'),
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     name: {
       ...textStyles.titleSheet,

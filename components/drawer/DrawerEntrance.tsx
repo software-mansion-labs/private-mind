@@ -53,6 +53,6 @@ const createStyles = (theme: Theme) =>
     },
     veil: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.drawer,
     },
   });

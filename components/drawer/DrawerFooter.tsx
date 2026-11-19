@@ -181,7 +181,7 @@ const createStyles = (theme: Theme) =>
     },
     settingsActive: {
       borderRadius: radius.full,
-      backgroundColor: theme.bg.softTertiary,
+      backgroundColor: theme.bg.drawerItemActive,
     },
     settingsIcon: {
       color: theme.text.primary,

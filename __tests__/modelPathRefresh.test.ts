@@ -66,4 +66,16 @@ describe('runMigrations built-in model path refresh', () => {
       'Bielik - v3.0',
     ]);
   });
+
+  it('deletes every built-in row the catalog no longer lists, retired downloads included', async () => {
+    const { db, calls } = makeFakeDb();
+
+    await runMigrations(db);
+
+    const cleanup = calls.find(
+      (c) => c.sql.includes('DELETE FROM models') && c.sql.includes('NOT IN')
+    );
+    expect(cleanup!.sql).not.toContain('isDownloaded');
+    expect(cleanup!.params).not.toContain('LLaMA 3.2 - 1B - QLoRa');
+  });
 });

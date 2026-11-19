@@ -14,9 +14,12 @@ import { useSendChatMessage } from './useSendChatMessage';
 import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
+  FadeInUp,
+  FadeOutUp,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  type SharedValue,
 } from 'react-native-reanimated';
 import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
@@ -35,6 +38,9 @@ import NewChatSwarm, {
 import { TopFade, topFadeHeight } from './TopFade';
 import { NewChatBackground } from './NewChatBackground';
 import UserMessageActionMenu from './UserMessageActionMenu';
+import ModelUpdateBanner from './ModelUpdateBanner';
+import { needsUpdate, requiresUpdate } from '../../utils/modelUpdate';
+import { space } from '../../constants/design-system';
 import ModelSelectSheet from '../bottomSheets/ModelSelectSheet';
 import { Theme } from '../../styles/colors';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -65,6 +71,7 @@ interface Props {
   revealFromTop?: boolean;
   headerTitleBottom?: number;
   opensModelSheet?: boolean;
+  heroReveal?: SharedValue<number>;
 }
 
 export default function ChatScreen({
@@ -77,6 +84,7 @@ export default function ChatScreen({
   revealFromTop = false,
   headerTitleBottom,
   opensModelSheet = false,
+  heroReveal,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -191,9 +199,7 @@ export default function ChatScreen({
   const handleSelectModel = async (selectedModel: Model) => {
     try {
       await loadModel(selectedModel);
-      if (useLLMStore.getState().model?.id !== selectedModel.id) {
-        throw new Error(`Model ${selectedModel.id} did not finish loading`);
-      }
+      if (useLLMStore.getState().model?.id !== selectedModel.id) return false;
 
       if (chatId && !model) {
         await setChatModel(chatId, selectedModel.id);
@@ -304,6 +310,18 @@ export default function ChatScreen({
   });
 
   const scrollBottomOffset = theme.insets.bottom;
+  const updateReplacesInput =
+    !isPhantomChat && !!model && requiresUpdate(model);
+  const showUpdateBanner =
+    hasMessages && !!model && needsUpdate(model) && !updateReplacesInput;
+  const [updateBannerHeight, setUpdateBannerHeight] = useState(0);
+  const handleUpdateBannerLayout = useCallback(
+    (e: { nativeEvent: { layout: { height: number } } }) =>
+      setUpdateBannerHeight(e.nativeEvent.layout.height + space.two),
+    []
+  );
+  const messagesTopInset =
+    headerHeight + (showUpdateBanner ? updateBannerHeight : 0);
 
   useLegacyChatNotice(messageHistory);
 
@@ -320,7 +338,8 @@ export default function ChatScreen({
   const heading = useHeadingAnchor(rootRef, rootFrame.height);
   const heroOpacityBeforeSwarm = useReducedMotion() ? 1 : 0;
   const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
-  const badgeReveal = useSharedValue(heroOpacityBeforeSwarm);
+  const ownBadgeReveal = useSharedValue(heroOpacityBeforeSwarm);
+  const badgeReveal = heroReveal ?? ownBadgeReveal;
 
   return (
     <View
@@ -367,7 +386,7 @@ export default function ChatScreen({
           onBranchMarkerPress={handleBranchMarkerPress}
           onUserActionMenuChange={setUserActionMenu}
           chatBarInset={chatBarHeight}
-          topInset={headerHeight}
+          topInset={messagesTopInset}
           fadeBottom={fadeBottom}
         />
       </View>
@@ -440,6 +459,21 @@ export default function ChatScreen({
         </Animated.View>
       )}
 
+      {showUpdateBanner && model && (
+        <Animated.View
+          entering={FadeInUp}
+          exiting={FadeOutUp}
+          style={[
+            styles.updateBannerOverlay,
+            { top: headerHeight + space.two },
+          ]}
+          pointerEvents="box-none"
+          onLayout={handleUpdateBannerLayout}
+        >
+          <ModelUpdateBanner model={model} floating />
+        </Animated.View>
+      )}
+
       {userActionMenuPosition && (
         <View
           style={[styles.userActionMenuOverlay, userActionMenuPosition]}
@@ -470,6 +504,14 @@ const createStyles = (theme: Theme) =>
       zIndex: 1,
       elevation: 1,
       overflow: 'visible',
+    },
+    updateBannerOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 4,
+      elevation: 4,
     },
     userActionMenuOverlay: {
       position: 'absolute',

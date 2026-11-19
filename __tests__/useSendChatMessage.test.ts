@@ -139,11 +139,12 @@ const noSwitchInFlight = async () => undefined;
 const useSend = (
   chatId = 1,
   loading = false,
-  waitForModelSwitch?: () => Promise<Model | undefined>
+  waitForModelSwitch?: () => Promise<Model | undefined>,
+  model: Model = { id: 1, modelName: 'Test LLM' } as Model
 ) =>
   useSendChatMessage({
     chatId,
-    model: { id: 1, modelName: 'Test LLM' } as Model,
+    model,
     messageHistory: [],
     chatSettings: {
       systemPrompt: '',
@@ -206,6 +207,36 @@ describe('sending while another turn is open', () => {
   it('sends normally when nothing is in flight', async () => {
     expect(await useSend(1)('hello')).toBe(true);
     expect(mockedState().interrupt).not.toHaveBeenCalled();
+  });
+
+  it('refuses a model the new engine cannot run yet, without trying to load it', async () => {
+    const state = mockedState();
+    state.model = null;
+    const outdated = {
+      id: 1,
+      modelName: 'Qwen 3 - 0.6B',
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.9.0/model.pte'],
+      updateRequired: true,
+    } as Model;
+
+    expect(await useSend(1, false, undefined, outdated)('hello')).toBe(
+      'model-needs-update'
+    );
+    expect(state.loadModel).not.toHaveBeenCalled();
+    expect(state.sendChatMessage).not.toHaveBeenCalled();
+  });
+
+  it('still sends with a model whose newer files are optional', async () => {
+    const optional = {
+      id: 1,
+      modelName: 'Qwen 3 - 0.6B',
+      isDownloaded: true,
+      outdatedSources: ['https://example.com/v0.11.0/model.pte'],
+      updateRequired: false,
+    } as Model;
+
+    expect(await useSend(1, false, undefined, optional)('hello')).toBe(true);
   });
 
   it('refuses an empty message', async () => {
@@ -389,7 +420,7 @@ describe('what a turn paid for its sources', () => {
   const capturedBuildSources = () =>
     mockedState().sendChatMessage.mock.calls[0][2] as (
       signal?: AbortSignal
-    ) => Promise<{ retrievalStats?: RetrievalStats }>;
+    ) => Promise<{ retrievalStats?: RetrievalStats; webSubQueries?: string[] }>;
 
   const useSendWith = (
     overrides: Partial<Parameters<typeof useSendChatMessage>[0]>
@@ -464,6 +495,51 @@ describe('what a turn paid for its sources', () => {
       queries: 2,
     });
     expect(built.retrievalStats?.rag).toBeUndefined();
+  });
+
+  const searchPlanned = (intentKind: string, plannedQueries: string[]) =>
+    (runWebSearch as jest.Mock).mockResolvedValueOnce({
+      context: ['a web chunk'],
+      sourceDocuments: [
+        { name: 'A', kind: 'web', url: 'https://a.example', read: true },
+      ],
+      telemetry: {
+        needsSearch: true,
+        intent: 'last US presidential election winner',
+        intentKind,
+        plannedQueries,
+        finalLabel: 'correct',
+      },
+    });
+
+  it('does not pass extra search queries off as parts of a single question', async () => {
+    searchPlanned('person', [
+      'last US presidential election winner',
+      '2026 US presidential election result',
+    ]);
+    webEnabledByChat[1] = true;
+
+    await useSendWith({})('Who won the last presidential election in the USA?');
+    const built = await capturedBuildSources()();
+
+    expect(built.webSubQueries).toBeUndefined();
+    expect(built.retrievalStats?.web?.queries).toBe(2);
+  });
+
+  it('keeps one part per named thing when the question compares them', async () => {
+    searchPlanned('comparison', [
+      'bitcoin price today',
+      'ethereum price today',
+    ]);
+    webEnabledByChat[1] = true;
+
+    await useSendWith({})('compare the prices of bitcoin and ethereum');
+    const built = await capturedBuildSources()();
+
+    expect(built.webSubQueries).toEqual([
+      'bitcoin price today',
+      'ethereum price today',
+    ]);
   });
 
   it('reports nothing for a turn with no documents and no search', async () => {

@@ -31,16 +31,18 @@ const GRADIENT_DIRECTION = {
 interface Props {
   anchor: number;
   edge?: 'top' | 'bottom';
+  surface?: string;
 }
 
-export const GlassScrollEdge = React.memo(({ anchor, edge = 'top' }: Props) => {
+export const GlassScrollEdge = React.memo((props: Props) => {
+  const { anchor, edge = 'top', surface } = props;
   const { styles, theme } = useThemedStyles(createStyles);
   const direction = GRADIENT_DIRECTION[edge];
   const pinned = styles[edge];
 
   if (anchor <= 0) return null;
 
-  const base = theme.bg.softPrimary;
+  const base = surface ?? theme.bg.softPrimary;
   const dim = easedStops(TOP_ALPHA);
   const blurHeight = anchor + BLUR_REACH_BELOW_ANCHOR;
   const solidUntil = anchor / blurHeight;

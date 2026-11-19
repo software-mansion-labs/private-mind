@@ -49,9 +49,7 @@ export const WEB_PLANNER_MATRIX: Record<string, WebPlannerMode> = {
   'Qwen 2.5 - 0.5B': 'verbatim',
   'Qwen 2.5 - 1.5B': 'llm',
   'Qwen 2.5 - 3B': 'llm',
-  'LLaMA 3.2 - 1B - QLoRa': 'llm',
   'LLaMA 3.2 - 1B - SpinQuant': 'llm',
-  'LLaMA 3.2 - 3B - QLoRa': 'llm',
   'LLaMA 3.2 - 3B - SpinQuant': 'llm',
   'LFM 2.5 - 1.2B': 'llm',
   'LFM 2.5 VL - 1.6B': 'llm',
@@ -145,7 +143,6 @@ export const PROFILE_BY_MODEL: Record<string, Partial<ModelProfile>> = {
   'Gemma 4 - 2B': { webSearchMinDeviceMemoryGB: 8 },
   'Gemma 4 VL - 2B': { webSearchMinDeviceMemoryGB: 8 },
   'Qwen 2.5 - 3B': { webSearchReady: false, webSearchMinDeviceMemoryGB: 8 },
-  'LLaMA 3.2 - 3B - QLoRa': { webSearchMinDeviceMemoryGB: 8 },
   'LLaMA 3.2 - 3B - SpinQuant': { webSearchMinDeviceMemoryGB: 8 },
 };
 

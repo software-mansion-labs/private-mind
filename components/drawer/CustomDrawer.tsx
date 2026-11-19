@@ -219,6 +219,6 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.drawer,
     },
   });

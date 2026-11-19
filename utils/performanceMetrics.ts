@@ -41,3 +41,10 @@ export const calculatePerformanceMetrics = (
       : UNMEASURABLE_RATE,
   };
 };
+
+export const timeToFirstTokenSince = (
+  sentAt: number,
+  firstTokenTime: number,
+  measuredByRunner: number
+): number =>
+  firstTokenTime >= sentAt ? firstTokenTime - sentAt : measuredByRunner;
