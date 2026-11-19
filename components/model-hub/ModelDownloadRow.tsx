@@ -2,11 +2,11 @@ import React from 'react';
 import {
   type AccessibilityActionEvent,
   type AccessibilityActionInfo,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   useModelDownload,
@@ -40,6 +40,7 @@ import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
+import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 
 const ACTION_ICON_SIZE = 16;
 const CANCEL_ICON_SIZE = 13.33;
@@ -78,7 +79,8 @@ const ModelDownloadRow = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(
     createStyles,
-    selection?.selected ?? false
+    selection?.selected ?? false,
+    matchFamilyCards
   );
   const { status, progress, rate, startDownload, stopDownload } =
     useModelDownload(model, wifiWarningSheetRef);
@@ -174,6 +176,13 @@ const ModelDownloadRow = ({
       accessibilityLabel={`Update ${model.modelName}`}
       testID="model-download-row-update"
     >
+      <View style={styles.updateCircle}>
+        <RotateLeftIcon
+          width={ACTION_ICON_SIZE}
+          height={ACTION_ICON_SIZE}
+          color={theme.text.accent}
+        />
+      </View>
       <Text
         style={styles.updateButtonText}
         maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
@@ -181,6 +190,22 @@ const ModelDownloadRow = ({
         {MODEL_UPDATE_TEXT.chatBannerAction}
       </Text>
     </Pressable>
+  );
+
+  const badges = <ModelCapabilityBadges model={model} style={styles.badges} />;
+
+  const textBlock = (children?: React.ReactNode) => (
+    <ModelRowText
+      title={model.modelName}
+      titleLines={0}
+      titleStyle={!isCompatible && styles.incompatibleTitle}
+      titleAccessory={titleAccessory}
+      accessoryPlacement={isDownloading ? 'end' : 'inline'}
+      subtitle={formatModelMeta(model, 'B')}
+      style={styles.text}
+    >
+      {children}
+    </ModelRowText>
   );
 
   const checkbox = selection && (
@@ -224,40 +249,42 @@ const ModelDownloadRow = ({
             <ModelFamilyTile family={getModelFamily(model)} size="list" />
           </View>
         )}
-        <ModelRowText
-          title={model.modelName}
-          titleLines={0}
-          titleStyle={!isCompatible && styles.incompatibleTitle}
-          titleAccessory={titleAccessory}
-          accessoryPlacement={isDownloading ? 'end' : 'inline'}
-          subtitle={formatModelMeta(model, 'B')}
-          style={styles.text}
-        >
-          <ModelCapabilityBadges model={model} style={styles.badges} />
-          {isDownloading && (
-            <View style={styles.progress}>
-              <DownloadProgressBar
-                progress={progress}
-                accessibilityLabel={`${model.modelName} download progress`}
-              />
-              <DownloadProgressDetails
-                modelSize={model.modelSize}
-                progress={progress}
-                rate={rate}
-              />
+        {updateButton ? (
+          <View style={styles.updateLayout}>
+            <View style={styles.updateTop}>
+              {textBlock()}
+              <View style={styles.actions}>
+                {updateButton}
+                {action}
+              </View>
             </View>
-          )}
-        </ModelRowText>
+            <View style={styles.updateBadges}>{badges}</View>
+          </View>
+        ) : (
+          textBlock(
+            <>
+              {badges}
+              {isDownloading && (
+                <View style={styles.progress}>
+                  <DownloadProgressBar
+                    progress={progress}
+                    accessibilityLabel={`${model.modelName} download progress`}
+                  />
+                  <DownloadProgressDetails
+                    modelSize={model.modelSize}
+                    progress={progress}
+                    rate={rate}
+                  />
+                </View>
+              )}
+            </>
+          )
+        )}
         {selection ? (
           <View style={styles.trailing}>
             {showsCheckbox ? checkbox : action}
           </View>
-        ) : updateButton ? (
-          <View style={styles.actions}>
-            {updateButton}
-            {action}
-          </View>
-        ) : (
+        ) : updateButton ? null : (
           action
         )}
         {ConfirmElement}
@@ -269,7 +296,12 @@ const ModelDownloadRow = ({
 
 export default ModelDownloadRow;
 
-const createStyles = (theme: Theme, selected: boolean) => {
+const createStyles = (
+  theme: Theme,
+  selected: boolean,
+  matchFamilyCards: boolean
+) => {
+  const rowGap = matchFamilyCards ? TILE_ROW.gap : space.three;
   const cardBorderWidth = selected ? stroke.strong : stroke.soft;
   const cardBorderGrowth = cardBorderWidth - stroke.soft;
   return StyleSheet.create({
@@ -324,21 +356,40 @@ const createStyles = (theme: Theme, selected: boolean) => {
     lockedSelection: {
       opacity: LOCKED_OPACITY,
     },
+    updateLayout: {
+      flex: 1,
+      minWidth: 0,
+      gap: space.one,
+    },
+    updateTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: rowGap,
+    },
+    updateBadges: {
+      marginRight: CIRCLE_BUTTON_SIZE + rowGap,
+    },
     actions: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.two,
+      alignItems: 'flex-start',
+      gap: space.three,
     },
     updateButton: {
-      minHeight: CIRCLE_BUTTON_SIZE,
+      alignItems: 'center',
+      gap: space.one,
+    },
+    updateCircle: {
+      width: CIRCLE_BUTTON_SIZE,
+      height: CIRCLE_BUTTON_SIZE,
+      borderRadius: radius.eighteen,
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: space.three,
-      borderRadius: radius.full,
       backgroundColor: theme.bg.accentSoft,
     },
     updateButtonText: {
+      marginHorizontal: -space.two,
       fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
+      fontSize: fontSizes.xs,
       color: theme.text.accent,
     },
   });
