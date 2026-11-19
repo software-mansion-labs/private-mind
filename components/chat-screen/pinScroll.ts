@@ -89,6 +89,21 @@ export const pinReleaseTarget = ({
   return Math.max(0, contentHeight - floorExcess - layoutHeight + extraPadding);
 };
 
+export interface ScrolledAwayGeometry {
+  offset: number;
+  contentHeight: number;
+  layoutHeight: number;
+  extraPadding: number;
+}
+
+export const blankLeftBehind = ({
+  offset,
+  contentHeight,
+  layoutHeight,
+  extraPadding,
+}: ScrolledAwayGeometry): number =>
+  Math.max(0, contentHeight - layoutHeight + extraPadding - offset);
+
 export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
   offset <= releaseTarget + PIN_READY_SLACK_PX;
 

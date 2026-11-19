@@ -8,6 +8,7 @@ import {
   pinLandingFrom,
   pinOffsetFor,
   pinReleaseTarget,
+  blankLeftBehind,
   scrollButtonShows,
   stoppedTurnLandsShort,
   turnEndFor,
@@ -192,6 +193,28 @@ describe('pinReleaseTarget', () => {
     expect(
       pinReleaseTarget({ ...geometry, contentHeight: 500, rowHeight: 100 })
     ).toBe(0);
+  });
+});
+
+describe('blankLeftBehind', () => {
+  const geometry = { contentHeight: 2000, layoutHeight: 800, extraPadding: 0 };
+
+  it('is the distance scrolled up from the end of the list', () => {
+    expect(blankLeftBehind({ ...geometry, offset: 1050 })).toBe(150);
+  });
+
+  it('is nothing while the list rests at its end', () => {
+    expect(blankLeftBehind({ ...geometry, offset: 1200 })).toBe(0);
+  });
+
+  it('is nothing while the list is overscrolled past its end', () => {
+    expect(blankLeftBehind({ ...geometry, offset: 1230 })).toBe(0);
+  });
+
+  it('counts padding added below the content as part of the list', () => {
+    expect(
+      blankLeftBehind({ ...geometry, extraPadding: 300, offset: 1400 })
+    ).toBe(100);
   });
 });
 

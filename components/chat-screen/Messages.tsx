@@ -80,6 +80,7 @@ import {
 } from '../../store/keyboardOwnerStore';
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
+  blankLeftBehind,
   floorIsOffscreen,
   floorIsOutgrown,
   lastTurnRows,
@@ -636,13 +637,18 @@ const Messages = ({
     );
     return () => hidden.remove();
   }, [liftHeldUntilKeyboardHides]);
+  const [floorTrim, setFloorTrim] = useState(0);
+  const floorTrimAwaitsLayout = useRef(false);
   const pinFloor = pinAnchor
-    ? pinFloorFor({
-        containerHeight: pinAnchor.containerHeight,
-        userHeight: pinAnchor.userHeight,
-        listTopPadding,
-        listBottomPadding,
-      })
+    ? Math.max(
+        0,
+        pinFloorFor({
+          containerHeight: pinAnchor.containerHeight,
+          userHeight: pinAnchor.userHeight,
+          listTopPadding,
+          listBottomPadding,
+        }) - floorTrim
+      )
     : 0;
   const pinFloorRef = useRef(0);
   pinFloorRef.current = pinFloor;
@@ -769,13 +775,22 @@ const Messages = ({
 
   const settlePinRelease = useCallback(() => {
     if (!pinReleaseRef.current || Keyboard.isVisible()) return;
-    const target = releaseTarget();
-    if (floorIsOffscreen(lastScrollOffset.current, target)) {
+    if (floorTrimAwaitsLayout.current) return;
+    const offset = lastScrollOffset.current;
+    if (floorIsOffscreen(offset, releaseTarget())) {
       dropPinFloor();
       return;
     }
-    scrollRef.current?.scrollTo({ y: target, animated: true });
-  }, [dropPinFloor, releaseTarget]);
+    const leftBehind = blankLeftBehind({
+      offset,
+      contentHeight: contentHeight.current,
+      layoutHeight: lastLayoutHeight.current || containerHeight.current,
+      extraPadding: extraContentPadding.get(),
+    });
+    if (leftBehind <= 0) return;
+    floorTrimAwaitsLayout.current = true;
+    setFloorTrim((trimmed) => trimmed + leftBehind);
+  }, [dropPinFloor, extraContentPadding, releaseTarget]);
 
   useEffect(() => {
     if (turnInFlight || !pinActive.current) return;
@@ -882,6 +897,7 @@ const Messages = ({
         pendingPinRef.current = true;
         predictedPinPending.current = false;
         setFloorOutgrown(false);
+        setFloorTrim(0);
         if (!questionAlreadyShown && containerHeight.current > 0) {
           setPinAnchor({
             containerHeight: containerHeight.current,
@@ -1014,13 +1030,8 @@ const Messages = ({
 
   const scrollToBottom = useCallback(() => {
     closeUserActionMenu();
-    if (!pinActive.current && pinAnchor && !Keyboard.isVisible()) {
-      pinReleaseRef.current = true;
-      scrollRef.current?.scrollTo({ y: releaseTarget(), animated: true });
-      return;
-    }
     scrollRef.current?.scrollToEnd({ animated: true });
-  }, [closeUserActionMenu, pinAnchor, releaseTarget]);
+  }, [closeUserActionMenu]);
 
   const handleCopyMessage = useCallback(
     async (message: Message) => {
@@ -1162,6 +1173,7 @@ const Messages = ({
   const handleContentSizeChange = useCallback(
     (_w: number, h: number) => {
       contentHeight.current = h;
+      floorTrimAwaitsLayout.current = false;
       landPredictedPin();
       followPin();
       // Initial reveal: content has been laid out for the first time.
