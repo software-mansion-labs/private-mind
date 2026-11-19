@@ -211,6 +211,7 @@ const LongPressableMessage = memo(
 );
 
 const SENT_TURN_ROWS_TIMEOUT_MS = 3000;
+const OPENED_CHAT_FOLLOWS_END_MS = 2500;
 const MESSAGE_WINDOW_INITIAL = 40;
 const MESSAGE_WINDOW_STEP = 40;
 const MESSAGE_WINDOW_TOP_TRIGGER = 600;
@@ -862,6 +863,7 @@ const Messages = ({
           isAtBottomRef.current = true;
           setShowScrollButton(false);
         }
+        initialScrollSettlingUntil.current = 0;
         const turnEnd = turnEndFor({
           contentHeight: contentHeight.current,
           listBottomPadding: listPaddingRef.current.bottom,
@@ -1108,6 +1110,7 @@ const Messages = ({
   const touchScrolledRef = useRef(false);
 
   const handleScrollTouchStart = useCallback(() => {
+    initialScrollSettlingUntil.current = 0;
     pinFollowsLayout.current = false;
     pinScrollPendingRef.current = false;
     touchScrolledRef.current = false;
@@ -1165,13 +1168,24 @@ const Messages = ({
       // Snap to bottom then fade in. This is the most reliable place to
       // scroll because the native content size is already committed.
       if (!hasScrolledToEnd.current) {
-        // The first onContentSizeChange fires with just the paddings, before
+        if (latestHistoryLength.current === 0) return;
         if (h <= listTopPadding + listBottomPadding) return;
 
         hasScrolledToEnd.current = true;
-        initialScrollSettlingUntil.current = Date.now() + 650;
+        initialScrollSettlingUntil.current =
+          Date.now() + OPENED_CHAT_FOLLOWS_END_MS;
         scheduleInitialScrollToEnd();
         return;
+      }
+
+      const openedChatStillSettling =
+        Date.now() < initialScrollSettlingUntil.current;
+      if (
+        openedChatStillSettling &&
+        !pinActive.current &&
+        !pendingPinRef.current
+      ) {
+        snapToEnd();
       }
 
       // After send: now that the new chat row has rendered, pin it.
@@ -1202,6 +1216,7 @@ const Messages = ({
       listBottomPadding,
       listTopPadding,
       scheduleInitialScrollToEnd,
+      snapToEnd,
       updateScrollButton,
     ]
   );
