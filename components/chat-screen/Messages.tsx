@@ -50,6 +50,7 @@ import { Theme } from '../../styles/colors';
 import { Feedback } from '../../utils/Feedback';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 import BranchMarker from './BranchMarker';
+import OnDeviceNote from './OnDeviceNote';
 import StoppedMarker from './StoppedMarker';
 import { endsTurnCutShort } from './cutShortTurn';
 import {
@@ -57,6 +58,7 @@ import {
   GENERATION_ERROR_MEASUREMENT_KEY,
   MESSAGE_PIN_OFFSET,
   MESSAGE_PIN_SETTLE_MS,
+  ON_DEVICE_NOTE_FADE_MS,
   PIN_LANDING_GRACE_MS,
   navBarInset,
   PIN_READY_SLACK_PX,
@@ -473,7 +475,32 @@ const Messages = ({
   const pinScrollPendingRef = useRef(false);
   const pinLandedSinceKeyboardShow = useRef(false);
 
+  const onDeviceNoteOpacity = useSharedValue(1);
+  const onDeviceNoteStyle = useAnimatedStyle(() => ({
+    opacity: onDeviceNoteOpacity.get(),
+  }));
+  const onDeviceNoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const revealOnDeviceNote = useCallback(
+    (afterMs: number) => {
+      if (onDeviceNoteTimer.current) clearTimeout(onDeviceNoteTimer.current);
+      onDeviceNoteTimer.current = setTimeout(() => {
+        onDeviceNoteTimer.current = null;
+        onDeviceNoteOpacity.set(
+          withTiming(1, { duration: ON_DEVICE_NOTE_FADE_MS })
+        );
+      }, afterMs);
+    },
+    [onDeviceNoteOpacity]
+  );
+  useEffect(
+    () => () => {
+      if (onDeviceNoteTimer.current) clearTimeout(onDeviceNoteTimer.current);
+    },
+    []
+  );
+
   const scrollToPin = useCallback(() => {
+    revealOnDeviceNote(PIN_LANDING_GRACE_MS);
     pinLandedSinceKeyboardShow.current = true;
     pinLandingUntil.current = Date.now() + PIN_LANDING_GRACE_MS;
     requestAnimationFrame(() => {
@@ -490,7 +517,7 @@ const Messages = ({
         scrollView.scrollTo({ y: animateTo, animated: true });
       });
     });
-  }, []);
+  }, [revealOnDeviceNote]);
 
   const landAfterKeyboard = useCallback(() => {
     if (pinActive.current && !pendingPinRef.current) {
@@ -727,6 +754,7 @@ const Messages = ({
       },
       onMessageSent: () => {
         closeUserActionMenu();
+        if (prevChatLengthRef.current === 0) onDeviceNoteOpacity.set(0);
         // Ensure the view is visible (covers new-chat case where the
         // initial-scroll effect hasn't fired because there were no
         // messages yet).
@@ -748,6 +776,7 @@ const Messages = ({
         freezeForSend();
       },
       cancelMessageSent: () => {
+        revealOnDeviceNote(0);
         pendingPinRef.current = false;
         pinScrollPendingRef.current = false;
         pinReleaseRef.current = false;
@@ -759,8 +788,10 @@ const Messages = ({
     [
       closeUserActionMenu,
       freezeForSend,
+      onDeviceNoteOpacity,
       opacity,
       releaseSendFreeze,
+      revealOnDeviceNote,
       settleReveal,
       snapToEnd,
     ]
@@ -1257,6 +1288,11 @@ const Messages = ({
           scrollEventThrottle={16}
           style={styles.container}
         >
+          {hasMessages && firstRenderedIndex === 0 && (
+            <Reanimated.View style={onDeviceNoteStyle}>
+              <OnDeviceNote />
+            </Reanimated.View>
+          )}
           {messageRows}
           {generationError && (
             <View style={pinFloorStyle} collapsable={false}>

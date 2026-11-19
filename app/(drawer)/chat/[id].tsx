@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
+import { useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { useLLMStore } from '../../../store/llmStore';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
@@ -72,10 +73,12 @@ function ChatScreenInner() {
   const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
 
+  const heroReveal = useSharedValue(useReducedMotion() ? 1 : 0);
   const { MenuElements, titleBottom } = useChatHeader({
     chatId: chatId,
     isEmpty,
     hideTitle: isPhantom || isEmpty,
+    pillReveal: heroReveal,
   });
 
   useFocusEffect(
@@ -116,6 +119,7 @@ function ChatScreenInner() {
         revealFromTop={shouldPlayBranchEntryAnimation}
         headerTitleBottom={titleBottom}
         opensModelSheet={entryAction === CHAT_ENTRY_ACTION.PickModel}
+        heroReveal={heroReveal}
       />
       {MenuElements}
     </>

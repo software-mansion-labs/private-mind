@@ -3,6 +3,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SQLiteProvider } from 'expo-sqlite';
 import { initDatabase } from '../database/db';
 import ModelUpdateSheet from '../components/bottomSheets/ModelUpdateSheet';
+import PrivacySheet from '../components/bottomSheets/PrivacySheet';
 import {
   useFonts,
   DMSans_400Regular,
@@ -155,6 +156,7 @@ export default function Layout() {
                 <BottomSheetModalProvider>
                   <RootNavigator />
                   <ModelUpdateSheet />
+                  <PrivacySheet />
                   {Platform.OS === 'android' && <ThemedStatusBar />}
                 </BottomSheetModalProvider>
                 <AppToast />

@@ -19,6 +19,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  type SharedValue,
 } from 'react-native-reanimated';
 import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
@@ -70,6 +71,7 @@ interface Props {
   revealFromTop?: boolean;
   headerTitleBottom?: number;
   opensModelSheet?: boolean;
+  heroReveal?: SharedValue<number>;
 }
 
 export default function ChatScreen({
@@ -82,6 +84,7 @@ export default function ChatScreen({
   revealFromTop = false,
   headerTitleBottom,
   opensModelSheet = false,
+  heroReveal,
 }: Props) {
   const inputRef = useRef<{
     setInput: (text: string) => void;
@@ -335,7 +338,8 @@ export default function ChatScreen({
   const heading = useHeadingAnchor(rootRef, rootFrame.height);
   const heroOpacityBeforeSwarm = useReducedMotion() ? 1 : 0;
   const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
-  const badgeReveal = useSharedValue(heroOpacityBeforeSwarm);
+  const ownBadgeReveal = useSharedValue(heroOpacityBeforeSwarm);
+  const badgeReveal = heroReveal ?? ownBadgeReveal;
 
   return (
     <View
