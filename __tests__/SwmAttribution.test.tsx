@@ -117,7 +117,7 @@ describe('huggingFaceRepoUrl', () => {
 });
 
 describe('SwmAttributionCard', () => {
-  it('reads "Optimized by Software Mansion" over the original author from data', () => {
+  it('reads "Optimized by" above the Software Mansion AI Labs name and the original author', () => {
     render(
       <SwmAttributionCard
         role="optimized"
@@ -125,7 +125,8 @@ describe('SwmAttributionCard', () => {
         onPress={jest.fn()}
       />
     );
-    expect(screen.getByText('Optimized by Software Mansion')).toBeTruthy();
+    expect(screen.getByText('Optimized by')).toBeTruthy();
+    expect(screen.getByText('Software Mansion AI Labs')).toBeTruthy();
     expect(screen.getByText('Original model by Google')).toBeTruthy();
   });
 
@@ -133,10 +134,21 @@ describe('SwmAttributionCard', () => {
     render(
       <SwmAttributionCard role="prepared" provider="Meta" onPress={jest.fn()} />
     );
-    expect(
-      screen.getByText('Prepared for mobile by Software Mansion')
-    ).toBeTruthy();
+    expect(screen.getByText('Prepared for mobile by')).toBeTruthy();
     expect(screen.getByText('Original model by Meta')).toBeTruthy();
+  });
+
+  it('keeps the Software Mansion AI Labs name on one line', () => {
+    render(
+      <SwmAttributionCard
+        role="optimized"
+        provider="Google"
+        onPress={jest.fn()}
+      />
+    );
+    expect(
+      screen.getByText('Software Mansion AI Labs').props.numberOfLines
+    ).toBe(1);
   });
 
   it('is one button for screen readers that announces both lines', () => {
@@ -149,7 +161,7 @@ describe('SwmAttributionCard', () => {
       />
     );
     const card = screen.getByRole('button', {
-      name: 'Optimized by Software Mansion. Original model by Google',
+      name: 'Optimized by Software Mansion AI Labs. Original model by Google',
     });
     fireEvent.press(card);
     expect(onPress).toHaveBeenCalledTimes(1);
@@ -173,7 +185,7 @@ describe('SwmAttributionSheet', () => {
       screen.getByTestId(`swm-attribution-row-${key}`).props.accessibilityLabel;
     expect(rowLabel('original')).toBe('Original model: Gemma 4 by Google');
     expect(rowLabel('swm')).toBe(
-      "Optimized by Software Mansion: Compressed and exported for your phone's hardware"
+      "Optimized by Software Mansion AI Labs: Compressed and exported for your phone's hardware"
     );
     expect(rowLabel('benchmarked')).toBe(
       'Regularly benchmarked: Speed and memory use on real devices'
@@ -185,22 +197,28 @@ describe('SwmAttributionSheet', () => {
 
   it('names the prepared role in the second row', () => {
     renderSheet({ ...gemma, role: 'prepared' });
+    expect(screen.getByText('Prepared for mobile by')).toBeTruthy();
+    expect(screen.queryByText('Optimized by')).toBeNull();
+  });
+
+  it('keeps the Software Mansion AI Labs name on one line under its role', () => {
+    renderSheet(gemma);
+    expect(screen.getByText('Optimized by')).toBeTruthy();
     expect(
-      screen.getByText('Prepared for mobile by Software Mansion')
-    ).toBeTruthy();
-    expect(screen.queryByText('Optimized by Software Mansion')).toBeNull();
+      screen.getByText('Software Mansion AI Labs').props.numberOfLines
+    ).toBe(1);
   });
 
   it('opens the model page and the UTM-tagged Software Mansion page as links', () => {
     renderSheet(gemma);
     fireEvent.press(screen.getByRole('link', { name: 'View model details' }));
     fireEvent.press(
-      screen.getByRole('link', { name: 'About Software Mansion' })
+      screen.getByRole('link', { name: 'About Software Mansion AI Labs' })
     );
     expect(mockOpenExternalUrl.mock.calls).toEqual([
       [GEMMA_URL],
       [
-        'https://swmansion.com/?utm_source=private-mind&utm_medium=app&utm_campaign=model-details',
+        'https://ai.swmansion.com/?utm_source=private-mind&utm_medium=app&utm_campaign=model-details',
       ],
     ]);
   });
@@ -208,6 +226,6 @@ describe('SwmAttributionSheet', () => {
   it('hides "View model details" when the model has no confirmed link', () => {
     renderSheet({ ...gemma, modelUrl: undefined });
     expect(screen.queryByText('View model details')).toBeNull();
-    expect(screen.getByText('About Software Mansion')).toBeTruthy();
+    expect(screen.getByText('About Software Mansion AI Labs')).toBeTruthy();
   });
 });

@@ -17,15 +17,16 @@ import {
   ATTRIBUTION_ROWS,
   ATTRIBUTION_SHEET_TITLE,
   OPENS_IN_BROWSER_HINT,
+  SWM_AI_LABS_NAME,
   SWM_ROLE_DETAILS,
-  SWM_ROLE_TITLES,
+  SWM_ROLE_PREFIXES,
   VIEW_MODEL_DETAILS_LABEL,
 } from '../../constants/model-attribution';
 import { openExternalUrl } from '../../utils/web/openExternalUrl';
 import { SvgComponent } from '../../utils/SvgComponent';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
-import SwmLogo from '../../assets/icons/swm-logo.svg';
+import SwmLogo from '../../assets/icons/swm-ai-labs-mark.svg';
 import BuildingIcon from '../../assets/icons/building.svg';
 import CubeIcon from '../../assets/icons/cube.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
@@ -42,7 +43,7 @@ interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal<SwmAttributionSheetData> | null>;
 }
 
-const LOGO_WIDTH = 56;
+const LOGO_WIDTH = 37;
 const LOGO_HEIGHT = 30;
 const ICON_TILE_SIZE = 32;
 const ICON_TILE_RADIUS = 10;
@@ -53,9 +54,12 @@ const ROW_TEXT_INSET = ROW_PADDING + ICON_TILE_SIZE + space.three;
 interface Row {
   key: string;
   icon: SvgComponent;
+  prefix?: string;
   title: string;
   detail: string;
 }
+
+const NAME_MIN_FONT_SCALE = 0.8;
 
 const attributionRows = ({
   family,
@@ -71,7 +75,8 @@ const attributionRows = ({
   {
     key: 'swm',
     icon: CubeIcon,
-    title: SWM_ROLE_TITLES[role],
+    prefix: SWM_ROLE_PREFIXES[role],
+    title: SWM_AI_LABS_NAME,
     detail: SWM_ROLE_DETAILS[role],
   },
   { key: 'benchmarked', icon: BenchmarkIcon, ...ATTRIBUTION_ROWS.benchmarked },
@@ -81,12 +86,13 @@ const attributionRows = ({
 const AttributionRow = ({ row }: { row: Row }) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const Icon = row.icon;
+  const spokenTitle = row.prefix ? `${row.prefix} ${row.title}` : row.title;
 
   return (
     <View
       style={styles.row}
       accessible
-      accessibilityLabel={`${row.title}: ${row.detail}`}
+      accessibilityLabel={`${spokenTitle}: ${row.detail}`}
       testID={`swm-attribution-row-${row.key}`}
     >
       <View style={styles.iconTile}>
@@ -97,7 +103,15 @@ const AttributionRow = ({ row }: { row: Row }) => {
         />
       </View>
       <View style={styles.rowText}>
-        <Text style={styles.rowTitle}>{row.title}</Text>
+        {row.prefix && <Text style={styles.rowPrefix}>{row.prefix}</Text>}
+        <Text
+          style={styles.rowTitle}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={NAME_MIN_FONT_SCALE}
+        >
+          {row.title}
+        </Text>
         <Text style={styles.rowDetail}>{row.detail}</Text>
       </View>
     </View>
@@ -215,6 +229,10 @@ const createStyles = (theme: Theme) =>
     rowText: {
       flex: 1,
       gap: space.half,
+    },
+    rowPrefix: {
+      ...textStyles.bodySecondaryRegular,
+      color: theme.text.defaultTertiary,
     },
     rowTitle: {
       ...textStyles.bodyPrimaryMedium,
