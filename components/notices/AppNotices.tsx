@@ -23,7 +23,7 @@ import CloseIcon from '../../assets/icons/close.svg';
 const STACK_GAP = 8;
 const HEADER_CLEARANCE = 16;
 const DISMISS_HIT_SLOP = 12;
-const DISMISS_ICON_SIZE = 14;
+const DISMISS_ICON_SIZE = 13;
 
 interface Props {
   children: ReactNode;

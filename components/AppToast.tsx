@@ -88,7 +88,7 @@ const AppToast: React.FC = () => {
           ]}
           testID="toast-close"
         >
-          <CloseIcon width={13.33} height={13.33} style={styles.toastIcon} />
+          <CloseIcon width={13} height={13} style={styles.toastIcon} />
         </Pressable>
       </Glass>
     ),
@@ -140,7 +140,7 @@ const createStyles = (theme: Theme) =>
     toastCloseButton: {
       width: '20%',
       alignItems: 'flex-end',
-      marginTop: 3.33,
+      marginTop: 3,
     },
     toastIcon: {
       color: theme.text.primary,

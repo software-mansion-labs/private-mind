@@ -166,7 +166,7 @@ const ModelHubScreen = () => {
       <View style={styles.emptyIconWrapper}>
         <QuestionIcon
           width={12}
-          height={21.33}
+          height={21}
           style={{ color: theme.text.primary }}
         />
       </View>

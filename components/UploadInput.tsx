@@ -64,18 +64,14 @@ const UploadInput = ({ fileInfo, onChange, disabled = false }: Props) => {
             onPress={handlePickFile}
             disabled={disabled}
           >
-            <Folder width={16.67} height={14.17} style={styles.iconContrast} />
+            <Folder width={17} height={14} style={styles.iconContrast} />
             <Text style={styles.selectButtonText}>Select a file</Text>
           </Pressable>
         </View>
       ) : (
         <View style={styles.fileBox}>
           <View style={styles.fileInfo}>
-            <AttachmentIcon
-              width={15.83}
-              height={15.83}
-              style={styles.iconPrimary}
-            />
+            <AttachmentIcon width={16} height={16} style={styles.iconPrimary} />
             <Text style={styles.fileText}>{fileInfo.name}</Text>
             {fileInfo.size ? (
               <Text style={styles.fileTextSecondary}>
