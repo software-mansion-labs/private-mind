@@ -71,7 +71,7 @@ const createStyles = (theme: Theme) =>
     action: {
       alignSelf: 'center',
       overflow: 'hidden',
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       borderWidth: stroke.soft,
       borderColor: theme.border.soft,
     },

@@ -164,7 +164,7 @@ const createStyles = (theme: Theme) =>
       height: DELETE_BUTTON_HEIGHT,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
     },
     deleteText: {
       fontFamily: fontFamily.medium,

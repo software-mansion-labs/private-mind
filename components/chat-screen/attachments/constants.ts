@@ -1,21 +1,19 @@
 import type { ViewStyle } from 'react-native';
 import { Easing } from 'react-native-reanimated';
 import { type Theme } from '../../../styles/colors';
-import { radius } from '../../../constants/design-system';
 import { MENU_ROW } from '../../menu/MenuRow';
 
 export const GUTTER = 16;
 
 export const COMPOSER = {
-  barPaddingBottom: 16,
+  keyboardGap: 8,
   cardPadding: 16,
-  cardPaddingTop: 5,
-  inputGapBelow: 5,
+  cardPaddingTop: 8,
+  inputGapBelow: 2,
   plusWell: 36,
   stripPaddingTop: 8,
   stripGap: 8,
   thumbSize: 72,
-  thumbRadius: 8,
   thumbGap: 8,
   plusSlide: 16,
 } as const;
@@ -26,15 +24,26 @@ export const PLUS_CENTER_X =
 export const PLUS_CENTER_ABOVE_BOTTOM =
   COMPOSER.cardPadding + COMPOSER.plusWell / 2;
 
+export const COMPOSER_CARD_RADIUS =
+  COMPOSER.plusWell / 2 + COMPOSER.cardPadding;
+
+export const COMPOSER_THUMB_RADIUS =
+  COMPOSER_CARD_RADIUS - COMPOSER.cardPadding;
+
 export const COMPOSER_STRIP_HEIGHT =
   COMPOSER.stripPaddingTop + COMPOSER.thumbSize + COMPOSER.stripGap;
 
+const MENU_PADDING_HORIZONTAL = 8;
+
 export const MENU = {
-  width: 280,
+  width: 240,
   itemHeight: MENU_ROW.regular.height,
   paddingVertical: 8,
-  paddingHorizontal: 16,
-  radius: radius.eighteen,
+  paddingHorizontal: MENU_PADDING_HORIZONTAL,
+  radius:
+    MENU_ROW.regular.well / 2 +
+    MENU_ROW.regular.paddingHorizontal +
+    MENU_PADDING_HORIZONTAL,
   centerOffset: 7,
   dividerThickness: 1,
   dividerMarginVertical: 4,
@@ -60,7 +69,7 @@ export const GRID = {
   columns: 3,
   gap: 3,
   cellRadius: 2,
-  panelRadius: radius.eighteen,
+  panelRadius: MENU.radius,
   badgeSize: 23,
   badgeRing: 2,
   badgeInset: 4,

@@ -4,8 +4,13 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useThemedStyles } from '../hooks/useThemedStyles';
 import { Theme } from '../styles/colors';
 import { fontFamily } from '../styles/fontStyles';
-import { radius, space } from '../constants/design-system';
+import { space } from '../constants/design-system';
 import { CAPPED_TEXT_MAX_SCALE } from '../constants/font-scale';
+import {
+  GLASS_BADGE_HEIGHT,
+  GLASS_BADGE_LINE_HEIGHT,
+  GLASS_BADGE_TEXT_SIZE,
+} from '../constants/glass-badge';
 import { LATEST_RELEASE, type Release } from '../constants/latest-release';
 import { useSettingsStore } from '../store/settingsStore';
 import { currentAppVersion } from '../utils/appVersion';
@@ -13,12 +18,10 @@ import { isOnboardingComplete } from '../utils/onboardingStatus';
 import { Feedback } from '../utils/Feedback';
 import { pressedOpacity } from '../styles/pressable';
 import WhatsNewSheet from './bottomSheets/WhatsNewSheet';
+import { Glass } from './Glass';
 import ChevronRightIcon from '../assets/icons/chevron-right.svg';
 
-const BADGE_HEIGHT = 32;
 const BADGE_HIT_SLOP = 6;
-const BADGE_TEXT_SIZE = 13;
-const BADGE_LINE_HEIGHT = 18;
 const CHEVRON_WIDTH = 6;
 const CHEVRON_HEIGHT = 10;
 
@@ -36,7 +39,7 @@ interface Props {
 }
 
 const WhatsNewBadge = ({ onSheetOpenChange }: Props) => {
-  const { styles } = useThemedStyles(createStyles);
+  const { styles, theme } = useThemedStyles(createStyles);
   const sheetRef = useRef<BottomSheetModal>(null);
   const seenVersion = useSettingsStore(
     (state) => state.dismissedWhatsNewVersion
@@ -74,36 +77,42 @@ const WhatsNewBadge = ({ onSheetOpenChange }: Props) => {
   return (
     <>
       {hasHydrated && seenVersion !== installedVersion && (
-        <Pressable
-          style={({ pressed }) => [styles.badge, pressed && pressedOpacity]}
-          onPress={() => {
-            Feedback.sheetOpen();
-            openSheet();
-          }}
-          hitSlop={BADGE_HIT_SLOP}
-          accessibilityRole="button"
-          accessibilityLabel={`What's new in version ${installedVersion}: ${LATEST_RELEASE.title}`}
-          testID="whats-new-badge"
+        <Glass
+          radius={GLASS_BADGE_HEIGHT / 2}
+          fallbackTint={theme.bg.chatBar}
+          style={styles.glass}
         >
-          <Text
-            style={styles.label}
-            maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+          <Pressable
+            style={({ pressed }) => [styles.badge, pressed && pressedOpacity]}
+            onPress={() => {
+              Feedback.sheetOpen();
+              openSheet();
+            }}
+            hitSlop={BADGE_HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel={`What's new in version ${installedVersion}: ${LATEST_RELEASE.title}`}
+            testID="whats-new-badge"
           >
-            New
-          </Text>
-          <Text
-            style={styles.title}
-            numberOfLines={1}
-            maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-          >
-            {LATEST_RELEASE.title}
-          </Text>
-          <ChevronRightIcon
-            width={CHEVRON_WIDTH}
-            height={CHEVRON_HEIGHT}
-            style={styles.chevron}
-          />
-        </Pressable>
+            <Text
+              style={styles.label}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
+              New
+            </Text>
+            <Text
+              style={styles.title}
+              numberOfLines={1}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
+              {LATEST_RELEASE.title}
+            </Text>
+            <ChevronRightIcon
+              width={CHEVRON_WIDTH}
+              height={CHEVRON_HEIGHT}
+              style={styles.chevron}
+            />
+          </Pressable>
+        </Glass>
       )}
       <WhatsNewSheet
         ref={sheetRef}
@@ -122,23 +131,24 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       flexShrink: 1,
-      minHeight: BADGE_HEIGHT,
+      minHeight: GLASS_BADGE_HEIGHT,
       gap: space.two,
       paddingHorizontal: space.three,
-      borderRadius: radius.full,
-      backgroundColor: theme.bg.accentSoft,
+    },
+    glass: {
+      flexShrink: 1,
     },
     label: {
       fontFamily: fontFamily.bold,
-      fontSize: BADGE_TEXT_SIZE,
-      lineHeight: BADGE_LINE_HEIGHT,
+      fontSize: GLASS_BADGE_TEXT_SIZE,
+      lineHeight: GLASS_BADGE_LINE_HEIGHT,
       color: theme.text.accent,
     },
     title: {
       flexShrink: 1,
       fontFamily: fontFamily.regular,
-      fontSize: BADGE_TEXT_SIZE,
-      lineHeight: BADGE_LINE_HEIGHT,
+      fontSize: GLASS_BADGE_TEXT_SIZE,
+      lineHeight: GLASS_BADGE_LINE_HEIGHT,
       color: theme.text.primary,
     },
     chevron: {

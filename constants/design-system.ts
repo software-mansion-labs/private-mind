@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { fontFamily } from '../styles/fontStyles';
 
 export const space = {
@@ -24,6 +25,12 @@ export const radius = {
   eighteen: 18,
   full: 9999,
 } as const;
+
+const BOTTOM_BAR_GAP = Platform.OS === 'android' ? 12 : 0;
+const BOTTOM_BAR_MIN_PADDING = 16;
+
+export const bottomBarPadding = (bottomInset: number) =>
+  Math.max(bottomInset + BOTTOM_BAR_GAP, BOTTOM_BAR_MIN_PADDING);
 
 export const stroke = {
   soft: 1,

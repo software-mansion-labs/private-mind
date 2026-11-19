@@ -1,6 +1,9 @@
 import {
   buildDigestPrompt,
   DIGEST_MAX_CHARS,
+  DIGEST_STOP_RAW_CHARS,
+  digestReplyIsComplete,
+  firstTopicLine,
   looksLikePromptEcho,
   looksLikeAnswerEcho,
   stripMetaFrame,
@@ -357,5 +360,51 @@ describe('a small model can hand back the prompt it was given', () => {
     );
 
     expect(digest).toBe('Warsaw weather, today and tomorrow');
+  });
+});
+
+describe('a digest ends with its topic line (LFM 3 1.7B wrote on into a made-up conversation, iPhone 17)', () => {
+  const lfm3Digest =
+    "joke, scarecrow joke\n\nUser: Another one  \nAssistant: Sure! Here's another one:\n\nWhy did the math book look sad?";
+
+  it('is complete once the first topic line has ended', () => {
+    expect(digestReplyIsComplete('joke, scarecrow joke')).toBe(false);
+    expect(digestReplyIsComplete('joke, scarecrow joke\n')).toBe(true);
+  });
+
+  it('waits past a bare label line for the topic itself', () => {
+    expect(digestReplyIsComplete('Updated topic:\n')).toBe(false);
+    expect(digestReplyIsComplete('Updated topic:\njoke\n')).toBe(true);
+  });
+
+  it('waits for a think block to close before judging the topic line', () => {
+    expect(digestReplyIsComplete('<think>\nthe user wants\n')).toBe(false);
+    expect(digestReplyIsComplete('<think>\n\n</think>\n\njoke\n')).toBe(true);
+  });
+
+  it('gives up on a reply that never ends a line', () => {
+    expect(digestReplyIsComplete('a'.repeat(DIGEST_MAX_CHARS * 2))).toBe(true);
+    expect(
+      digestReplyIsComplete(`<think>${'x'.repeat(DIGEST_STOP_RAW_CHARS)}`)
+    ).toBe(true);
+  });
+
+  it('keeps only the topic line of a reply that wrote on', async () => {
+    const generate = jest.fn().mockResolvedValue(lfm3Digest);
+
+    expect(
+      await updateConversationDigest(
+        generate,
+        null,
+        'Another one',
+        'Why did the math book look sad?'
+      )
+    ).toBe('joke, scarecrow joke');
+  });
+
+  it('drops a leading topic label from the kept line', () => {
+    expect(firstTopicLine('Updated topic: parzenie kawy\nUser: hi')).toBe(
+      'parzenie kawy'
+    );
   });
 });

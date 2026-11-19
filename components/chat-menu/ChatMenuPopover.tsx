@@ -30,6 +30,7 @@ import PopoverRow from '../menu/PopoverRow';
 import EditIcon from '../../assets/icons/edit.svg';
 import ShareIcon from '../../assets/icons/upload.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
+import ShieldIcon from '../../assets/icons/shield-check.svg';
 
 const ICON_BUTTON_SIZE = 36;
 const ICON_SIZE = 16;
@@ -38,9 +39,17 @@ const ROW_ICON_WELL = 28;
 const NAME_LINE_HEIGHT = lineHeights.md;
 const TITLE_BLOCK_HEIGHT = lineHeights.xs + NAME_LINE_HEIGHT;
 const FIELD_HEIGHT = TITLE_BLOCK_HEIGHT;
-const FIELD_RADIUS = 10;
 const FIELD_BORDER = 1.5;
 const ROW_LABEL_SIZE = 15;
+const PRIVACY_SHIELD_TILE = 28;
+const PRIVACY_HEADING_GAP = space.two;
+const PRIVACY_TEXT_INSET = PRIVACY_SHIELD_TILE + PRIVACY_HEADING_GAP;
+const PRIVACY_SHIELD_WIDTH = 10;
+const PRIVACY_SHIELD_HEIGHT = 12;
+const PRIVACY_LINK_HIT_SLOP = 8;
+
+export const PRIVATE_CHAT_DETAIL =
+  'Everything happens on your device, even offline';
 
 interface Props {
   visible: boolean;
@@ -49,6 +58,7 @@ interface Props {
   onRename: (title: string) => void;
   onShare: () => void;
   onDelete: () => void;
+  onPrivacy?: () => void;
   onClose: () => void;
 }
 
@@ -59,6 +69,7 @@ const ChatMenuPopover = ({
   onRename,
   onShare,
   onDelete,
+  onPrivacy,
   onClose,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
@@ -164,6 +175,51 @@ const ChatMenuPopover = ({
         )}
       </View>
       <View style={styles.divider} />
+      {onPrivacy && (
+        <>
+          <View style={styles.privacy} testID="chat-menu-privacy-info">
+            <View style={styles.privacyHeading}>
+              <View style={styles.privacyShieldTile}>
+                <ShieldIcon
+                  width={PRIVACY_SHIELD_WIDTH}
+                  height={PRIVACY_SHIELD_HEIGHT}
+                  style={styles.accentIcon}
+                />
+              </View>
+              <Text
+                style={styles.privacyTitle}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              >
+                Private chat
+              </Text>
+            </View>
+            <Text
+              style={styles.privacyDetail}
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
+              {PRIVATE_CHAT_DETAIL}
+            </Text>
+            <Pressable
+              onPress={onPrivacy}
+              hitSlop={PRIVACY_LINK_HIT_SLOP}
+              style={({ pressed }) => [
+                styles.privacyLink,
+                pressed && pressedOpacity,
+              ]}
+              accessibilityRole="button"
+              testID="chat-menu-privacy"
+            >
+              <Text
+                style={styles.privacyLinkLabel}
+                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+              >
+                How this works
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.divider} />
+        </>
+      )}
       <View style={styles.actions}>
         <ActionRow
           label="Share"
@@ -266,11 +322,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       minWidth: 0,
       minHeight: FIELD_HEIGHT,
-      paddingHorizontal: space.twoHalf,
+      paddingHorizontal: space.four,
       paddingVertical: 0,
       includeFontPadding: false,
       textAlignVertical: 'center',
-      borderRadius: FIELD_RADIUS,
+      borderRadius: radius.full,
       borderWidth: FIELD_BORDER,
       borderColor: theme.text.accent,
       fontFamily: fontFamily.medium,
@@ -279,8 +335,8 @@ const createStyles = (theme: Theme) =>
     },
     saveButton: {
       minHeight: FIELD_HEIGHT,
-      paddingHorizontal: space.three,
-      borderRadius: FIELD_RADIUS,
+      paddingHorizontal: space.four,
+      borderRadius: radius.full,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bg.main,
@@ -305,6 +361,44 @@ const createStyles = (theme: Theme) =>
     },
     secondaryIcon: {
       color: theme.text.defaultSecondary,
+    },
+    accentIcon: {
+      color: theme.text.accent,
+    },
+    privacy: {
+      gap: space.two,
+      paddingVertical: space.three,
+      paddingHorizontal: space.four,
+    },
+    privacyHeading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: PRIVACY_HEADING_GAP,
+    },
+    privacyShieldTile: {
+      width: PRIVACY_SHIELD_TILE,
+      height: PRIVACY_SHIELD_TILE,
+      borderRadius: radius.full,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.accentSoft,
+    },
+    privacyTitle: {
+      ...textStyles.bodyPrimaryBold,
+      color: theme.text.primary,
+    },
+    privacyDetail: {
+      ...textStyles.bodySecondaryRegular,
+      marginLeft: PRIVACY_TEXT_INSET,
+      color: theme.text.defaultSecondary,
+    },
+    privacyLink: {
+      alignSelf: 'flex-start',
+      marginLeft: PRIVACY_TEXT_INSET,
+    },
+    privacyLinkLabel: {
+      ...textStyles.bodySecondaryMedium,
+      color: theme.text.accent,
     },
     rowLabel: {
       flex: 1,

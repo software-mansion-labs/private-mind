@@ -12,6 +12,7 @@ import {
   COMPOSER_STRIP_HEIGHT,
   GRID,
   GUTTER,
+  COMPOSER_THUMB_RADIUS,
   mix,
   panelPalette,
   type Frame,
@@ -68,7 +69,7 @@ const FlyingPhoto = ({
       borderRadius: mix(
         a,
         flight.fromRadius ?? GRID.cellRadius,
-        COMPOSER.thumbRadius
+        COMPOSER_THUMB_RADIUS
       ),
     };
   });

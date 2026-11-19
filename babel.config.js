@@ -23,6 +23,12 @@ module.exports = function (api) {
         },
       ],
     ],
+    overrides: [
+      {
+        test: (filename) => !!filename?.includes('/components/swarm/'),
+        plugins: ['unplugin-typegpu/babel'],
+      },
+    ],
     env: {
       // Strip console.* from release bundles, but keep console.error: with no
       // crash reporting, the platform log is the only way a failure on a real

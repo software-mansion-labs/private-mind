@@ -1,6 +1,12 @@
 import { renderHook } from '@testing-library/react-native';
 import { AppState, Keyboard } from 'react-native';
 import { useKeyboardLift } from '../components/chat-screen/useKeyboardLift';
+import { COMPOSER } from '../components/chat-screen/attachments/constants';
+import { bottomBarPadding } from '../constants/design-system';
+
+const restToKeyboardShift = (bottomInset: number) =>
+  bottomBarPadding(bottomInset) - COMPOSER.keyboardGap;
+const OPEN_LIFT = -346 + restToKeyboardShift(34);
 
 let mockInsetsBottom = 0;
 const mockHeight = { value: 0 };
@@ -72,14 +78,14 @@ describe('useKeyboardLift', () => {
     expect(result.current.value).toBe(0);
   });
 
-  it('gives back the bottom inset the open keyboard swallows', () => {
+  it('gives back the bottom inset and the rest gap, keeping the keyboard gap', () => {
     mockInsetsBottom = 34;
     mockHeight.value = -346;
     mockProgress.value = 1;
 
     const { result } = renderHook(() => useKeyboardLift());
 
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
   });
 
   it('scales the inset compensation with keyboard progress', () => {
@@ -89,16 +95,16 @@ describe('useKeyboardLift', () => {
 
     const { result } = renderHook(() => useKeyboardLift());
 
-    expect(result.current.value).toBe(-156);
+    expect(result.current.value).toBe(-173 + 0.5 * restToKeyboardShift(34));
   });
 
-  it('equals the raw keyboard height on a device without a bottom inset', () => {
+  it('keeps the minimum rest gap on a device without a bottom inset', () => {
     mockHeight.value = -300;
     mockProgress.value = 1;
 
     const { result } = renderHook(() => useKeyboardLift());
 
-    expect(result.current.value).toBe(-300);
+    expect(result.current.value).toBe(-300 + restToKeyboardShift(0));
   });
 
   it('drops the bar back when the keyboard finishes hiding', () => {
@@ -107,7 +113,7 @@ describe('useKeyboardLift', () => {
     mockProgress.value = 1;
 
     const { result, rerender } = renderHook(() => useKeyboardLift());
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
 
     keyboardHandler.onEnd!({ height: 0, progress: 0 });
     rerender({});
@@ -151,7 +157,7 @@ describe('useKeyboardLift', () => {
     mockProgress.value = 1;
 
     const { result, rerender } = renderHook(() => useKeyboardLift());
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
 
     listeners.get('keyboardDidHide')!();
     rerender({});
@@ -159,7 +165,7 @@ describe('useKeyboardLift', () => {
 
     listeners.get('keyboardDidShow')!();
     rerender({});
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
     spy.mockRestore();
   });
 
@@ -177,7 +183,7 @@ describe('useKeyboardLift', () => {
     mockProgress.value = 1;
 
     const { result, rerender } = renderHook(() => useKeyboardLift());
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
 
     onChange!('active');
     rerender({});
@@ -201,7 +207,7 @@ describe('useKeyboardLift', () => {
     mockProgress.value = 1;
     rerender({});
 
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
   });
 
   it('recomputes after the keyboard values change', () => {
@@ -214,6 +220,6 @@ describe('useKeyboardLift', () => {
     mockProgress.value = 1;
     rerender({});
 
-    expect(result.current.value).toBe(-312);
+    expect(result.current.value).toBe(OPEN_LIFT);
   });
 });

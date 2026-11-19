@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SQLiteProvider } from 'expo-sqlite';
 import { initDatabase } from '../database/db';
+import ModelUpdateSheet from '../components/bottomSheets/ModelUpdateSheet';
+import PrivacySheet from '../components/bottomSheets/PrivacySheet';
 import {
   useFonts,
   DMSans_400Regular,
@@ -18,6 +20,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import AppToast from '../components/AppToast';
 import AppNotices from '../components/notices/AppNotices';
 import { useUnsupportedCpuNotice } from '../hooks/useUnsupportedCpuNotice';
+import { useAndroidSupportEndingNotice } from '../hooks/useAndroidSupportEndingNotice';
 import { useTurnResumesOnForeground } from '../hooks/useTurnResumesOnForeground';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -40,6 +43,7 @@ function RootNavigator() {
   useTurnResumesOnForeground();
   useDownloadsSurviveBackground();
   useUnsupportedCpuNotice();
+  useAndroidSupportEndingNotice();
   useEffect(() => {
     SplashScreen.hideAsync();
     noteAppLaunch();
@@ -151,6 +155,8 @@ export default function Layout() {
               <KeyboardProvider>
                 <BottomSheetModalProvider>
                   <RootNavigator />
+                  <ModelUpdateSheet />
+                  <PrivacySheet />
                   {Platform.OS === 'android' && <ThemedStatusBar />}
                 </BottomSheetModalProvider>
                 <AppToast />

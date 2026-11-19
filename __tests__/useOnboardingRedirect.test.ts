@@ -82,3 +82,35 @@ describe('redirect logic', () => {
     );
   });
 });
+
+describe('reported outcome, so the welcome animation waits for it', () => {
+  it('is still checking before the models are known', () => {
+    mockGetAllModels.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => useOnboardingRedirect());
+    expect(result.current).toBe('checking');
+  });
+
+  it('stays when a model is downloaded', async () => {
+    const { result } = renderHook(() => useOnboardingRedirect());
+    await waitFor(() => expect(result.current).toBe('stayed'));
+  });
+
+  it('reports the redirect when the starting model picker is opening', async () => {
+    mockGetAllModels.mockResolvedValue([makeModel(false)]);
+    const { result } = renderHook(() => useOnboardingRedirect());
+    await waitFor(() => expect(result.current).toBe('redirected'));
+  });
+
+  it('reports the redirect when onboarding is opening', async () => {
+    mockIsOnboardingComplete.mockResolvedValue(false);
+    const { result } = renderHook(() => useOnboardingRedirect());
+    await waitFor(() => expect(result.current).toBe('redirected'));
+  });
+
+  it('stays when the check fails, so the screen is not left waiting', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockGetAllModels.mockRejectedValue(new Error('db closed'));
+    const { result } = renderHook(() => useOnboardingRedirect());
+    await waitFor(() => expect(result.current).toBe('stayed'));
+  });
+});

@@ -1,5 +1,7 @@
 import React from 'react';
-import { renderHook } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
+import { render, renderHook, screen } from '@testing-library/react-native';
 
 const mockSetOptions = jest.fn();
 
@@ -39,6 +41,7 @@ jest.mock('../store/chatStore', () => ({
 }));
 
 import useChatHeader from '../hooks/useChatHeader';
+import OnDevicePill from '../components/chat-screen/OnDevicePill';
 import { headerTitleMaxWidth } from '../constants/chat-screen';
 
 const renderChatHeader = () =>
@@ -88,11 +91,34 @@ describe('the title in a chat not saved yet', () => {
     return headerTitle();
   };
 
-  it('leaves the header without a title, since the input names the model', () => {
-    expect(headerTitleOf(true)).toBeNull();
+  it('shows the on-device pill in place of a title', () => {
+    expect(headerTitleOf(true)).toEqual(<OnDevicePill reveal={undefined} />);
   });
 
   it('keeps the title in a saved chat', () => {
     expect(headerTitleOf(false)).not.toBeNull();
+  });
+});
+
+describe('the on-device pill in the header', () => {
+  const pillOpacity = (reveal: number) => {
+    render(
+      <OnDevicePill
+        reveal={{ get: () => reveal } as unknown as SharedValue<number>}
+      />
+    );
+    return (
+      StyleSheet.flatten(
+        screen.getByTestId('on-device-pill-reveal').props.style
+      ) as { opacity: number }
+    ).opacity;
+  };
+
+  it('waits for the new chat animation before it shows', () => {
+    expect(pillOpacity(0)).toBe(0);
+  });
+
+  it('shows once the animation reveals it', () => {
+    expect(pillOpacity(1)).toBe(1);
   });
 });

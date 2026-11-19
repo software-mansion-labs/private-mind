@@ -149,7 +149,7 @@ const createStyles = (theme: Theme) =>
     modelCard: {
       padding: space.four,
       borderWidth: stroke.soft,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       borderColor: theme.border.soft,
     },
     modelText: {

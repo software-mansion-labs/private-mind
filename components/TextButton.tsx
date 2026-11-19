@@ -11,7 +11,7 @@ import { useThemedStyles } from '../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../styles/fontStyles';
 import { Theme } from '../styles/colors';
 import { DIMMED_OPACITY, pressedOpacity } from '../styles/pressable';
-import { space, stroke } from '../constants/design-system';
+import { radius, space, stroke } from '../constants/design-system';
 
 interface Props {
   text: string;
@@ -51,7 +51,7 @@ const createStyles = (theme: Theme, disabled: boolean) =>
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: stroke.soft,
-      borderRadius: 4,
+      borderRadius: radius.full,
       width: '100%',
       borderColor: theme.border.soft,
       backgroundColor: 'transparent',

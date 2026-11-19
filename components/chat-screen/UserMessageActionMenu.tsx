@@ -40,7 +40,7 @@ const createStyles = (theme: Theme) =>
     },
     menu: {
       minWidth: 112,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       overflow: 'hidden',
       backgroundColor: theme.bg.chatBar,
       borderWidth: StyleSheet.hairlineWidth,

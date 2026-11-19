@@ -1,5 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import React, { RefObject } from 'react';
+import {
+  NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  TextLayoutEventData,
+} from 'react-native';
 import Animated, {
   FadeOut,
   useAnimatedStyle,
@@ -29,6 +34,10 @@ interface Props {
   barHeight: SharedValue<number>;
   keyboardLift: SharedValue<number>;
   onWhatsNewOpenChange?: (open: boolean) => void;
+  headingRef?: RefObject<Text | null>;
+  onHeadingLayout?: (event: NativeSyntheticEvent<TextLayoutEventData>) => void;
+  headingReveal?: SharedValue<number>;
+  badgeReveal?: SharedValue<number>;
 }
 
 const NewChatHero = ({
@@ -36,6 +45,10 @@ const NewChatHero = ({
   barHeight,
   keyboardLift,
   onWhatsNewOpenChange,
+  headingRef,
+  onHeadingLayout,
+  headingReveal,
+  badgeReveal,
 }: Props) => {
   const restBottom = screenHeight * NEW_CHAT_REST_BOTTOM_FRACTION;
   const { styles } = useThemedStyles(createStyles, screenHeight - restBottom);
@@ -51,6 +64,13 @@ const NewChatHero = ({
     ],
   }));
 
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: headingReveal ? headingReveal.get() : 1,
+  }));
+  const badgeStyle = useAnimatedStyle(() => ({
+    opacity: badgeReveal ? badgeReveal.get() : 1,
+  }));
+
   return (
     <Animated.View
       style={[styles.container, pushStyle]}
@@ -58,14 +78,18 @@ const NewChatHero = ({
       pointerEvents="box-none"
       testID="new-chat-hero"
     >
-      <WhatsNewBadge onSheetOpenChange={onWhatsNewOpenChange} />
-      <Text
-        style={styles.heading}
+      <Animated.View style={badgeStyle}>
+        <WhatsNewBadge onSheetOpenChange={onWhatsNewOpenChange} />
+      </Animated.View>
+      <Animated.Text
+        ref={headingRef}
+        style={[styles.heading, revealStyle]}
         accessibilityRole="header"
         maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        onTextLayout={onHeadingLayout}
       >
         {NEW_CHAT_HEADING}
-      </Text>
+      </Animated.Text>
     </Animated.View>
   );
 };

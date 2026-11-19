@@ -176,7 +176,7 @@ jest.mock('../hooks/useStartingFeatures', () => {
             description: 'Chat with files, search the web',
             sizeGb: 0.58,
             status: statuses.documents,
-            progress: 0,
+            progress: statuses.documents === 'downloaded' ? 1 : 0,
           },
           {
             key: 'dictation',
@@ -184,7 +184,7 @@ jest.mock('../hooks/useStartingFeatures', () => {
             description: 'Speak instead of typing',
             sizeGb: 0.08,
             status: statuses.dictation,
-            progress: 0,
+            progress: statuses.dictation === 'downloaded' ? 1 : 0,
           },
         ],
         download,
@@ -220,6 +220,9 @@ const renderScreen = async () => {
   render(<SelectStartingModelScreen />);
   await screen.findByTestId('card-Gemma');
 };
+
+const expandFeatures = () =>
+  fireEvent.press(screen.getByTestId('starting-features-expand'));
 
 const startDownload = async (label: string, count: number) => {
   fireEvent.press(screen.getByText(label));
@@ -266,8 +269,75 @@ describe('select starting model', () => {
     await startDownload('Download 2 models · 5.06 GB', 2);
   });
 
+  it('folds the features into one section that shows their total size', async () => {
+    await renderScreen();
+
+    expect(screen.queryByTestId('starting-feature-documents')).toBeNull();
+    expect(screen.getByTestId('starting-features-size').props.children).toBe(
+      '0.66 GB'
+    );
+
+    expandFeatures();
+    expect(screen.getByTestId('starting-feature-documents')).toBeTruthy();
+    expect(screen.getByTestId('starting-feature-dictation')).toBeTruthy();
+  });
+
+  it('drops every feature from the download with the section checkbox', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+
+    fireEvent.press(screen.getByTestId('starting-features-select-all'));
+    expect(screen.getByText('Download 1 model · 2.90 GB')).toBeTruthy();
+    expect(
+      screen.getByTestId('starting-features-select-all').props
+        .accessibilityState
+    ).toMatchObject({ checked: false });
+
+    fireEvent.press(screen.getByTestId('starting-features-select-all'));
+    expect(screen.getByText('Download 3 models · 3.56 GB')).toBeTruthy();
+  });
+
+  it('marks the section as partly ticked when one feature is left out', async () => {
+    await renderScreen();
+    expandFeatures();
+
+    fireEvent.press(screen.getByTestId('starting-feature-documents'));
+
+    expect(
+      screen.getByTestId('starting-features-select-all').props
+        .accessibilityState
+    ).toMatchObject({ checked: 'mixed' });
+    expect(screen.getByTestId('starting-features-size').props.children).toBe(
+      '0.08 GB of 0.66 GB'
+    );
+  });
+
+  it('ticks every feature again from a partly ticked section', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    expandFeatures();
+    fireEvent.press(screen.getByTestId('starting-feature-documents'));
+
+    fireEvent.press(screen.getByTestId('starting-features-select-all'));
+
+    expect(screen.getByText('Download 3 models · 3.56 GB')).toBeTruthy();
+  });
+
+  it('keeps a finished feature in the section progress so it never steps back', async () => {
+    await renderScreen();
+    fireEvent.press(screen.getByTestId('card-Gemma'));
+    await startDownload('Download 3 models · 3.56 GB', 1);
+
+    act(() =>
+      startingFeatures.useFeatureStatuses.setState({ dictation: 'downloaded' })
+    );
+
+    expect(screen.getByText('12%')).toBeTruthy();
+  });
+
   it('leaves an unticked feature out of the download size', async () => {
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('starting-feature-documents'));
     expect(screen.getByText('Download 2 models · 2.98 GB')).toBeTruthy();
@@ -275,6 +345,7 @@ describe('select starting model', () => {
 
   it('downloads the ticked features at the same time as the model', async () => {
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     fireEvent.press(screen.getByTestId('starting-feature-dictation'));
     await startDownload('Download 2 models · 3.48 GB', 1);
@@ -295,11 +366,14 @@ describe('select starting model', () => {
     );
 
     expect(await screen.findByText('Start chatting')).toBeTruthy();
-    expect(screen.getByText('You can still get these later.')).toBeTruthy();
+    expect(
+      screen.getByText('Optional. You can still get these later.')
+    ).toBeTruthy();
   });
 
   it('shows a downloading feature with the same progress details as a model', async () => {
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     await startDownload('Download 3 models · 3.56 GB', 1);
 
@@ -314,6 +388,7 @@ describe('select starting model', () => {
 
   it('drops a feature from the selection when its download is cancelled', async () => {
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     await startDownload('Download 3 models · 3.56 GB', 1);
 
@@ -329,6 +404,7 @@ describe('select starting model', () => {
 
   it('unticks a cancelled feature without waiting for the cancel to land', async () => {
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     await startDownload('Download 3 models · 3.56 GB', 1);
     startingFeatures.cancel.mockImplementationOnce(
@@ -347,6 +423,7 @@ describe('select starting model', () => {
 
   it('takes a cancelled feature out of the overall progress', async () => {
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     await startDownload('Download 3 models · 3.56 GB', 1);
     act(() =>
@@ -372,6 +449,7 @@ describe('select starting model', () => {
       });
     });
     await renderScreen();
+    expandFeatures();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     await startDownload('Download 3 models · 3.56 GB', 1);
 
@@ -394,7 +472,7 @@ describe('select starting model', () => {
     });
     await renderScreen();
 
-    expect(screen.queryByText('More features')).toBeNull();
+    expect(screen.queryByText('Additional features')).toBeNull();
     fireEvent.press(screen.getByTestId('card-Gemma'));
     expect(screen.getByText('Download 1 model · 2.90 GB')).toBeTruthy();
   });

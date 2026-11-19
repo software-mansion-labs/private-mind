@@ -16,3 +16,8 @@ defineGlobal('__ExpoImportMetaRegistry', { url: null });
 if (typeof globalThis.structuredClone === 'undefined') {
   defineGlobal('structuredClone', (obj) => JSON.parse(JSON.stringify(obj)));
 }
+
+jest.mock('./components/swarm/ParticleSwarm', () => ({
+  __esModule: true,
+  default: () => null,
+}));

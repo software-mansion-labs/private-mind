@@ -115,7 +115,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       gap: space.half,
       padding: space.three,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       backgroundColor: theme.bg.softTertiary,
     },
     statHighlighted: {

@@ -17,7 +17,7 @@ import { launchSystemPhotoPicker } from '../utils/systemPhotoPicker';
 
 export type DownloadResume = 'attachment' | 'none';
 
-export type DocumentPickOutcome = 'picked' | 'canceled';
+export type DocumentPickOutcome = 'picked' | 'canceled' | 'awaiting-download';
 
 export interface Attachment {
   id: string;
@@ -538,9 +538,10 @@ export const useAttachment = () => {
     }
     if (panelOpenRef.current) {
       pendingDownloadSheetRef.current = true;
-      return;
+      return 'awaiting-download';
     }
     presentDownloadSheet();
+    return 'awaiting-download';
   }, [awaitVectorStore, runDocumentPicker, presentDownloadSheet]);
 
   const addUrlSource = useCallback(

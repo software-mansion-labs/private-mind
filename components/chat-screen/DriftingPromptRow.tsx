@@ -26,6 +26,7 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import type { PromptSuggestion } from '../../constants/default-prompts';
 import { pressedOpacity } from '../../styles/pressable';
 import { GUTTER } from './attachments/constants';
+import { Glass } from '../Glass';
 import {
   DRIFT_RESUME_MS,
   DRIFT_SETTLE_MS,
@@ -41,6 +42,7 @@ const PILL_HEIGHT = 44;
 const COPY_ON_SCREEN_AT_REST = 1;
 const ICON_TILE_SIZE = 24;
 const ICON_SIZE = 14;
+const PILL_SHADOW_ROOM = space.two;
 
 interface Props {
   suggestions: PromptSuggestion[];
@@ -177,33 +179,35 @@ const SuggestionPill = ({ suggestion, onPress }: PillProps) => {
   const toneColors = theme.label[tone];
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${suggestion.title}: ${suggestion.prompt}`}
-      testID="prompt-suggestion-pill"
-    >
-      <View
-        style={[styles.iconTile, { backgroundColor: toneColors.background }]}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        testID="prompt-suggestion-tile"
+    <Glass radius={PILL_HEIGHT / 2} fallbackTint={theme.bg.chatBar}>
+      <Pressable
+        style={({ pressed }) => [styles.pill, pressed && pressedOpacity]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${suggestion.title}: ${suggestion.prompt}`}
+        testID="prompt-suggestion-pill"
       >
-        <Icon
-          width={ICON_SIZE}
-          height={ICON_SIZE}
-          style={{ color: toneColors.foreground }}
-        />
-      </View>
-      <Text
-        style={styles.title}
-        numberOfLines={1}
-        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-      >
-        {suggestion.title}
-      </Text>
-    </Pressable>
+        <View
+          style={[styles.iconTile, { backgroundColor: toneColors.background }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          testID="prompt-suggestion-tile"
+        >
+          <Icon
+            width={ICON_SIZE}
+            height={ICON_SIZE}
+            style={{ color: toneColors.foreground }}
+          />
+        </View>
+        <Text
+          style={styles.title}
+          numberOfLines={1}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        >
+          {suggestion.title}
+        </Text>
+      </Pressable>
+    </Glass>
   );
 };
 
@@ -214,6 +218,8 @@ const createStyles = (theme: Theme) =>
     viewport: {
       overflow: 'hidden',
       marginHorizontal: -GUTTER,
+      paddingVertical: PILL_SHADOW_ROOM,
+      marginVertical: -PILL_SHADOW_ROOM,
     },
     track: {
       flexDirection: 'row',
@@ -231,8 +237,6 @@ const createStyles = (theme: Theme) =>
       gap: space.two,
       paddingLeft: space.twoHalf,
       paddingRight: space.four,
-      borderRadius: radius.full,
-      backgroundColor: theme.bg.chatBar,
     },
     iconTile: {
       width: ICON_TILE_SIZE,

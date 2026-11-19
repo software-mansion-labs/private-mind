@@ -94,10 +94,10 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       paddingVertical: space.two,
       paddingHorizontal: DRAWER_ITEM_INSET,
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
     },
     activeBackground: {
-      backgroundColor: theme.bg.softTertiary,
+      backgroundColor: theme.bg.drawerItemActive,
     },
     content: {
       flexDirection: 'row',

@@ -3,22 +3,29 @@ import {
   type AccessibilityActionEvent,
   type AccessibilityActionInfo,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import {
   useModelDownload,
   type WifiWarningSheetRef,
 } from '../../hooks/useModelDownload';
 import { useDeleteModelFiles } from '../../hooks/useDeleteModelFiles';
+import { useModelUpdate } from '../../hooks/useModelUpdate';
 import { Theme } from '../../styles/colors';
-import { dimmedOpacity } from '../../styles/pressable';
+import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
+import { fontFamily, fontSizes } from '../../styles/fontStyles';
+import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
+import { MODEL_UPDATE_TEXT } from '../../constants/model-update';
 import { radius, space, stroke } from '../../constants/design-system';
 import { Model } from '../../database/modelRepository';
 import { ModelState } from '../../store/modelStore';
 import { isModelCompatible } from '../../utils/modelCompatibility';
 import { getModelFamily } from '../../utils/modelFamily';
 import { formatModelMeta } from '../../utils/modelMeta';
+import { needsUpdate } from '../../utils/modelUpdate';
 import CircleButton, { CIRCLE_BUTTON_SIZE } from '../CircleButton';
 import ModelFamilyTile from './ModelFamilyTile';
 import ModelRow from './ModelRow';
@@ -33,6 +40,7 @@ import DownloadArrowIcon from '../../assets/icons/download-arrow.svg';
 import CloseIcon from '../../assets/icons/close.svg';
 import TrashIcon from '../../assets/icons/trash.svg';
 import CheckIcon from '../../assets/icons/check.svg';
+import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
 
 const ACTION_ICON_SIZE = 16;
 const CANCEL_ICON_SIZE = 13.33;
@@ -41,6 +49,7 @@ const CHECKBOX_RADIUS = 7;
 const CHECKBOX_BORDER_WIDTH = 1.5;
 const CHECKBOX_ICON_SIZE = 14;
 const LOCKED_OPACITY = 0.4;
+const UPDATE_HIT_SLOP = 8;
 
 export interface ModelSelection {
   selected: boolean;
@@ -70,17 +79,20 @@ const ModelDownloadRow = ({
 }: Props) => {
   const { styles, theme } = useThemedStyles(
     createStyles,
-    selection?.selected ?? false
+    selection?.selected ?? false,
+    matchFamilyCards
   );
   const { status, progress, rate, startDownload, stopDownload } =
     useModelDownload(model, wifiWarningSheetRef);
   const { deleteModelFiles, ConfirmElement } = useDeleteModelFiles();
+  const { updateModel, ConfirmElement: UpdateConfirm } = useModelUpdate();
 
   const isCompatible = isModelCompatible(model);
   const isDownloaded = status === ModelState.Downloaded;
   const isDownloading = status === ModelState.Downloading;
   const canDownload = status === ModelState.NotStarted && isCompatible;
   const canDelete = isDownloaded && model.source !== 'local';
+  const canUpdate = isDownloaded && !selection && needsUpdate(model);
   const showsCheckbox = selection && !(selection.selected && selection.locked);
   const disabled = selection
     ? !isCompatible || selection.locked
@@ -95,12 +107,17 @@ const ModelDownloadRow = ({
     if (await deleteModelFiles(model)) onDeleted?.(model);
   };
 
+  const update = () => updateModel(model);
+
   const accessibilityActions: AccessibilityActionInfo[] = [
     ...(canDownload && !selection
       ? [{ name: 'download', label: 'Download' }]
       : []),
     ...(isDownloading
       ? [{ name: 'cancelDownload', label: 'Cancel download' }]
+      : []),
+    ...(canUpdate
+      ? [{ name: 'update', label: MODEL_UPDATE_TEXT.chatBannerAction }]
       : []),
     ...(canDelete ? [{ name: 'delete', label: 'Delete model files' }] : []),
   ];
@@ -110,6 +127,7 @@ const ModelDownloadRow = ({
   }: AccessibilityActionEvent) => {
     if (nativeEvent.actionName === 'download') startDownload();
     if (nativeEvent.actionName === 'cancelDownload') cancel();
+    if (nativeEvent.actionName === 'update') update();
     if (nativeEvent.actionName === 'delete') remove();
   };
 
@@ -148,6 +166,47 @@ const ModelDownloadRow = ({
       testID="model-download-row-download"
     />
   ) : null;
+
+  const updateButton = canUpdate && (
+    <Pressable
+      onPress={update}
+      hitSlop={UPDATE_HIT_SLOP}
+      style={({ pressed }) => [styles.updateButton, pressed && pressedOpacity]}
+      accessibilityRole="button"
+      accessibilityLabel={`Update ${model.modelName}`}
+      testID="model-download-row-update"
+    >
+      <View style={styles.updateCircle}>
+        <RotateLeftIcon
+          width={ACTION_ICON_SIZE}
+          height={ACTION_ICON_SIZE}
+          color={theme.text.accent}
+        />
+      </View>
+      <Text
+        style={styles.updateButtonText}
+        maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+      >
+        {MODEL_UPDATE_TEXT.chatBannerAction}
+      </Text>
+    </Pressable>
+  );
+
+  const badges = <ModelCapabilityBadges model={model} style={styles.badges} />;
+
+  const textBlock = (children?: React.ReactNode) => (
+    <ModelRowText
+      title={model.modelName}
+      titleLines={0}
+      titleStyle={!isCompatible && styles.incompatibleTitle}
+      titleAccessory={titleAccessory}
+      accessoryPlacement={isDownloading ? 'end' : 'inline'}
+      subtitle={formatModelMeta(model, 'B')}
+      style={styles.text}
+    >
+      {children}
+    </ModelRowText>
+  );
 
   const checkbox = selection && (
     <View style={styles.checkbox} testID="model-download-row-checkbox">
@@ -190,38 +249,46 @@ const ModelDownloadRow = ({
             <ModelFamilyTile family={getModelFamily(model)} size="list" />
           </View>
         )}
-        <ModelRowText
-          title={model.modelName}
-          titleLines={0}
-          titleStyle={!isCompatible && styles.incompatibleTitle}
-          titleAccessory={titleAccessory}
-          accessoryPlacement={isDownloading ? 'end' : 'inline'}
-          subtitle={formatModelMeta(model, 'B')}
-          style={styles.text}
-        >
-          <ModelCapabilityBadges model={model} style={styles.badges} />
-          {isDownloading && (
-            <View style={styles.progress}>
-              <DownloadProgressBar
-                progress={progress}
-                accessibilityLabel={`${model.modelName} download progress`}
-              />
-              <DownloadProgressDetails
-                modelSize={model.modelSize}
-                progress={progress}
-                rate={rate}
-              />
+        {updateButton ? (
+          <View style={styles.updateLayout}>
+            <View style={styles.updateTop}>
+              {textBlock()}
+              <View style={styles.actions}>
+                {updateButton}
+                {action}
+              </View>
             </View>
-          )}
-        </ModelRowText>
+            <View style={styles.updateBadges}>{badges}</View>
+          </View>
+        ) : (
+          textBlock(
+            <>
+              {badges}
+              {isDownloading && (
+                <View style={styles.progress}>
+                  <DownloadProgressBar
+                    progress={progress}
+                    accessibilityLabel={`${model.modelName} download progress`}
+                  />
+                  <DownloadProgressDetails
+                    modelSize={model.modelSize}
+                    progress={progress}
+                    rate={rate}
+                  />
+                </View>
+              )}
+            </>
+          )
+        )}
         {selection ? (
           <View style={styles.trailing}>
             {showsCheckbox ? checkbox : action}
           </View>
-        ) : (
+        ) : updateButton ? null : (
           action
         )}
         {ConfirmElement}
+        {UpdateConfirm}
       </ModelRow>
     </View>
   );
@@ -229,7 +296,12 @@ const ModelDownloadRow = ({
 
 export default ModelDownloadRow;
 
-const createStyles = (theme: Theme, selected: boolean) => {
+const createStyles = (
+  theme: Theme,
+  selected: boolean,
+  matchFamilyCards: boolean
+) => {
+  const rowGap = matchFamilyCards ? TILE_ROW.gap : space.three;
   const cardBorderWidth = selected ? stroke.strong : stroke.soft;
   const cardBorderGrowth = cardBorderWidth - stroke.soft;
   return StyleSheet.create({
@@ -283,6 +355,42 @@ const createStyles = (theme: Theme, selected: boolean) => {
     },
     lockedSelection: {
       opacity: LOCKED_OPACITY,
+    },
+    updateLayout: {
+      flex: 1,
+      minWidth: 0,
+      gap: space.one,
+    },
+    updateTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: rowGap,
+    },
+    updateBadges: {
+      marginRight: CIRCLE_BUTTON_SIZE + rowGap,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: space.three,
+    },
+    updateButton: {
+      alignItems: 'center',
+      gap: space.one,
+    },
+    updateCircle: {
+      width: CIRCLE_BUTTON_SIZE,
+      height: CIRCLE_BUTTON_SIZE,
+      borderRadius: radius.eighteen,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bg.accentSoft,
+    },
+    updateButtonText: {
+      marginHorizontal: -space.two,
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.xs,
+      color: theme.text.accent,
     },
   });
 };

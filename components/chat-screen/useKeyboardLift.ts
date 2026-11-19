@@ -6,6 +6,8 @@ import {
   useReanimatedKeyboardAnimation,
 } from 'react-native-keyboard-controller';
 import { useTheme } from '../../context/ThemeContext';
+import { bottomBarPadding } from '../../constants/design-system';
+import { COMPOSER } from './attachments/constants';
 import {
   selectKeyboardOwnedElsewhere,
   useKeyboardOwnerStore,
@@ -58,11 +60,14 @@ export const useKeyboardLift = () => {
     selectKeyboardOwnedElsewhere
   );
 
+  const restToKeyboardShift =
+    bottomBarPadding(insetsBottom) - COMPOSER.keyboardGap;
+
   return useDerivedValue(
     () =>
       keyboardOwnedElsewhere || keyboardGone.value
         ? 0
-        : height.value + progress.value * insetsBottom,
-    [insetsBottom, keyboardOwnedElsewhere]
+        : height.value + progress.value * restToKeyboardShift,
+    [restToKeyboardShift, keyboardOwnedElsewhere]
   );
 };

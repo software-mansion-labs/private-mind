@@ -47,7 +47,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: space.three,
       padding: space.three,
-      borderRadius: radius.twelve,
+      borderRadius: radius.eighteen,
       backgroundColor: theme.bg.softTertiary,
     },
     iconTile: {

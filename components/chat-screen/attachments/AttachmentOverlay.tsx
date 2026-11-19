@@ -207,6 +207,8 @@ const AttachmentOverlay = ({
     panel.dismiss();
   }, [panel]);
 
+  const overlayMounted = panel.mode !== 'closed' || panel.overlayWarm;
+
   useBackToDismiss(panel.mode !== 'closed', () => {
     if (panel.closing || isFlying) return;
     if (panel.mode === 'menu') panel.dismiss();
@@ -214,15 +216,16 @@ const AttachmentOverlay = ({
   });
 
   return (
-    <OverKeyboardView visible={panel.mode !== 'closed'}>
-      {panel.mode !== 'closed' ? (
+    <OverKeyboardView visible={overlayMounted}>
+      {overlayMounted ? (
         <View
           key={resumeKey}
           pointerEvents={isFlying || panel.closing ? 'none' : 'box-none'}
           style={StyleSheet.absoluteFill}
-          onLayout={(event) =>
-            onWindowHeight?.(event.nativeEvent.layout.height)
-          }
+          onLayout={(event) => {
+            onWindowHeight?.(event.nativeEvent.layout.height);
+            panel.onOverlayLayout();
+          }}
         >
           <Animated.View
             pointerEvents="none"

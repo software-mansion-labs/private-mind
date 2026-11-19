@@ -10,6 +10,8 @@ jest.mock('../context/ThemeContext', () => ({
 const mockDb = {};
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: () => mockDb }));
 
+jest.mock('expo-router', () => ({ useIsFocused: () => true }));
+
 jest.mock('expo-router/react-navigation', () => ({
   useHeaderHeight: () => 103,
 }));
@@ -74,16 +76,32 @@ jest.mock('../components/chat-screen/ChatBar', () => {
 });
 
 const mockPresentModelSheet = jest.fn();
+const mockSheet: {
+  onModelPicked?: (model: Model) => void;
+  onSheetStateChange?: (isOpen: boolean) => void;
+} = {};
 jest.mock('../components/bottomSheets/ModelSelectSheet', () => ({
   __esModule: true,
   default: ({
     bottomSheetModalRef,
+    onModelPicked,
+    onSheetStateChange,
   }: {
     bottomSheetModalRef: { current: unknown };
+    onModelPicked: (model: Model) => void;
+    onSheetStateChange: (isOpen: boolean) => void;
   }) => {
     bottomSheetModalRef.current = { present: mockPresentModelSheet };
+    mockSheet.onModelPicked = onModelPicked;
+    mockSheet.onSheetStateChange = onSheetStateChange;
     return null;
   },
+}));
+
+const mockSetLastUsedModelId = jest.fn();
+jest.mock('../utils/lastUsedModel', () => ({
+  ...jest.requireActual('../utils/lastUsedModel'),
+  setLastUsedModelId: (...args: unknown[]) => mockSetLastUsedModelId(...args),
 }));
 
 const mockStartPhantomChat = jest.fn((..._args: unknown[]) =>
@@ -153,5 +171,33 @@ describe('picking another model after a memory stall', () => {
     renderChat();
 
     expect(mockPresentModelSheet).not.toHaveBeenCalled();
+  });
+});
+
+describe('switching to a model the engine declines', () => {
+  const qwen = {
+    id: 9,
+    modelName: 'Qwen 3 - 1.7B',
+    isDownloaded: true,
+  } as Model;
+
+  it('leaves the explanation to the store instead of raising an error', async () => {
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const loadModel = jest.fn(() => Promise.resolve());
+    useLLMStore.setState({ model: null, loadModel });
+    renderChat();
+
+    await act(async () => {
+      mockSheet.onModelPicked?.(qwen);
+      mockSheet.onSheetStateChange?.(false);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(loadModel).toHaveBeenCalledWith(qwen);
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(mockSetLastUsedModelId).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

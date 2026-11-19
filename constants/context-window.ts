@@ -1,5 +1,5 @@
 import { type Model } from '../database/modelRepository';
-import { getModelProfile } from './model-profiles';
+import { getModelProfile, scaledGenerationReserve } from './model-profiles';
 
 const TOKENS_PER_CHAR = {
   cjk: 1.0,
@@ -87,13 +87,59 @@ export const getPromptTokenBudget = (model: Model): number => {
 
 export const PROMPT_TOKEN_SAFETY = 0.85;
 
-export const getPromptCharBudget = (model: Model, sample?: string): number => {
-  const tokenBudget = Math.floor(
-    getPromptTokenBudget(model) * PROMPT_TOKEN_SAFETY
-  );
+const charBudgetForTokens = (promptTokens: number, sample?: string): number => {
+  const tokenBudget = Math.floor(promptTokens * PROMPT_TOKEN_SAFETY);
   if (!sample || sample.length === 0) {
     return Math.floor(tokenBudget / DEFAULT_TOKENS_PER_CHAR);
   }
   const density = estimatePromptTokens(sample) / sample.length;
   return Math.max(0, Math.floor((tokenBudget - 1) / density));
 };
+
+export const getPromptCharBudget = (model: Model, sample?: string): number =>
+  charBudgetForTokens(getPromptTokenBudget(model), sample);
+
+export const EXTENDED_CONTEXT_WINDOW_TOKENS = 4096;
+export const EXTENDED_WINDOW_MIN_DEVICE_RAM_GB = 8;
+
+export interface ConversationWindowInput {
+  thinking: boolean;
+  deviceRamGB: number;
+  modelCapacityTokens?: number;
+}
+
+export const getConversationWindowTokens = (
+  model: Model,
+  { thinking, deviceRamGB, modelCapacityTokens }: ConversationWindowInput
+): number => {
+  const base = getContextWindowTokens(model);
+  if (
+    thinking ||
+    Math.ceil(deviceRamGB) < EXTENDED_WINDOW_MIN_DEVICE_RAM_GB ||
+    modelCapacityTokens === undefined
+  ) {
+    return base;
+  }
+  return Math.max(
+    base,
+    Math.min(EXTENDED_CONTEXT_WINDOW_TOKENS, modelCapacityTokens)
+  );
+};
+
+export const getConversationTokenBudget = (
+  model: Model,
+  input: ConversationWindowInput
+): number => {
+  const window = getConversationWindowTokens(model, input);
+  if (window === getContextWindowTokens(model)) {
+    return getPromptTokenBudget(model);
+  }
+  return Math.max(0, window - scaledGenerationReserve(window));
+};
+
+export const getConversationCharBudget = (
+  model: Model,
+  input: ConversationWindowInput,
+  sample?: string
+): number =>
+  charBudgetForTokens(getConversationTokenBudget(model, input), sample);

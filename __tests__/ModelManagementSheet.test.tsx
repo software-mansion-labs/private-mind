@@ -1,4 +1,5 @@
 import React, { createRef } from 'react';
+import { StyleSheet } from 'react-native';
 import {
   render,
   screen,
@@ -120,6 +121,17 @@ afterEach(() => {
 // ─── Initial stage ────────────────────────────────────────────────────────────
 
 describe('Initial stage', () => {
+  it('shows the family icon without a grey tile', () => {
+    renderSheet({ ...baseModel, family: 'Gemma 4' } as typeof baseModel);
+
+    const tile = screen.getByTestId('model-family-tile', {
+      includeHiddenElements: true,
+    });
+    expect(StyleSheet.flatten(tile.props.style).backgroundColor).toBe(
+      'transparent'
+    );
+  });
+
   it('renders the model name in the header', () => {
     renderSheet();
     expect(screen.getByTestId('model-sheet-name')).toBeTruthy();

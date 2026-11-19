@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from 'react';
 import { StyleSheet } from 'react-native';
-import GlassSurface from './GlassSurface';
+import { Glass } from './Glass';
 import { GLASS_BUTTON_SIZE, HEADER_EDGE_PX } from '../constants/header-actions';
 
 type Props = PropsWithChildren<{
@@ -8,15 +8,15 @@ type Props = PropsWithChildren<{
 }>;
 
 const HeaderGlassButton = ({ edge, children }: Props) => (
-  <GlassSurface
-    interactive
+  <Glass
+    radius={GLASS_BUTTON_SIZE / 2}
     style={[
       styles.circle,
       edge === 'leading' ? styles.leading : styles.trailing,
     ]}
   >
     {children}
-  </GlassSurface>
+  </Glass>
 );
 
 export default HeaderGlassButton;
@@ -34,7 +34,6 @@ const styles = StyleSheet.create({
   circle: {
     width: GLASS_BUTTON_SIZE,
     height: GLASS_BUTTON_SIZE,
-    borderRadius: GLASS_BUTTON_SIZE / 2,
   },
   leading: {
     marginLeft: HEADER_EDGE_PX,

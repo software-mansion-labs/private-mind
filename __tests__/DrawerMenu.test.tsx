@@ -105,6 +105,7 @@ jest.mock('../database/exportImportRepository', () => ({
 }));
 
 import DrawerMenu from '../components/drawer/DrawerMenu';
+import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
 
 const setPlatform = (os: string) => {
   Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
@@ -257,6 +258,17 @@ describe('DrawerMenu — collapsed', () => {
 
     expect(mockStartPhantomChat).not.toHaveBeenCalled();
     expect(onNavigate).toHaveBeenCalled();
+  });
+
+  it('counts New chat on the new chat screen as entering a new chat for the update sheet', () => {
+    mockPhantomChat = { id: 4 };
+    mockPathname = '/chat/4';
+    const before = useModelUpdateSheetStore.getState().newChatEntries;
+    renderMenu();
+
+    fireEvent.press(screen.getByTestId('drawer-new-chat'));
+
+    expect(useModelUpdateSheetStore.getState().newChatEntries).toBe(before + 1);
   });
 
   it('starts a phantom chat when a forked chat claimed the phantom id', () => {

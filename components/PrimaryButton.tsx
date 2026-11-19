@@ -58,7 +58,7 @@ const createStyles = (theme: Theme, disabled: boolean) =>
     button: {
       height: 48,
       width: '100%',
-      borderRadius: radius.twelve,
+      borderRadius: radius.full,
       paddingHorizontal: space.twoHalf,
       justifyContent: 'center',
       alignItems: 'center',
