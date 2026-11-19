@@ -25,7 +25,7 @@ import { openExternalUrl } from '../../utils/web/openExternalUrl';
 import { SvgComponent } from '../../utils/SvgComponent';
 import PrimaryButton from '../PrimaryButton';
 import SecondaryButton from '../SecondaryButton';
-import SwmLogo from '../../assets/icons/swm-logo.svg';
+import SwmLogo from '../../assets/icons/swm-ai-labs-mark.svg';
 import BuildingIcon from '../../assets/icons/building.svg';
 import CubeIcon from '../../assets/icons/cube.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
@@ -42,7 +42,7 @@ interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal<SwmAttributionSheetData> | null>;
 }
 
-const LOGO_WIDTH = 56;
+const LOGO_WIDTH = 37;
 const LOGO_HEIGHT = 30;
 const ICON_TILE_SIZE = 32;
 const ICON_TILE_RADIUS = 10;

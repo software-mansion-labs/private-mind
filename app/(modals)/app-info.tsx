@@ -15,7 +15,7 @@ import SecondaryButton from '../../components/SecondaryButton';
 import Logo from '../../assets/icons/logo.svg';
 import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
-import SwmLogo from '../../assets/icons/swm-logo.svg';
+import SwmLogo from '../../assets/icons/swm-ai-labs-logo.svg';
 import RneLogo from '../../assets/icons/rne-logo.svg';
 import { pressedOpacity } from '../../styles/pressable';
 import { radius, space, stroke } from '../../constants/design-system';
@@ -24,7 +24,7 @@ const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
 const FOOTER_LOGO_COLOR = '#e6e7eb';
 const FOOTER_HEIGHT = 80;
-const SWM_LOGO_SIZE = { width: 51.4, height: 27.8 };
+const SWM_LOGO_SIZE = { width: 100, height: 32 };
 const RNE_LOGO_SIZE = { width: 116.5, height: 32.5 };
 const FOOTER_SEPARATOR_HEIGHT = 21;
 

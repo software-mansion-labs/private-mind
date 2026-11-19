@@ -10,10 +10,10 @@ import {
   ATTRIBUTION_CARD_HINT,
   SWM_ROLE_TITLES,
 } from '../../constants/model-attribution';
-import SwmLogo from '../../assets/icons/swm-logo.svg';
+import SwmLogo from '../../assets/icons/swm-ai-labs-mark.svg';
 import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
 
-const LOGO_WIDTH = 40;
+const LOGO_WIDTH = 27;
 const LOGO_HEIGHT = 22;
 const CHEVRON_OPACITY = 0.5;
 
