@@ -100,6 +100,8 @@ const DrawerLayout = () => {
               backgroundColor: theme.bg.softPrimary,
               borderRadius: screenDisplaced ? cornerRadius : 0,
               borderCurve: 'continuous',
+              // Removing borderWidth hides the children on Android RN < 0.88 (facebook/react-native#57789).
+              borderWidth: 0,
               overflow: 'hidden',
             },
             screenDisplaced && getRaisedScreenEdge(theme),
