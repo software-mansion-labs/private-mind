@@ -120,7 +120,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
       gap: space.four,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.sheet,
     },
     title: {
       fontFamily: fontFamily.medium,
