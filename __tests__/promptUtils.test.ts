@@ -1,4 +1,5 @@
 import {
+  answerLanguageOf,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
@@ -10,6 +11,7 @@ import {
   SourceDocument,
 } from '../database/chatRepository';
 import { Model } from '../database/modelRepository';
+import { getLocales } from 'expo-localization';
 import type { WebIntentKind } from '../utils/web/intentKind';
 import {
   estimatePromptTokens,
@@ -2739,6 +2741,97 @@ describe('prepareMessagesForLLM — images in the history', () => {
     expect(result.at(-1)!.content).toMatch(
       /^What is in this picture\? \(Answer in English\.\)/
     );
+  });
+
+  const frenchThenPhoto: Message[] = [
+    {
+      id: 1,
+      chatId: 1,
+      role: 'user',
+      content: "Qu'est-ce que c'est ?",
+      timestamp: 0,
+    },
+    {
+      id: 2,
+      chatId: 1,
+      role: 'assistant',
+      content: 'Une carte.',
+      timestamp: 0,
+    },
+    { ...photoAlone[0]!, id: 3 },
+  ];
+
+  it('answers a photo sent without text in the language of the thread, not of the stand-in question', () => {
+    const result = prepareMessagesForLLM(frenchThenPhoto, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(result.at(-1)!.content).toMatch(
+      /^What is in this picture\? \(Answer in French\.\)/
+    );
+  });
+
+  it('gives retries the same answer language as the prompt for a photo sent without text', () => {
+    expect(answerLanguageOf(frenchThenPhoto)?.code).toBe('fr');
+  });
+
+  it('falls back to the stand-in question for a photo that opens the chat', () => {
+    expect(answerLanguageOf(photoAlone)?.code).toBe('en');
+  });
+
+  describe('on a phone set to Polish', () => {
+    const phoneBeforeTests = getLocales();
+    const phoneIn = (languageCode: string): ReturnType<typeof getLocales> => [
+      { ...phoneBeforeTests[0], languageCode, languageTag: languageCode },
+    ];
+    const latestAnchor = (messages: Message[]) =>
+      String(
+        prepareMessagesForLLM(messages, [], baseSettings, {
+          ...baseModel,
+          vision: true,
+        }).at(-1)!.content
+      ).match(/\(Answer in [^)]*\)/)?.[0];
+    const typed = (content: string): Message[] => [
+      { id: 1, chatId: 1, role: 'user', content, timestamp: 0 },
+    ];
+
+    beforeEach(() => {
+      jest.mocked(getLocales).mockReturnValue(phoneIn('pl'));
+    });
+
+    afterEach(() => {
+      jest.mocked(getLocales).mockReturnValue(phoneBeforeTests);
+    });
+
+    it('answers a photo that opens the chat in the phone language', () => {
+      expect(latestAnchor(photoAlone)).toBe('(Answer in Polish.)');
+    });
+
+    it('answers a short message with no language of its own in the phone language', () => {
+      expect(latestAnchor(typed('ok'))).toBe('(Answer in Polish.)');
+    });
+
+    it('keeps an English question in English', () => {
+      expect(latestAnchor(typed('What is the capital of Australia?'))).toBe(
+        '(Answer in English.)'
+      );
+    });
+
+    it('prefers the language of the thread to the language of the phone', () => {
+      expect(latestAnchor(frenchThenPhoto)).toBe('(Answer in French.)');
+    });
+
+    it('leaves a longer message it cannot read to its own language rather than the phone', () => {
+      expect(latestAnchor(typed('Gdansk Sopot Gdynia 2026 itinerary'))).toBe(
+        '(Answer in the same language as this message.)'
+      );
+    });
+
+    it('uses the stand-in question when the phone language is one it cannot name', () => {
+      jest.mocked(getLocales).mockReturnValue(phoneIn('sw'));
+      expect(latestAnchor(photoAlone)).toBe('(Answer in English.)');
+    });
   });
 
   it('keeps the question typed next to a photo', () => {

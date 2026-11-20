@@ -36,7 +36,10 @@ import {
   NO_ANSWER_PATTERNS_PL,
 } from '../constants/citations';
 import { outsideThinkSegments, stripThinkBlocks } from './thinking';
-import { detectQuestionLanguage } from './questionLanguage';
+import {
+  detectQuestionLanguage,
+  type QuestionLanguage,
+} from './questionLanguage';
 
 export interface SourceRow {
   id: number;
@@ -408,12 +411,10 @@ export const retryDropsGroundedDetail = (
 
 const MIN_LANGUAGE_EVIDENCE = 2;
 
-export const isWrongLanguageAnswer = (
+export const isAnswerInOtherLanguage = (
   answer: string,
-  question: string | undefined
+  expected: QuestionLanguage | null
 ): boolean => {
-  if (!question) return false;
-  const expected = detectQuestionLanguage(question);
   if (!expected) return false;
   const visible = stripThinkBlocks(answer);
   if (!visible) return false;
@@ -424,6 +425,13 @@ export const isWrongLanguageAnswer = (
   }
   return (actual.evidence ?? 0) >= MIN_LANGUAGE_EVIDENCE;
 };
+
+export const isWrongLanguageAnswer = (
+  answer: string,
+  question: string | undefined
+): boolean =>
+  !!question &&
+  isAnswerInOtherLanguage(answer, detectQuestionLanguage(question));
 
 const WELCOME_SCRIPTS = [
   /\p{Script=Latin}/u,
