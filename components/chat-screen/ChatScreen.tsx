@@ -50,6 +50,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useVectorStore } from '../../context/VectorStoreContext';
 import { WEB_SEARCH_ENABLED } from '../../constants/web';
 import { useLegacyChatNotice } from '../../hooks/useLegacyChatNotice';
+import { useStopReadAloudOnLeave } from '../../hooks/useStopReadAloudOnLeave';
 import useChatSettings from '../../hooks/useChatSettings';
 import { setLastUsedModelId } from '../../utils/lastUsedModel';
 import useChatBranching from '../../hooks/useChatBranching';
@@ -370,6 +371,7 @@ export default function ChatScreen({
     !speechInputOpen &&
     rootFrame.height > 0;
   const isFocused = useIsFocused();
+  useStopReadAloudOnLeave(chatId);
   const playSwarm = useSwarmOncePerNewChat(
     showHero && isFocused,
     phantomChatOpens
