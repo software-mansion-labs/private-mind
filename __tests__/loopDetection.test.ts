@@ -276,3 +276,142 @@ describe('isRepetitionFromTheStart', () => {
     expect(truncateAtRepeatedClause(looping)).toBe('Powtarzam to zdanie.');
   });
 });
+
+describe('truncateAtRepeatedClause on answers with code', () => {
+  const nestedLoop = [
+    'Here is the screen:',
+    '',
+    '```jsx',
+    'return (',
+    '  <View style={styles.container}>',
+    ...Array.from(
+      { length: 12 },
+      (_, depth) =>
+        `${'  '.repeat(depth + 2)}<View style={styles.formInputContainer}>`
+    ),
+  ].join('\n');
+
+  it('cuts a code block that keeps repeating one line, deeper each time (#525)', () => {
+    const out = truncateAtRepeatedClause(nestedLoop);
+    expect(out.split('formInputContainer').length - 1).toBe(1);
+    expect(out).toContain('<View style={styles.container}>');
+  });
+
+  it('closes the code block it cuts, so the rest of the answer still renders', () => {
+    const out = truncateAtRepeatedClause(nestedLoop);
+    expect(out.endsWith('\n```')).toBe(true);
+  });
+
+  it('cuts a code block that keeps repeating the same group of lines', () => {
+    const row = [
+      '  <tr>',
+      '    <td>France</td>',
+      '    <td>Paris</td>',
+      '    <td>12 million</td>',
+      '  </tr>',
+    ];
+    const answer = [
+      '```html',
+      '<table>',
+      '  <tr>',
+      '    <td>Germany</td>',
+      '    <td>Berlin</td>',
+      '    <td>8.5 million</td>',
+      '  </tr>',
+      ...row,
+      ...row,
+      ...row,
+      ...row,
+    ].join('\n');
+    const out = truncateAtRepeatedClause(answer);
+    expect(out.split('<td>France</td>').length - 1).toBe(1);
+    expect(out).toContain('<td>Germany</td>');
+  });
+
+  it('leaves a table whose rows share a shape but not their content alone', () => {
+    const answer = [
+      '```html',
+      '<table>',
+      ...['Berlin', 'Madrid', 'Rome', 'Paris'].flatMap((city) => [
+        '  <tr>',
+        `    <td>${city}</td>`,
+        '    <td class="population">unknown</td>',
+        '  </tr>',
+      ]),
+      '</table>',
+      '```',
+    ].join('\n');
+    expect(truncateAtRepeatedClause(answer)).toBe(answer);
+  });
+
+  it('leaves code that repeats a line a few times on purpose alone', () => {
+    const answer = [
+      '```js',
+      'const save = async () => {',
+      '  setLoading(true);',
+      '  try {',
+      '    await api.save(form);',
+      '  } finally {',
+      '    setLoading(false);',
+      '  }',
+      '};',
+      '',
+      'const remove = async () => {',
+      '  setLoading(true);',
+      '  try {',
+      '    await api.remove(form.id);',
+      '  } finally {',
+      '    setLoading(false);',
+      '  }',
+      '};',
+      '```',
+      '',
+      'Both handlers clear the spinner when they finish.',
+    ].join('\n');
+    expect(truncateAtRepeatedClause(answer)).toBe(answer);
+  });
+
+  it('leaves a JSX tree with repeated closing tags and sibling rows alone', () => {
+    const answer = [
+      '```jsx',
+      '<View style={styles.form}>',
+      '  <TextInput style={styles.input} placeholder="Email" />',
+      '  <TextInput style={styles.input} placeholder="Password" />',
+      '  <View style={styles.row}>',
+      '    <Text style={styles.label}>Remember me</Text>',
+      '  </View>',
+      '  <View style={styles.row}>',
+      '    <Text style={styles.label}>Forgot password?</Text>',
+      '  </View>',
+      '</View>',
+      '```',
+    ].join('\n');
+    expect(truncateAtRepeatedClause(answer)).toBe(answer);
+  });
+
+  it('does not split a clause on the dots inside inline code', () => {
+    const answer = [
+      'How the styles work:',
+      '- The `styles.container` style centers the welcome message and the button.',
+      '- The `styles.welcomeText` style sets the font size, weight and alignment.',
+      '- The `styles.buttonContainer` style sets the margin and padding for the button.',
+      '',
+      'Run the app with `npx expo start`.',
+    ].join('\n');
+    expect(truncateAtRepeatedClause(answer)).toBe(answer);
+  });
+
+  it('still catches prose that loops after a code block', () => {
+    const sentence = 'Make sure the server is running before you test the app.';
+    const answer = [
+      '```js',
+      'fetch(url);',
+      '```',
+      sentence,
+      sentence,
+      sentence,
+    ].join('\n');
+    const out = truncateAtRepeatedClause(answer);
+    expect(out.split('server is running').length - 1).toBe(1);
+  });
+});
