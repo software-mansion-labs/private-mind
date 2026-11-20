@@ -126,7 +126,9 @@ jest.mock('@gorhom/bottom-sheet', () => {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-import MessageItem from '../components/chat-screen/MessageItem';
+import MessageItem, {
+  sentBubbleRise,
+} from '../components/chat-screen/MessageItem';
 import { useLLMStore } from '../store/llmStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -180,6 +182,30 @@ afterEach(() => {
 });
 
 // ─── event messages ───────────────────────────────────────────────────────────
+
+describe('where a sent bubble rises from', () => {
+  it('starts with its bottom edge on top of the composer', () => {
+    expect(
+      sentBubbleRise({
+        windowHeight: 800,
+        composerRise: 400,
+        bubbleTop: 120,
+        bubbleHeight: 40,
+      })
+    ).toBe(240);
+  });
+
+  it('still travels a visible distance when it lands next to the composer', () => {
+    expect(
+      sentBubbleRise({
+        windowHeight: 800,
+        composerRise: 100,
+        bubbleTop: 650,
+        bubbleHeight: 40,
+      })
+    ).toBe(110);
+  });
+});
 
 describe('event messages', () => {
   it('renders event message with filename and text parts', () => {

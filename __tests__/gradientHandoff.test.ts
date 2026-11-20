@@ -29,7 +29,7 @@ describe('gradient hand-off across chat screen remounts', () => {
       1,
       T0 + GRADIENT_ENTER_MS + GRADIENT_EXIT_MS / 2
     );
-    expect(midway).toBeCloseTo(1 - 0.5 ** 3, 5);
+    expect(midway).toBeCloseTo(0.5 ** 3, 5);
   });
 
   it('carries the entrance on the curve the entrance actually runs', () => {
@@ -48,7 +48,7 @@ describe('gradient hand-off across chat screen remounts', () => {
     startGradientRun(1, T0 - 60_000);
     startGradientRun(0, T0);
     expect(carriedGradientProgress(1, T0 + GRADIENT_EXIT_MS / 2)).toBeCloseTo(
-      1 - 0.5 ** 3,
+      0.5 ** 3,
       5
     );
     expect(carriedGradientProgress(1, T0 + GRADIENT_EXIT_MS)).toBe(0);

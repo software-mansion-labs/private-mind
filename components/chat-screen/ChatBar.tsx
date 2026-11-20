@@ -37,6 +37,7 @@ import {
   COMPOSER,
   COMPOSER_CARD_RADIUS,
   COMPOSER_STRIP_HEIGHT,
+  GUTTER,
 } from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
@@ -52,13 +53,16 @@ import ModelUnavailableCard from './ModelUnavailableCard';
 import LinkIcon from '../../assets/icons/link-alt.svg';
 import { detectUrls } from '../../utils/web/url/urlDetection';
 import { hostname } from '../../utils/web/hostname';
+import {
+  dismissKeyboardAfterUiUpdates,
+  runAfterUiUpdates,
+} from '../../utils/afterUiUpdates';
 import { showPermissionToast } from '../../utils/permissionToast';
 import { Feedback } from '../../utils/Feedback';
 import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
-import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import ModelUpdateBanner from './ModelUpdateBanner';
 import { useModelStore } from '../../store/modelStore';
 import { requiresUpdate } from '../../utils/modelUpdate';
@@ -82,6 +86,7 @@ import {
 } from '../../constants/design-system';
 import { Glass } from '../Glass';
 
+const PROMPTS_LEAVE_SINK_PX = 8;
 const SENT_ECHO_WINDOW_MS = 300;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
@@ -117,6 +122,7 @@ interface Props {
   onBarGrow?: () => void;
   onSpeechInputChange?: (open: boolean) => void;
   promptsPaused?: boolean;
+  promptsShown?: SharedValue<number>;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
@@ -142,6 +148,7 @@ const ChatBar = ({
   onBarGrow,
   onSpeechInputChange,
   promptsPaused = false,
+  promptsShown,
   thinkingEnabled,
   onThinkingToggle,
   webSearchEnabled,
@@ -165,6 +172,14 @@ const ChatBar = ({
     ],
     [styles.container, theme.insets.bottom]
   );
+
+  const promptsLeaveStyle = useAnimatedStyle(() => {
+    const shown = promptsShown ? promptsShown.get() : 1;
+    return {
+      opacity: shown,
+      transform: [{ translateY: (1 - shown) * PROMPTS_LEAVE_SINK_PX }],
+    };
+  });
 
   const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
@@ -354,6 +369,15 @@ const ChatBar = ({
   // remounting is the only reliable way to make it grow to fit the
   // new content.
   const [iosInputKey, setIosInputKey] = useState(0);
+  const mountedInputKey = useRef(iosInputKey);
+  mountedInputKey.current = iosInputKey;
+  const newestRetiredInputKey = useRef(-1);
+  const handleChangeTextFromInput = useMemo(() => {
+    const inputKey = iosInputKey;
+    return (text: string) => {
+      if (inputKey > newestRetiredInputKey.current) handleChangeText(text);
+    };
+  }, [handleChangeText, iosInputKey]);
 
   useImperativeHandle(
     ref,
@@ -433,8 +457,11 @@ const ChatBar = ({
         ? { text: sentText, at: Date.now() }
         : null;
       if (Platform.OS === 'ios') {
-        textInputRef.current?.blur();
-        setIosInputKey((key) => key + 1);
+        newestRetiredInputKey.current = mountedInputKey.current;
+        runAfterUiUpdates(() => {
+          textInputRef.current?.blur();
+          setIosInputKey((key) => key + 1);
+        });
       }
       setUserInput('');
       clearAll({ cleanupSources: false });
@@ -499,7 +526,7 @@ const ChatBar = ({
     const holdUntilSwitchLands = modelSwitching;
     setSendInFlight(true);
     const outcome = onSend(inputToSend, imageUriToSend, attachmentsToSend);
-    Keyboard.dismiss();
+    dismissKeyboardAfterUiUpdates();
     if (disabled || modelSwitching) setSendPending(true);
 
     if (holdUntilSwitchLands) {
@@ -620,7 +647,7 @@ const ChatBar = ({
           transcript,
           attachmentsToSend
         );
-        Keyboard.dismiss();
+        dismissKeyboardAfterUiUpdates();
       }
     };
 
@@ -690,8 +717,8 @@ const ChatBar = ({
         <>
           {!hasMessages && (
             <Animated.View
-              style={styles.suggestionsContainer}
-              exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
+              style={[styles.suggestionsContainer, promptsLeaveStyle]}
+              needsOffscreenAlphaCompositing
             >
               <PromptSuggestions
                 onSelectPrompt={onSelectPrompt}
@@ -772,7 +799,7 @@ const ChatBar = ({
                     placeholderTextColor={theme.text.onChatBarMuted}
                     value={userInput}
                     editable={!isHoldingInput}
-                    onChangeText={handleChangeText}
+                    onChangeText={handleChangeTextFromInput}
                   />
                 </TextInputWrapper>
               </View>
@@ -850,7 +877,9 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: space.four,
+      marginHorizontal: -GUTTER,
+      paddingHorizontal: GUTTER,
+      paddingBottom: space.four,
     },
     content: {
       flexDirection: 'row',

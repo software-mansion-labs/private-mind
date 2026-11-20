@@ -26,6 +26,33 @@ export const pinFloorFor = ({
       listBottomPadding
   );
 
+export const pinOffsetFor = (questionTop: number, listTopPadding: number) =>
+  Math.max(0, questionTop - listTopPadding + MESSAGE_PIN_OFFSET);
+
+export const pinIsReachable = (
+  contentHeight: number,
+  pinOffset: number,
+  containerHeight: number
+) => contentHeight >= pinOffset + containerHeight - PIN_READY_SLACK_PX;
+
+export const pinHasMoved = (landedAt: number | null, pinOffset: number) =>
+  landedAt === null || Math.abs(landedAt - pinOffset) > PIN_READY_SLACK_PX;
+
+export interface TurnEndGeometry {
+  contentHeight: number;
+  listBottomPadding: number;
+  floor: number;
+  rowHeight: number;
+}
+
+export const turnEndFor = ({
+  contentHeight,
+  listBottomPadding,
+  floor,
+  rowHeight,
+}: TurnEndGeometry): number =>
+  contentHeight - listBottomPadding - Math.max(0, floor - rowHeight);
+
 export interface PinLanding {
   jumpTo: number | null;
   animateTo: number;
@@ -61,6 +88,21 @@ export const pinReleaseTarget = ({
   const floorExcess = Math.max(0, floor - rowHeight);
   return Math.max(0, contentHeight - floorExcess - layoutHeight + extraPadding);
 };
+
+export interface ScrolledAwayGeometry {
+  offset: number;
+  contentHeight: number;
+  layoutHeight: number;
+  extraPadding: number;
+}
+
+export const blankLeftBehind = ({
+  offset,
+  contentHeight,
+  layoutHeight,
+  extraPadding,
+}: ScrolledAwayGeometry): number =>
+  Math.max(0, contentHeight - layoutHeight + extraPadding - offset);
 
 export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
   offset <= releaseTarget + PIN_READY_SLACK_PX;

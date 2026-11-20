@@ -20,7 +20,7 @@ import {
 } from '../../constants/chat-screen';
 import WhatsNewBadge from '../WhatsNewBadge';
 import { GUTTER } from './attachments/constants';
-import { GRADIENT_EXIT_MS } from './gradientHandoff';
+import { EMPTY_STATE_CONTENT_EXIT_MS } from './gradientHandoff';
 
 const GAP_ABOVE_BAR = space.four;
 
@@ -74,7 +74,7 @@ const NewChatHero = ({
   return (
     <Animated.View
       style={[styles.container, pushStyle]}
-      exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
+      exiting={FadeOut.duration(EMPTY_STATE_CONTENT_EXIT_MS)}
       pointerEvents="box-none"
       testID="new-chat-hero"
     >

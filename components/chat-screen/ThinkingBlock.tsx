@@ -4,6 +4,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import MarkdownComponent from './MarkdownComponent';
+import Collapsible from './Collapsible';
 import ChevronDown from '../../assets/icons/chevron-down.svg';
 import ChevronUp from '../../assets/icons/chevron-up.svg';
 import RotateLeftIcon from '../../assets/icons/rotate_left.svg';
@@ -56,13 +57,13 @@ const ThinkingBlock = memo(
             )}
           </Pressable>
         </View>
-        {expanded && (
+        <Collapsible expanded={expanded} growsWithContent={inProgress}>
           <MarkdownComponent
             text={content}
             isThinking={true}
             streaming={inProgress}
           />
-        )}
+        </Collapsible>
       </View>
     );
   }

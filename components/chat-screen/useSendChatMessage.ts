@@ -1,4 +1,3 @@
-import { Keyboard } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -21,6 +20,8 @@ export type SendRefusal =
   | 'image-not-saved'
   | 'image-unsupported'
   | 'model-needs-update';
+export const sendWasRefused = (outcome: boolean | SendRefusal): boolean =>
+  outcome === false || typeof outcome === 'string';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import {
@@ -62,6 +63,7 @@ import { useWebSearchStore } from '../../store/webSearchStore';
 import { useEmbeddingModelStore } from '../../store/embeddingModelStore';
 import { useCpuSupportStore } from '../../store/cpuSupportStore';
 import type { MessagesHandle } from './Messages';
+import { dismissKeyboardAfterUiUpdates } from '../../utils/afterUiUpdates';
 
 interface UseSendChatMessageOptions {
   chatId: number;
@@ -147,7 +149,7 @@ export const useSendChatMessage = ({
     loadModelPinnedToChat(pinnedModel);
 
     messagesRef.current?.onMessageSent();
-    Keyboard.dismiss();
+    dismissKeyboardAfterUiUpdates();
 
     let targetChatId = chatId!;
     const isNewChat = !(await checkIfChatExists(db, targetChatId));
@@ -424,7 +426,6 @@ export const useSendChatMessage = ({
         retrievalStats,
       };
     };
-
     const generation = sendChatMessage(
       userInput,
       targetChatId,
@@ -433,7 +434,6 @@ export const useSendChatMessage = ({
       persistedImagePath,
       docName
     );
-
     if (isNewChat && targetChatId !== chatId) {
       router.replace(`/chat/${targetChatId}`);
     }
