@@ -10,17 +10,20 @@ import { useIsFocused } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
-import { useSendChatMessage } from './useSendChatMessage';
+import { sendWasRefused, useSendChatMessage } from './useSendChatMessage';
 import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
+  Easing,
   FadeInUp,
   FadeOutUp,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   type SharedValue,
+  withTiming,
 } from 'react-native-reanimated';
+import { EMPTY_STATE_CONTENT_EXIT_MS } from './gradientHandoff';
 import type { MessagesHandle } from './Messages';
 import { useLLMStore } from '../../store/llmStore';
 import { useChatStore } from '../../store/chatStore';
@@ -129,6 +132,11 @@ export default function ChatScreen({
   }, [model?.id, extraContentPadding]);
 
   const isEmpty = !isLoading && messageHistory.length === 0;
+  const [leavingEmptyChat, setLeavingEmptyChat] = useState(false);
+  useEffect(() => {
+    if (!isEmpty) setLeavingEmptyChat(false);
+  }, [isEmpty]);
+  const showsEmptyState = isEmpty && !leavingEmptyChat;
   const hasMessages = isLoading || messageHistory.length > 0;
 
   const {
@@ -143,7 +151,11 @@ export default function ChatScreen({
     showGradient,
     fadeBottom,
     topFadeAnchor,
-  } = useChatScreenLayout({ isEmpty, headerTitleBottom, headerHeight });
+  } = useChatScreenLayout({
+    isEmpty: showsEmptyState,
+    headerTitleBottom,
+    headerHeight,
+  });
   const chatBarTopClearance = Math.max(
     headerHeight,
     topFadeHeight(topFadeAnchor)
@@ -264,7 +276,31 @@ export default function ChatScreen({
     isSwitching,
     waitForModelSwitch: whenModelSwitchSettles,
   });
-  const handleSendMessage = useStableCallback(sendChatMessage);
+  const emptyStateShown = useSharedValue(1);
+  useEffect(() => {
+    emptyStateShown.set(
+      withTiming(showsEmptyState ? 1 : 0, {
+        duration: EMPTY_STATE_CONTENT_EXIT_MS,
+        easing: Easing.out(Easing.quad),
+      })
+    );
+  }, [showsEmptyState, emptyStateShown]);
+  const handleSendMessage = useStableCallback(
+    async (...message: Parameters<typeof sendChatMessage>) => {
+      const startsTheChat = isEmpty;
+      if (startsTheChat) setLeavingEmptyChat(true);
+      try {
+        const outcome = await sendChatMessage(...message);
+        if (startsTheChat && sendWasRefused(outcome)) {
+          setLeavingEmptyChat(false);
+        }
+        return outcome;
+      } catch (error) {
+        if (startsTheChat) setLeavingEmptyChat(false);
+        throw error;
+      }
+    }
+  );
 
   const {
     handleThinkingToggle,
@@ -329,7 +365,7 @@ export default function ChatScreen({
   useLegacyChatNotice(messageHistory);
 
   const showHero =
-    isEmpty &&
+    showsEmptyState &&
     !!model?.isDownloaded &&
     !speechInputOpen &&
     rootFrame.height > 0;
@@ -443,10 +479,11 @@ export default function ChatScreen({
           onBarGrow={handleBarGrow}
           onSpeechInputChange={setSpeechInputOpen}
           promptsPaused={overlayOpen || whatsNewOpen || !isPhantomChat}
+          promptsShown={emptyStateShown}
         />
       </Animated.View>
 
-      {showGradient && !isEmpty && (
+      {showGradient && !showsEmptyState && (
         <Animated.View
           style={[
             styles.topFadeOverlay,

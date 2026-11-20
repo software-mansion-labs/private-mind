@@ -65,11 +65,31 @@ describe('useKeyboardLift', () => {
     expect(result.current.value).toBe(0);
 
     keyboardHandler.onStart!({ height: 346, progress: 1 });
-    mockHeight.value = -40;
-    mockProgress.value = 0.12;
+    keyboardHandler.onMove!({ height: 40, progress: 0.12 });
     rerender({});
 
     expect(result.current.value).toBeLessThan(0);
+  });
+
+  it('rides the keyboard down instead of jumping to where it will rest', () => {
+    mockInsetsBottom = 34;
+    mockHeight.value = -346;
+    mockProgress.value = 1;
+    const { result, rerender } = renderHook(() => useKeyboardLift());
+
+    keyboardHandler.onStart!({ height: 0, progress: 0 });
+    mockHeight.value = 0;
+    mockProgress.value = 0;
+    rerender({});
+    expect(result.current.value).toBe(OPEN_LIFT);
+
+    keyboardHandler.onMove!({ height: 173, progress: 0.5 });
+    rerender({});
+    expect(result.current.value).toBe(-173 + 0.5 * restToKeyboardShift(34));
+
+    keyboardHandler.onEnd!({ height: 0, progress: 0 });
+    rerender({});
+    expect(result.current.value).toBe(0);
   });
 
   it('returns 0 when the keyboard is closed', () => {

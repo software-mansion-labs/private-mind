@@ -20,6 +20,8 @@ export type SendRefusal =
   | 'image-not-saved'
   | 'image-unsupported'
   | 'model-needs-update';
+export const sendWasRefused = (outcome: boolean | SendRefusal): boolean =>
+  outcome === false || typeof outcome === 'string';
 import { Attachment } from '../../hooks/useAttachment';
 import { LFMEmbeddings } from '../../utils/lfmEmbeddings';
 import {
@@ -424,7 +426,6 @@ export const useSendChatMessage = ({
         retrievalStats,
       };
     };
-
     const generation = sendChatMessage(
       userInput,
       targetChatId,
@@ -433,7 +434,6 @@ export const useSendChatMessage = ({
       persistedImagePath,
       docName
     );
-
     if (isNewChat && targetChatId !== chatId) {
       router.replace(`/chat/${targetChatId}`);
     }

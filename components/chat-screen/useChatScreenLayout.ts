@@ -66,8 +66,7 @@ export const useChatScreenLayout = ({
     gradientProgress.set(
       withTiming(target, {
         duration: gradientRunMs(target),
-        easing:
-          target === 1 ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+        easing: Easing.out(Easing.cubic),
       })
     );
     if (isEmpty) {

@@ -872,6 +872,7 @@ const Messages = ({
         if (!hasScrolledToEnd.current) {
           hasScrolledToEnd.current = true;
           opacity.set(1);
+          revealTranslateY.set(0);
           settleReveal(0);
         }
         if (!isAtBottomRef.current) {
@@ -948,6 +949,7 @@ const Messages = ({
       opacity,
       releaseSendFreeze,
       revealOnDeviceNote,
+      revealTranslateY,
       settleReveal,
     ]
   );

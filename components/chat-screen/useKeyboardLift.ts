@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AppState, Keyboard } from 'react-native';
+import { AppState, Keyboard, Platform } from 'react-native';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import {
   useKeyboardHandler,
@@ -13,8 +13,13 @@ import {
   useKeyboardOwnerStore,
 } from '../../store/keyboardOwnerStore';
 
+const settledValuesJumpAhead = Platform.OS === 'ios';
+
 export const useKeyboardLift = () => {
   const { height, progress } = useReanimatedKeyboardAnimation();
+  const frameHeight = useSharedValue(height.value);
+  const frameProgress = useSharedValue(progress.value);
+  const followsFrames = useSharedValue(false);
   const insetsBottom = useTheme().theme.insets.bottom;
   const keyboardGone = useSharedValue(false);
 
@@ -25,14 +30,20 @@ export const useKeyboardLift = () => {
       onStart: (event) => {
         'worklet';
         if (event.height !== 0) keyboardGone.value = false;
+        followsFrames.value = settledValuesJumpAhead;
       },
       onMove: (event) => {
         'worklet';
         if (event.height !== 0) keyboardGone.value = false;
+        frameHeight.value = -Math.abs(event.height);
+        frameProgress.value = event.progress;
       },
       onEnd: (event) => {
         'worklet';
         keyboardGone.value = event.height === 0;
+        frameHeight.value = -Math.abs(event.height);
+        frameProgress.value = event.progress;
+        followsFrames.value = false;
       },
     },
     []
@@ -42,9 +53,11 @@ export const useKeyboardLift = () => {
   useEffect(() => {
     const hidden = Keyboard.addListener('keyboardDidHide', () => {
       keyboardGone.value = true;
+      followsFrames.value = false;
     });
     const shown = Keyboard.addListener('keyboardDidShow', () => {
       keyboardGone.value = false;
+      followsFrames.value = false;
     });
     const foreground = AppState.addEventListener('change', (next) => {
       if (next === 'active' && !Keyboard.isVisible()) keyboardGone.value = true;
@@ -54,7 +67,7 @@ export const useKeyboardLift = () => {
       shown.remove();
       foreground.remove();
     };
-  }, [keyboardGone]);
+  }, [keyboardGone, followsFrames]);
 
   const keyboardOwnedElsewhere = useKeyboardOwnerStore(
     selectKeyboardOwnedElsewhere
@@ -63,11 +76,10 @@ export const useKeyboardLift = () => {
   const restToKeyboardShift =
     bottomBarPadding(insetsBottom) - COMPOSER.keyboardGap;
 
-  return useDerivedValue(
-    () =>
-      keyboardOwnedElsewhere || keyboardGone.value
-        ? 0
-        : height.value + progress.value * restToKeyboardShift,
-    [restToKeyboardShift, keyboardOwnedElsewhere]
-  );
+  return useDerivedValue(() => {
+    if (keyboardOwnedElsewhere || keyboardGone.value) return 0;
+    return followsFrames.value
+      ? frameHeight.value + frameProgress.value * restToKeyboardShift
+      : height.value + progress.value * restToKeyboardShift;
+  }, [restToKeyboardShift, keyboardOwnedElsewhere]);
 };

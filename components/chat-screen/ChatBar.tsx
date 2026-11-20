@@ -37,6 +37,7 @@ import {
   COMPOSER,
   COMPOSER_CARD_RADIUS,
   COMPOSER_STRIP_HEIGHT,
+  GUTTER,
 } from './attachments/constants';
 import { useAttachmentFlights } from './attachments/useAttachmentFlights';
 import { useAttachmentPanel } from './attachments/useAttachmentPanel';
@@ -62,7 +63,6 @@ import { TEXT_SELECTION, Theme } from '../../styles/colors';
 import ChatBarActions from './ChatBarActions';
 import ChatSpeechInput from './ChatSpeechInput';
 import PromptSuggestions from './PromptSuggestions';
-import { GRADIENT_EXIT_MS } from './gradientHandoff';
 import ModelUpdateBanner from './ModelUpdateBanner';
 import { useModelStore } from '../../store/modelStore';
 import { requiresUpdate } from '../../utils/modelUpdate';
@@ -86,6 +86,7 @@ import {
 } from '../../constants/design-system';
 import { Glass } from '../Glass';
 
+const PROMPTS_LEAVE_SINK_PX = 8;
 const SENT_ECHO_WINDOW_MS = 300;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
@@ -121,6 +122,7 @@ interface Props {
   onBarGrow?: () => void;
   onSpeechInputChange?: (open: boolean) => void;
   promptsPaused?: boolean;
+  promptsShown?: SharedValue<number>;
   thinkingEnabled: boolean;
   onThinkingToggle: () => void;
   webSearchEnabled?: boolean;
@@ -146,6 +148,7 @@ const ChatBar = ({
   onBarGrow,
   onSpeechInputChange,
   promptsPaused = false,
+  promptsShown,
   thinkingEnabled,
   onThinkingToggle,
   webSearchEnabled,
@@ -169,6 +172,14 @@ const ChatBar = ({
     ],
     [styles.container, theme.insets.bottom]
   );
+
+  const promptsLeaveStyle = useAnimatedStyle(() => {
+    const shown = promptsShown ? promptsShown.get() : 1;
+    return {
+      opacity: shown,
+      transform: [{ translateY: (1 - shown) * PROMPTS_LEAVE_SINK_PX }],
+    };
+  });
 
   const phantomChatStarts = useChatStore((state) => state.phantomChatStarts);
   const [userInput, setUserInput] = useState('');
@@ -706,8 +717,8 @@ const ChatBar = ({
         <>
           {!hasMessages && (
             <Animated.View
-              style={styles.suggestionsContainer}
-              exiting={FadeOut.duration(GRADIENT_EXIT_MS)}
+              style={[styles.suggestionsContainer, promptsLeaveStyle]}
+              needsOffscreenAlphaCompositing
             >
               <PromptSuggestions
                 onSelectPrompt={onSelectPrompt}
@@ -866,7 +877,9 @@ const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       flexShrink: 1,
-      marginBottom: space.four,
+      marginHorizontal: -GUTTER,
+      paddingHorizontal: GUTTER,
+      paddingBottom: space.four,
     },
     content: {
       flexDirection: 'row',
