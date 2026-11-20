@@ -130,25 +130,25 @@ const LETTERS: Record<string, string> = {
   fa: 'پچژگ',
 };
 
-const WORDS: Record<string, string> = {
-  en: 'who what which is are the how where when why today tomorrow now will latest current news weather price cost of and in for to my me it can do does much many time year best near open per about write story tell explain describe summarize this that these those you your we they have has would could should with from',
-  pl: 'kto kim komu kogo co czego czemu jest są czy jak jaka jaki jakie gdzie kiedy ile dlaczego jutro dzisiaj dziś teraz aktualny obecny aktualna najnowsze wiadomości pogoda cena kurs koszt się masz hej cześć siema oraz dla mnie moje jak długo ile kosztuje na od do po za nie to który która które był była było byli były dokonał dokonała znajdź szukaj pokaż sprawdź podaj napisz wyjaśnij kup kupić zrobić działa najlepszy najlepsza najlepsze najtańszy najtańsza najdroższy najdroższa najdroższe największy największa najszybszy najnowszy sklep sklepie polsce polski wynosi',
-  cs: 'kdo co je jsou jak kde kdy proč dnes zítra teď zprávy počasí cena kolik stojí jaký jaká jaké nejnovější aktuální mi moje na od do po za to',
-  de: 'wer was ist sind wie wo wann warum heute morgen jetzt aktuelle aktueller aktuelles nachrichten wetter preis kosten kostet der die das und für ich mein wieviel viel beantrage bekomme gibt pro',
-  nl: 'wie wat welke is zijn hoe waar wanneer waarom vandaag morgen nu actuele nieuws weer prijs kosten kost het de een en voor ik mijn hoeveel krijg aanvragen per',
-  fr: 'qui que quoi quel quelle est sont comment quand pourquoi aujourd hui demain maintenant actualités météo prix coût combien le les des du pour mon ma je faire montant',
-  es: 'quién quien qué cuál cual es son cómo como dónde donde cuándo cuando hoy mañana ahora noticias tiempo precio cuánto cuanto el los las del para mi yo hacer sacar',
-  it: 'chi che cosa quale è sono come dove quando perché oggi domani adesso notizie meteo prezzo quanto costa il gli della per mio io prossima campionato richiedere',
-  pt: 'quem que qual é são como onde quando por hoje amanhã agora notícias tempo preço quanto custa custo os das para meu eu fazer tirar próximo salário mínimo imposto do da dos em no na uma tem',
-  ro: 'cine ce care este sunt cum unde când de ce astăzi azi mâine acum știri vreme preț cât costă pentru meu eu face cum se obține',
-  tr: 'kim ne hangi nedir nasıl nerede ne zaman neden bugün yarın şimdi haberler hava durumu fiyat kaç kadar için benim ben nasıl alınır kuru ücreti',
-  id: 'siapa apa yang mana adalah bagaimana dimana kapan mengapa kenapa hari ini besok sekarang berita cuaca harga berapa untuk saya cara membuat mendapatkan terbaru',
-  vi: 'nào thế đâu khi tại sao hôm nay bây giờ tin tức thời tiết bao nhiêu tôi làm mới nhất không được',
-  ru: 'кто что какой какая какое где когда почему сегодня завтра сейчас как новости погода цена сколько стоит для мне мой самый последние получить сделать составляет около это на по так его она',
-  uk: 'хто що який яка яке де коли чому сьогодні завтра зараз як новини погода ціна скільки коштує для мені мій найновіші отримати зробити',
-  ar: 'من ما هو هي كيف أين متى لماذا اليوم غدا الآن أخبار الطقس سعر كم كيفية أفضل هل في على هذا هذه التي الذي عن مع كان ليس يوجد حوالي',
-  fa: 'کیست چیست چطور چگونه کجا چرا امروز فردا اکنون الان اخبار هوا قیمت چند بهترین آیا است در از به این که را با برای هست نیست حدود دارد',
-  ur: 'کون کیا ہے ہیں کیسے کہاں کب کیوں آج کل ابھی خبریں موسم قیمت کتنی کتنا بہترین کے کی کا میں اور سے پر نہیں ہوتا تقریبا',
+export const WORDS: Record<string, string> = {
+  en: 'who what which is are the how where when why today tomorrow now will latest current news weather price cost of and in for to my me it can do does much many time year best near open per about write story tell explain describe summarize this that these those you your we they have has would could should with from summarise translate give show help please thanks picture under dollars',
+  pl: 'kto kim komu kogo co czego czemu jest są czy jak jaka jaki jakie gdzie kiedy ile dlaczego jutro dzisiaj dziś teraz aktualny obecny aktualna najnowsze wiadomości pogoda cena kurs koszt się masz hej cześć siema oraz dla mnie moje jak długo ile kosztuje na od do po za nie to który która które był była było byli były dokonał dokonała znajdź szukaj pokaż sprawdź podaj napisz wyjaśnij kup kupić zrobić działa najlepszy najlepsza najlepsze najtańszy najtańsza najdroższy najdroższa najdroższe największy największa najszybszy najnowszy sklep sklepie polsce polski wynosi opisz streść przetłumacz opowiedz pomóż proszę dzięki dziękuję zdjęcie hasło',
+  cs: 'kdo co je jsou jak kde kdy proč dnes zítra teď zprávy počasí cena kolik stojí jaký jaká jaké nejnovější aktuální mi moje na od do po za to vysvětli napiš popiš shrň přelož řekni ukaž prosím děkuji tento tato toto obrázek heslo',
+  de: 'wer was ist sind wie wo wann warum heute morgen jetzt aktuelle aktueller aktuelles nachrichten wetter preis kosten kostet der die das und für ich mein wieviel viel beantrage bekomme gibt pro erkläre erklär schreib schreibe beschreibe fasse übersetze erzähl erzähle gib zeig zeige hilf bitte danke dieses diese dieser bild ein eine einen mir zusammen',
+  nl: 'wie wat welke is zijn hoe waar wanneer waarom vandaag morgen nu actuele nieuws weer prijs kosten kost het de een en voor ik mijn hoeveel krijg aanvragen per uit schrijf beschrijf samen vertaal vertel geef toon alsjeblieft bedankt dank deze dit afbeelding eenvoudig',
+  fr: 'qui que quoi quel quelle est sont comment quand pourquoi aujourd hui demain maintenant actualités météo prix coût combien le les des du pour mon ma je faire montant moi toi cette ces cet nous vous elles avec dans décris raconte dis une écris traduis donne merci beaucoup blague petit simplement',
+  es: 'quién quien qué cuál cual es son cómo como dónde donde cuándo cuando hoy mañana ahora noticias tiempo precio cuánto cuanto el los las del para mi yo hacer sacar escribe cuéntame dime muéstrame ayúdame gracias esto imagen contraseña',
+  it: 'chi che cosa quale è sono come dove quando perché oggi domani adesso notizie meteo prezzo quanto costa il gli della per mio io prossima campionato richiedere spiega scrivi riassumi traduci dammi raccontami descrivi mostrami aiutami grazie questo questa immagine',
+  pt: 'quem que qual é são como onde quando por hoje amanhã agora notícias tempo preço quanto custa custo os das para meu eu fazer tirar próximo salário mínimo imposto do da dos em no na uma tem escreva descreva resuma traduza senha isso isto imagem obrigado obrigada não',
+  ro: 'cine ce care este sunt cum unde când de ce astăzi azi mâine acum știri vreme preț cât costă pentru meu eu face cum se obține scrie rezumă tradu descrie spune arată ajută mulțumesc această acest aceasta',
+  tr: 'kim ne hangi nedir nasıl nerede ne zaman neden bugün yarın şimdi haberler hava durumu fiyat kaç kadar için benim ben nasıl alınır kuru ücreti açıkla yaz özetle çevir anlat göster yardım lütfen teşekkürler bu belge',
+  id: 'siapa apa yang mana adalah bagaimana dimana kapan mengapa kenapa hari ini besok sekarang berita cuaca harga berapa untuk saya cara membuat mendapatkan terbaru jelaskan tulis ringkas terjemahkan ceritakan tunjukkan bantu tolong terima kasih gambar dengan tentang',
+  vi: 'nào thế đâu khi tại sao hôm nay bây giờ tin tức thời tiết bao nhiêu tôi làm mới nhất không được giải thích viết tóm tắt dịch kể giúp cảm ơn này ảnh của',
+  ru: 'кто что какой какая какое где когда почему сегодня завтра сейчас как новости погода цена сколько стоит для мне мой самый последние получить сделать составляет около это на по так его она объясни переведи расскажи помоги пожалуйста спасибо',
+  uk: 'хто що який яка яке де коли чому сьогодні завтра зараз як новини погода ціна скільки коштує для мені мій найновіші отримати зробити поясни переклади розкажи допоможи будь ласка дякую це',
+  ar: 'من ما هو هي كيف أين متى لماذا اليوم غدا الآن أخبار الطقس سعر كم كيفية أفضل هل في على هذا هذه التي الذي عن مع كان ليس يوجد حوالي اشرح اكتب ترجم لخص شكرا',
+  fa: 'کیست چیست چطور چگونه کجا چرا امروز فردا اکنون الان اخبار هوا قیمت چند بهترین آیا است در از به این که را با برای هست نیست حدود دارد کجاست توضیح بده بنویس ترجمه کن لطفا ممنون',
+  ur: 'کون کیا ہے ہیں کیسے کہاں کب کیوں آج کل ابھی خبریں موسم قیمت کتنی کتنا بہترین کے کی کا میں اور سے پر نہیں ہوتا تقریبا بتائیں لکھیں ترجمہ شکریہ',
 };
 
 const MARKS = /[̀-ͯ]/g;
@@ -173,9 +173,10 @@ const FOLDABLE = /[łıđøßħیىکأإآة]/g;
 const fold = (text: string): string =>
   text
     .toLowerCase()
+    .normalize('NFC')
+    .replace(FOLDABLE, (char) => SPECIAL_FOLDS[char] ?? char)
     .normalize('NFD')
-    .replace(MARKS, '')
-    .replace(FOLDABLE, (char) => SPECIAL_FOLDS[char] ?? char);
+    .replace(MARKS, '');
 
 const DIGRAPH_FOLDS: Record<string, string> = {
   ä: 'ae',
@@ -221,6 +222,19 @@ const index = (source: Record<string, string>, split: 'words' | 'chars') => {
 const WORD_INDEX = index(WORDS, 'words');
 const LETTER_INDEX = index(LETTERS, 'chars');
 
+const spellings = (value: string): Set<string> => {
+  const words = new Set<string>();
+  for (const word of value.toLowerCase().normalize('NFC').split(/\s+/)) {
+    words.add(word);
+    words.add(asciiDigraphs(word));
+  }
+  return words;
+};
+
+const SPELLINGS: Record<string, Set<string>> = Object.fromEntries(
+  Object.entries(WORDS).map(([code, value]) => [code, spellings(value)])
+);
+
 const EXCLUSIVE_WEIGHT = 3;
 const STEM_LENGTH = 4;
 
@@ -243,6 +257,17 @@ const inflectedLanguages = (token: string): Set<string> | undefined => {
     for (const code of langs) merged.add(code);
   }
   return merged.size > 0 ? merged : undefined;
+};
+
+const spelledAsListed = (code: string, token: string): boolean => {
+  const words = SPELLINGS[code];
+  if (!words) return false;
+  if (words.has(token)) return true;
+  if (token.length <= STEM_LENGTH) return false;
+  for (const word of words) {
+    if (word.length >= STEM_LENGTH && token.startsWith(word)) return true;
+  }
+  return false;
 };
 
 const wordLanguages = (token: string): Set<string> | undefined =>
@@ -292,29 +317,43 @@ const pickCandidate = (
     langs: Set<string> | undefined,
     isDecisive: boolean,
     tokenLength: number,
-    token = ''
+    token = '',
+    spelledIn: (code: string) => boolean = () => true,
+    narrowToSpelled = false
   ) => {
     if (!langs) return;
-    const hits = [...langs].filter((code) => allowed.has(code));
+    const matched = [...langs].filter((code) => allowed.has(code));
+    const spelled = matched.filter(spelledIn);
+    const hits = narrowToSpelled && spelled.length > 0 ? spelled : matched;
     if (hits.length === 0) return;
-    const weight = hits.length === 1 ? EXCLUSIVE_WEIGHT : 1;
+    const owned = hits.length === 1;
     for (const code of hits) {
-      score.set(code, (score.get(code) ?? 0) + weight);
+      score.set(code, (score.get(code) ?? 0) + (owned ? EXCLUSIVE_WEIGHT : 1));
       if (token) {
         const seen = supporting.get(code) ?? new Set<string>();
         seen.add(token);
         supporting.set(code, seen);
       }
       longestHit.set(code, Math.max(longestHit.get(code) ?? 0, tokenLength));
-      if (hits.length === 1 && isDecisive) {
+      if (owned && isDecisive && spelledIn(code)) {
         exclusive.set(code, (exclusive.get(code) ?? 0) + 1);
       }
     }
   };
 
-  for (const token of fold(question).split(/[^\p{L}]+/u)) {
-    if (token.length >= 2) {
-      credit(wordLanguages(token), decisive(token), token.length, token);
+  const typed = question.toLowerCase().normalize('NFC');
+  for (const raw of typed.split(/[^\p{L}\p{M}]+/u)) {
+    for (const token of fold(raw).split(/[^\p{L}]+/u)) {
+      if (token.length >= 2) {
+        credit(
+          wordLanguages(token),
+          decisive(token),
+          token.length,
+          token,
+          (code) => spelledAsListed(code, raw),
+          WORD_INDEX.has(token)
+        );
+      }
     }
   }
   for (const char of new Set(question.toLowerCase())) {
@@ -360,6 +399,11 @@ const named = (candidate: Candidate): QuestionLanguage => ({
   evidence: candidate.evidence,
 });
 
+export const languageOfCode = (
+  code: string | null | undefined
+): QuestionLanguage | null =>
+  code && NAMES[code] ? named({ code, evidence: 0 }) : null;
+
 const dominantScript = (question: string): string[] | null => {
   if (KANA.test(question)) return ['ja'];
   let best: string[] | null = null;
@@ -375,19 +419,28 @@ const dominantScript = (question: string): string[] | null => {
   return best;
 };
 
+const QUOTED = /["“”„«»][^"“”„«»]*["“”„«»]/g;
+const HAS_LETTER = /\p{L}/u;
+
+const withoutQuotedWords = (question: string): string => {
+  const unquoted = question.replace(QUOTED, ' ');
+  return HAS_LETTER.test(unquoted) ? unquoted : question;
+};
+
 export const detectQuestionLanguage = (
   question: string
 ): QuestionLanguage | null => {
   if (!question.trim()) return null;
-  const scriptCandidates = dominantScript(question);
+  const text = withoutQuotedWords(question);
+  const scriptCandidates = dominantScript(text);
   if (scriptCandidates) {
-    const candidates = narrowedByLetters(scriptCandidates, question);
-    const picked = pickCandidate(question, candidates);
+    const candidates = narrowedByLetters(scriptCandidates, text);
+    const picked = pickCandidate(text, candidates);
     if (picked) return named(picked);
     const fallback = fallbackWithinScript(candidates);
     return fallback ? named({ code: fallback, evidence: 0 }) : null;
   }
-  const latin = pickCandidate(question, LATIN_CANDIDATES);
+  const latin = pickCandidate(text, LATIN_CANDIDATES);
   return latin ? named(latin) : null;
 };
 

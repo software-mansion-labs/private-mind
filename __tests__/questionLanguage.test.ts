@@ -1,6 +1,7 @@
 import {
   detectQuestionLanguage,
   detectThreadLanguage,
+  WORDS,
 } from '../utils/questionLanguage';
 import {
   MULTILINGUAL_SCENARIOS,
@@ -274,5 +275,161 @@ describe('detectQuestionLanguage on English requests without question words', ()
     'Explain this to a child.',
   ])('detects English in %s', (question) => {
     expect(detectQuestionLanguage(question)?.code).toBe('en');
+  });
+});
+
+describe('detectQuestionLanguage — French from #508', () => {
+  it.each([
+    'Explique moi',
+    'Explique-moi cette carte en français',
+    'Décris ce circuit',
+    'le moi',
+  ])('names French for %s', (question) => {
+    expect(codeOf(question)).toBe('fr');
+  });
+
+  it('keeps French for a thread whose latest message is a photo with no text', () => {
+    expect(detectThreadLanguage(["Qu'est-ce que c'est ?", ''])?.code).toBe(
+      'fr'
+    );
+  });
+});
+
+const listedWords = (code: string): string[] =>
+  WORDS[code]!.toLowerCase().normalize('NFC').split(/\s+/);
+
+const withoutMarks = (word: string): string =>
+  word
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC');
+
+const LATIN_WORD = /^\p{Script=Latin}+$/u;
+const TYPED_WITHOUT_DIACRITICS = /^[a-z]+$/;
+
+describe('detectQuestionLanguage — words that match only without their diacritics', () => {
+  it('never gives a listed word to a language that does not list it', () => {
+    const misread = Object.keys(WORDS).flatMap((code) =>
+      listedWords(code)
+        .filter((word) => word.length >= 2)
+        .flatMap((word) => {
+          const found = codeOf(word);
+          return found && found !== code && !listedWords(found).includes(word)
+            ? [`${word} (${code}) → ${found}`]
+            : [];
+        })
+    );
+
+    expect(misread).toEqual([]);
+  });
+
+  it('lets a word spelled as listed outweigh one that matches only without its diacritics', () => {
+    const everyListed = new Set(Object.keys(WORDS).flatMap(listedWords));
+    const bareOnly = Object.keys(WORDS).flatMap((owner) =>
+      listedWords(owner)
+        .map((word) => ({ owner, word, bare: withoutMarks(word) }))
+        .filter(
+          ({ word, bare }) =>
+            bare !== word &&
+            bare.length >= 2 &&
+            TYPED_WITHOUT_DIACRITICS.test(bare) &&
+            !everyListed.has(bare)
+        )
+    );
+    const misread = Object.keys(WORDS).flatMap((code) =>
+      listedWords(code)
+        .filter((word) => word.length >= 3 && LATIN_WORD.test(word))
+        .filter((word) => codeOf(word) === code)
+        .slice(0, 3)
+        .flatMap((anchor) =>
+          bareOnly
+            .filter(({ owner }) => owner !== code)
+            .map(({ owner, bare }) => ({ owner, phrase: `${anchor} ${bare}` }))
+            .filter(({ owner, phrase }) => codeOf(phrase) === owner)
+            .map(({ owner, phrase }) => `${phrase} (${code}) → ${owner}`)
+        )
+    );
+
+    expect(misread).toEqual([]);
+  });
+});
+
+describe('detectQuestionLanguage — languages that share words with French keep their own', () => {
+  it.each([
+    ['mới nhất hôm nay', 'vi'],
+    ['tôi muốn biết thời tiết', 'vi'],
+    ['tôi là ai'.normalize('NFD'), 'vi'],
+    ['mới nhất'.normalize('NFD'), 'vi'],
+    ['thoi tiet hom nay', 'vi'],
+    ['dzis wieczorem', 'pl'],
+    ['wiadomosci z polski', 'pl'],
+    ['pocasi dnes', 'cs'],
+    ['zpravy zitra', 'cs'],
+    ['pret benzina maine', 'ro'],
+    ['stiri azi', 'ro'],
+    ['bugun hava durumu', 'tr'],
+    ['sinav nasil', 'tr'],
+    ['de auto en de fiets', 'nl'],
+    ['ce faci', 'ro'],
+  ])('names %s as %s', (question, code) => {
+    expect(codeOf(question)).toBe(code);
+  });
+
+  it.each([
+    'Plus size clothes',
+    'sans serif font',
+    'Turn on the light',
+    'my son is sick',
+  ])('never reads the English %s as French', (question) => {
+    expect(codeOf(question)).not.toBe('fr');
+  });
+
+  it('reads Persian and Urdu words written with a madda or hamza', () => {
+    expect(codeOf('آیا')).toBe('fa');
+    expect(codeOf('آج')).toBe('ur');
+  });
+});
+
+describe('detectQuestionLanguage — requests to the assistant', () => {
+  it.each([
+    ['Explain photosynthesis in simple terms', 'en'],
+    ['Translate this to French please', 'en'],
+    ['przetlumacz to na angielski', 'pl'],
+    ['opisz to zdjecie', 'pl'],
+    ['Beschreibe dieses Bild', 'de'],
+    ['Gib mir drei Ideen fürs Abendessen', 'de'],
+    ['Raconte-moi une blague', 'fr'],
+    ['merci beaucoup', 'fr'],
+    ['Cuéntame un chiste', 'es'],
+    ['Descrivi questa immagine', 'it'],
+    ['Descreva esta imagem', 'pt'],
+    ['Descrie această imagine', 'ro'],
+    ['Popiš tento obrázek', 'cs'],
+    ['Bu belgeyi özetle', 'tr'],
+    ['Jelaskan gambar ini', 'id'],
+    ['Tóm tắt tài liệu này', 'vi'],
+    ['Beschrijf deze afbeelding', 'nl'],
+  ])('names %s as %s', (question, code) => {
+    expect(codeOf(question)).toBe(code);
+  });
+});
+
+describe('detectQuestionLanguage — cases found while checking #508 for regressions', () => {
+  it('reads the language of a question, not of a word it quotes', () => {
+    expect(codeOf('Was bedeutet "merci"?')).toBe('de');
+    expect(codeOf('Jak się mówi „thank you” po francusku?')).toBe('pl');
+  });
+
+  it('keeps a stem shared by two languages from deciding a proper name', () => {
+    expect(codeOf('Apakah besok hujan di Jakarta?')).toBe('id');
+  });
+
+  it('lets a longer diacritic-free word outweigh a two-letter one', () => {
+    expect(codeOf('va ploua maine in bucuresti')).toBe('ro');
+  });
+
+  it('never reads Spanish or Portuguese that shares a word with French as French', () => {
+    expect(codeOf('Dame tres ideas para la cena')).not.toBe('fr');
+    expect(codeOf('Explique a fotossíntese de forma simples')).not.toBe('fr');
   });
 });
