@@ -1,7 +1,6 @@
-import React, { Fragment, RefObject } from 'react';
-import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import BackDismissibleSheetModal from './BackDismissibleSheetModal';
+import React, { Fragment, type Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import {
@@ -22,6 +21,7 @@ import {
   SWM_ROLE_PREFIXES,
   VIEW_MODEL_DETAILS_LABEL,
 } from '../../constants/model-attribution';
+import { scrollIndicatorProps } from '../../constants/scroll-indicator';
 import { openExternalUrl } from '../../utils/web/openExternalUrl';
 import { SvgComponent } from '../../utils/SvgComponent';
 import PrimaryButton from '../PrimaryButton';
@@ -32,7 +32,7 @@ import CubeIcon from '../../assets/icons/cube.svg';
 import BenchmarkIcon from '../../assets/icons/benchmark.svg';
 import LockIcon from '../../assets/icons/lock-solid.svg';
 
-export interface SwmAttributionSheetData {
+export interface SwmAttributionData {
   family: string;
   provider: string;
   role: SwmModelRole;
@@ -40,7 +40,9 @@ export interface SwmAttributionSheetData {
 }
 
 interface Props {
-  bottomSheetModalRef: RefObject<BottomSheetModal<SwmAttributionSheetData> | null>;
+  data: SwmAttributionData;
+  topInset: number;
+  titleRef?: Ref<Text>;
 }
 
 const LOGO_WIDTH = 37;
@@ -65,7 +67,7 @@ const attributionRows = ({
   family,
   provider,
   role,
-}: SwmAttributionSheetData): Row[] => [
+}: SwmAttributionData): Row[] => [
   {
     key: 'original',
     icon: BuildingIcon,
@@ -118,78 +120,72 @@ const AttributionRow = ({ row }: { row: Row }) => {
   );
 };
 
-const SwmAttributionSheet = ({ bottomSheetModalRef }: Props) => {
-  const { styles, theme } = useThemedStyles(createStyles);
+const SwmAttributionContent = ({ data, topInset, titleRef }: Props) => {
+  const { styles, theme } = useThemedStyles(createStyles, topInset);
+  const { modelUrl } = data;
+  const handleViewModel = () => openExternalUrl(modelUrl);
+  const handleAboutSwm = () => openExternalUrl(ABOUT_SWM_URL);
 
   return (
-    <BackDismissibleSheetModal
-      ref={bottomSheetModalRef}
-      enableDynamicSizing
-      accessible={false}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      {...scrollIndicatorProps(topInset)}
     >
-      {({ data }) => {
-        if (!data) return null;
-        const { modelUrl } = data;
-        const handleViewModel = () => openExternalUrl(modelUrl);
-        const handleAboutSwm = () => openExternalUrl(ABOUT_SWM_URL);
-
-        return (
-          <BottomSheetView style={styles.sheet}>
-            <View style={styles.header}>
-              <SwmLogo
-                width={LOGO_WIDTH}
-                height={LOGO_HEIGHT}
-                style={{ color: theme.text.primary }}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
-              />
-              <Text style={styles.title} accessibilityRole="header">
-                {ATTRIBUTION_SHEET_TITLE}
-              </Text>
-            </View>
-            <View style={styles.group}>
-              {attributionRows(data).map((row, index) => (
-                <Fragment key={row.key}>
-                  {index > 0 && <View style={styles.separator} />}
-                  <AttributionRow row={row} />
-                </Fragment>
-              ))}
-            </View>
-            <View style={styles.buttons}>
-              {modelUrl && (
-                <PrimaryButton
-                  text={VIEW_MODEL_DETAILS_LABEL}
-                  onPress={handleViewModel}
-                  accessibilityRole="link"
-                  accessibilityHint={OPENS_IN_BROWSER_HINT}
-                />
-              )}
-              <SecondaryButton
-                text={ABOUT_SWM_LABEL}
-                onPress={handleAboutSwm}
-                style={styles.textButton}
-                textStyle={styles.textButtonLabel}
-                accessibilityRole="link"
-                accessibilityHint={OPENS_IN_BROWSER_HINT}
-              />
-            </View>
-          </BottomSheetView>
-        );
-      }}
-    </BackDismissibleSheetModal>
+      <View style={styles.header}>
+        <SwmLogo
+          width={LOGO_WIDTH}
+          height={LOGO_HEIGHT}
+          style={{ color: theme.text.primary }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+        <Text ref={titleRef} style={styles.title} accessibilityRole="header">
+          {ATTRIBUTION_SHEET_TITLE}
+        </Text>
+      </View>
+      <View style={styles.group}>
+        {attributionRows(data).map((row, index) => (
+          <Fragment key={row.key}>
+            {index > 0 && <View style={styles.separator} />}
+            <AttributionRow row={row} />
+          </Fragment>
+        ))}
+      </View>
+      <View style={styles.buttons}>
+        {modelUrl && (
+          <PrimaryButton
+            text={VIEW_MODEL_DETAILS_LABEL}
+            onPress={handleViewModel}
+            accessibilityRole="link"
+            accessibilityHint={OPENS_IN_BROWSER_HINT}
+          />
+        )}
+        <SecondaryButton
+          text={ABOUT_SWM_LABEL}
+          onPress={handleAboutSwm}
+          style={styles.textButton}
+          textStyle={styles.textButtonLabel}
+          accessibilityRole="link"
+          accessibilityHint={OPENS_IN_BROWSER_HINT}
+        />
+      </View>
+    </ScrollView>
   );
 };
 
-export default SwmAttributionSheet;
+export default SwmAttributionContent;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, topInset = 0) =>
   StyleSheet.create({
-    sheet: {
-      paddingTop: space.four,
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      paddingTop: topInset + space.six,
       paddingHorizontal: space.four,
-      paddingBottom: theme.insets.bottom + space.three,
+      paddingBottom: theme.insets.bottom + space.four,
       gap: space.six,
-      backgroundColor: theme.bg.sheet,
     },
     header: {
       alignItems: 'center',
