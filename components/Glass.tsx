@@ -19,7 +19,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
-import { isDarkTheme, type Theme } from '../styles/colors';
+import { isDarkTheme, withAlpha, type Theme } from '../styles/colors';
 
 export const LIQUID_GLASS = isLiquidGlassAvailable();
 
@@ -29,8 +29,11 @@ const RAISED_SHADOW = {
   opacity: 0.1,
   radius: 10,
   offsetY: 3,
-  elevation: 3,
 };
+const ELEVATION_LIKE_SHADOW = [
+  { offsetY: 1, blurRadius: 3, opacity: 0.1 },
+  { offsetY: 2, blurRadius: 6, opacity: 0.08 },
+];
 const PAINTS_SOLID_FILL = Platform.OS === 'android';
 
 type NativeGlassProps = ComponentProps<typeof GlassView> & {
@@ -50,15 +53,32 @@ function shapeOf(radius: number): ViewStyle {
   return { borderRadius: radius, borderCurve: 'continuous' };
 }
 
-function raisedEdge(theme: Theme): ViewStyle {
+function raisedShadow(theme: Theme): ViewStyle {
+  if (PAINTS_SOLID_FILL) {
+    return {
+      boxShadow: ELEVATION_LIKE_SHADOW.map(
+        ({ offsetY, blurRadius, opacity }) => ({
+          offsetX: 0,
+          offsetY,
+          blurRadius,
+          color: withAlpha(theme.bg.shadow, opacity),
+        })
+      ),
+    };
+  }
   return {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.border.popover,
     shadowColor: theme.bg.shadow,
     shadowOffset: { width: 0, height: RAISED_SHADOW.offsetY },
     shadowOpacity: RAISED_SHADOW.opacity,
     shadowRadius: RAISED_SHADOW.radius,
-    elevation: RAISED_SHADOW.elevation,
+  };
+}
+
+function raisedEdge(theme: Theme): ViewStyle {
+  return {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.border.popover,
+    ...raisedShadow(theme),
   };
 }
 
