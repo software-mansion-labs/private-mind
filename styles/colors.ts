@@ -22,6 +22,8 @@ export const lightTheme = {
     popoverControl: 'rgba(2, 15, 60, 0.05)',
     cardSelected: '#F6F7F9',
     tile: '#E6E7EB',
+    sheet: '#ffffff',
+    sheetTile: '#E6E7EB',
     attachButton: '#3D61D6',
     voiceModeSurface: 'rgba(2, 15, 60, 0.2)',
     errorSecondary: '#F5D0D1',
@@ -108,6 +110,8 @@ export const darkTheme = {
     popoverControl: 'rgba(255, 255, 255, 0.08)',
     cardSelected: '#121212',
     tile: '#1C1C1E',
+    sheet: '#1C1C1E',
+    sheetTile: '#2C2C2E',
     attachButton: '#000000',
     // Voice mode sits on `bg.main` in both themes, so use the same tint here
     // for parity across light and dark.

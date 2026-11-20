@@ -94,7 +94,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: SHEET_HANDLE_PADDING,
       borderTopLeftRadius: SHEET_RADIUS,
       borderTopRightRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.sheet,
     },
     handleIndicator: {
       width: SHEET_HANDLE_INDICATOR_WIDTH,
@@ -104,6 +104,6 @@ const createStyles = (theme: Theme) =>
     },
     background: {
       borderRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.sheet,
     },
   });
