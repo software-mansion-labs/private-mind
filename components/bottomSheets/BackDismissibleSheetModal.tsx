@@ -9,7 +9,7 @@ import {
 import { useBackToDismiss } from '../../hooks/useBackToDismiss';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
-import { radius } from '../../constants/design-system';
+import { radius, stroke } from '../../constants/design-system';
 import {
   SHEET_HANDLE_INDICATOR_HEIGHT,
   SHEET_HANDLE_INDICATOR_WIDTH,
@@ -94,7 +94,8 @@ const createStyles = (theme: Theme) =>
       paddingVertical: SHEET_HANDLE_PADDING,
       borderTopLeftRadius: SHEET_RADIUS,
       borderTopRightRadius: SHEET_RADIUS,
-      backgroundColor: theme.bg.sheet,
+      // Transparent so the background's top border shows through the handle.
+      backgroundColor: 'transparent',
     },
     handleIndicator: {
       width: SHEET_HANDLE_INDICATOR_WIDTH,
@@ -105,5 +106,8 @@ const createStyles = (theme: Theme) =>
     background: {
       borderRadius: SHEET_RADIUS,
       backgroundColor: theme.bg.sheet,
+      borderWidth: stroke.soft,
+      borderColor: theme.border.sheet,
+      boxShadow: theme.shadow.sheet,
     },
   });

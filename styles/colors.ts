@@ -69,9 +69,12 @@ export const lightTheme = {
     codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
     codeBlock: 'rgba(2, 15, 60, 0.08)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.1)',
+    sheet: 'transparent',
   },
   shadow: {
     floatingOpacity: 0.18,
+    sheet:
+      '0px -1px 3px rgba(2, 15, 60, 0.12), 0px -8px 32px rgba(2, 15, 60, 0.28)',
   },
   label: {
     red: { background: '#FEBFBA', foreground: '#770212' },
@@ -159,9 +162,12 @@ export const darkTheme = {
     codeInlineStrong: 'rgba(255, 255, 255, 0.1)',
     codeBlock: 'rgba(255, 255, 255, 0.08)',
     codeBlockStrong: 'rgba(255, 255, 255, 0.1)',
+    sheet: 'rgba(255, 255, 255, 0.1)',
   },
   shadow: {
     floatingOpacity: 0.6,
+    sheet:
+      '0px -1px 6px rgba(255, 255, 255, 0.12), 0px -10px 40px rgba(255, 255, 255, 0.16)',
   },
   label: {
     red: { background: 'rgba(226, 72, 74, 0.24)', foreground: '#FFA09A' },
