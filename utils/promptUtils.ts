@@ -6,6 +6,7 @@ import {
 } from '../database/chatRepository';
 import { isGreetingOnly } from './openingGreeting';
 import { questionForImage } from './imageQuestion';
+import { deviceLanguage } from './deviceLanguage';
 import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
 import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
@@ -678,6 +679,25 @@ const conversationWindowFor = (
   modelCapacityTokens: modelContextCapacity(model.id),
 });
 
+const userContents = (messages: Message[]): string[] =>
+  messages.filter((msg) => msg.role === 'user').map((msg) => msg.content);
+
+const MIN_WORDS_TO_JUDGE_LANGUAGE = 3;
+
+const tooShortToJudgeLanguage = (text: string): boolean =>
+  (text.match(/\p{L}+/gu)?.length ?? 0) < MIN_WORDS_TO_JUDGE_LANGUAGE;
+
+export const answerLanguageOf = (
+  chatMessages: Message[]
+): QuestionLanguage | null => {
+  const typed = userContents(chatMessages);
+  return (
+    detectThreadLanguage(typed) ??
+    (tooShortToJudgeLanguage(typed.at(-1) ?? '') ? deviceLanguage() : null) ??
+    detectThreadLanguage(userContents(chatMessages.map(withQuestionForImage)))
+  );
+};
+
 export const prepareMessagesForLLM = (
   chatMessages: Message[],
   context: string[],
@@ -703,11 +723,7 @@ export const prepareMessagesForLLM = (
   const question = activeChatMessages.findLast(
     (msg) => msg.role === 'user'
   )?.content;
-  const language = detectThreadLanguage(
-    activeChatMessages
-      .filter((msg) => msg.role === 'user')
-      .map((msg) => msg.content)
-  );
+  const language = answerLanguageOf(chatMessages);
 
   let systemPrompt = hasContext
     ? settings.systemPrompt

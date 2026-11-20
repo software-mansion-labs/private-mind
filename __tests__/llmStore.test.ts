@@ -46,6 +46,7 @@ jest.mock('../utils/promptUtils', () => ({
     () => ' (Answer in the same language as this message.)'
   ),
   focusedRetrySystemPrompt: jest.fn(() => 'Answer from the quoted lines.'),
+  answerLanguageOf: jest.requireActual('../utils/promptUtils').answerLanguageOf,
 }));
 jest.mock('../constants/default-benchmark', () => ({
   BENCHMARK_PROMPT: 'benchmark prompt text',
@@ -1808,6 +1809,45 @@ describe('sendChatMessage', () => {
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Kazimierz Wielki był królem Polski i zreformował prawo.'
+    );
+  });
+
+  it('nudges a photo sent without text toward the language of the conversation', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce(
+        "Kazimierz Wielki (1310–1370) Polska'nın en son piastıydı. İşte maddeler:"
+      )
+      .mockResolvedValueOnce('Na zdjęciu jest zamek w Krakowie.');
+    useLLMStore.setState({
+      model: baseModel,
+      activeChatId: 1,
+      activeChatMessages: [
+        {
+          id: 1,
+          chatId: 1,
+          role: 'user',
+          content: 'Kim był Kazimierz Wielki i czego dokonał?',
+          timestamp: 0,
+        },
+        {
+          id: 2,
+          chatId: 1,
+          role: 'assistant',
+          content: 'Był królem Polski.',
+          timestamp: 0,
+        },
+      ],
+    });
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('', 1, noSources, settings, '/local/castle.jpg');
+
+    const nudge = mockInstance.generate.mock.calls[1]?.[0] as
+      { role: string; content: string }[] | undefined;
+    expect(nudge?.at(-1)?.content).toContain('written in the wrong language');
+    expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
+      'Na zdjęciu jest zamek w Krakowie.'
     );
   });
 

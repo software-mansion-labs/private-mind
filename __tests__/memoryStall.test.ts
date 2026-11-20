@@ -24,6 +24,7 @@ jest.mock('../utils/promptUtils', () => ({
   ]),
   answerLanguageAnchor: jest.fn(() => ''),
   focusedRetrySystemPrompt: jest.fn(() => ''),
+  answerLanguageOf: jest.requireActual('../utils/promptUtils').answerLanguageOf,
 }));
 jest.mock('../utils/cpuSupport', () => ({
   cpuLacksLseAtomics: () => Promise.resolve(false),
