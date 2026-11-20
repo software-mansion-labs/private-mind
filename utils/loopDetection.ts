@@ -214,13 +214,84 @@ const salvageFirstUnit = (text: string): string => {
   return text.trim();
 };
 
-const loopSpans = (text: string): LoopSpan[] =>
-  [
-    ...findRepeatedClauseSpans(text),
-    ...findRepeatedLineSpans(text),
-    findRepeatedWordRun(text),
-    findRepeatedPhraseRun(text),
+const CODE_BLOCK = /```[^\n]*\n[\s\S]*?(?:\n```|$)/g;
+const INLINE_CODE = /`[^`\n]+`/g;
+const CODE_LINE_REPEAT_LIMIT = 4;
+
+const blanked = (part: string): string => part.replace(/[^\n]/g, ' ');
+
+const proseOnly = (text: string): string =>
+  text.replace(CODE_BLOCK, blanked).replace(INLINE_CODE, blanked);
+
+const MAX_CODE_CYCLE_LINES = 40;
+const CODE_CYCLE_REPEATS = 3;
+
+type CodeLine = { norm: string; start: number };
+
+const codeLines = (block: RegExpMatchArray): CodeLine[] => {
+  const lines: CodeLine[] = [];
+  let cursor = block.index!;
+  for (const line of block[0].split('\n')) {
+    lines.push({ norm: line.trim(), start: cursor });
+    cursor += line.length + 1;
+  }
+  return lines;
+};
+
+const cycleRepeats = (
+  lines: CodeLine[],
+  at: number,
+  period: number,
+  times: number
+): boolean => {
+  for (let k = 0; k < period * (times - 1); k++) {
+    if (lines[at + k]!.norm !== lines[at + period + k]!.norm) return false;
+  }
+  return true;
+};
+
+const cycleCarriesCode = (
+  lines: CodeLine[],
+  at: number,
+  period: number
+): boolean =>
+  lines
+    .slice(at, at + period)
+    .some((line) => line.norm.length >= MIN_LINE_CHARS);
+
+const findRepeatedCodeLines = (text: string): LoopSpan | null => {
+  for (const block of text.matchAll(CODE_BLOCK)) {
+    const lines = codeLines(block);
+    for (let at = 0; at < lines.length; at++) {
+      for (let period = 1; period <= MAX_CODE_CYCLE_LINES; period++) {
+        const times =
+          period === 1 ? CODE_LINE_REPEAT_LIMIT : CODE_CYCLE_REPEATS;
+        if (at + period * times > lines.length) break;
+        if (
+          cycleCarriesCode(lines, at, period) &&
+          cycleRepeats(lines, at, period, times)
+        ) {
+          return { first: lines[at]!.start, repeat: lines[at + period]!.start };
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const loopSpans = (text: string): LoopSpan[] => {
+  const prose = proseOnly(text);
+  return [
+    ...findRepeatedClauseSpans(prose),
+    ...findRepeatedLineSpans(prose),
+    findRepeatedWordRun(prose),
+    findRepeatedPhraseRun(prose),
+    findRepeatedCodeLines(text),
   ].filter((span): span is LoopSpan => span !== null);
+};
+
+const closesOpenCodeBlock = (text: string): string =>
+  (text.match(/```/g)?.length ?? 0) % 2 === 1 ? `${text}\n\`\`\`` : text;
 
 export const isRepetitionFromTheStart = (text: string): boolean => {
   const earliest = earliestSpan(loopSpans(text));
@@ -231,6 +302,6 @@ export const truncateAtRepeatedClause = (text: string): string => {
   const spans = loopSpans(text);
   if (spans.length === 0) return text;
   const kept = text.slice(0, Math.min(...spans.map((s) => s.repeat))).trimEnd();
-  if (kept.trim()) return kept;
+  if (kept.trim()) return closesOpenCodeBlock(kept);
   return text.trim() ? salvageFirstUnit(text) : kept;
 };
