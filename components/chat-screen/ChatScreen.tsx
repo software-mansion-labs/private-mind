@@ -419,6 +419,7 @@ export default function ChatScreen({
           canRetryGeneration={retryArmedForChatId === chatId}
           turnFooter={memoryStallCard}
           bottomOffset={scrollBottomOffset}
+          barHeight={barHeight}
           freeze={overlayOpen}
           revealFromTop={revealFromTop}
           branchMarkers={branchMarkers}

@@ -17,7 +17,14 @@ import {
   LayoutChangeEvent,
   useWindowDimensions,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  withTiming,
+  type EntryAnimationsValues,
+  type SharedValue,
+} from 'react-native-reanimated';
 import ThinkingBlock from './ThinkingBlock';
 import AnimatedChatLoading from './AnimatedChatLoading';
 import WebSearchBlock from './WebSearchBlock';
@@ -67,6 +74,7 @@ interface MessageItemProps {
   showForkAction?: boolean;
   onCopy?: (message: Message) => void;
   onFork?: (message: Message) => void;
+  composerRise?: SharedValue<number>;
 }
 
 const splitDocumentName = (name: string) => {
@@ -81,7 +89,60 @@ const splitDocumentName = (name: string) => {
 };
 
 const REFINED_SWAP_MS = 320;
-const SENT_FADE_IN_MS = 180;
+const SENT_FADE_IN_MS = 90;
+const SENT_RISE_MS = 520;
+const SENT_SHORTEST_RISE_PX = 110;
+const SENT_GROW_FROM_SCALE = 0.9;
+const ANSWER_FADE_IN_MS = 220;
+const ANSWER_WAITS_FOR_BUBBLE_MS = SENT_RISE_MS - 80;
+const answerEnteringAfterBubble = FadeIn.duration(ANSWER_FADE_IN_MS).delay(
+  ANSWER_WAITS_FOR_BUBBLE_MS
+);
+const SENT_RISE_EASING = Easing.bezier(0.3, 0, 0.1, 1);
+
+export const sentBubbleRise = ({
+  windowHeight,
+  composerRise,
+  bubbleTop,
+  bubbleHeight,
+}: {
+  windowHeight: number;
+  composerRise: number;
+  bubbleTop: number;
+  bubbleHeight: number;
+}): number => {
+  'worklet';
+  const composerTop = windowHeight - composerRise;
+  const fromComposer = composerTop - (bubbleTop + bubbleHeight);
+  return Math.min(windowHeight, Math.max(SENT_SHORTEST_RISE_PX, fromComposer));
+};
+
+const sentBubbleEnteringFrom =
+  (composerRise?: SharedValue<number>) => (values: EntryAnimationsValues) => {
+    'worklet';
+    const settle = { duration: SENT_RISE_MS, easing: SENT_RISE_EASING };
+    const rise = composerRise
+      ? sentBubbleRise({
+          windowHeight: values.windowHeight,
+          composerRise: composerRise.get(),
+          bubbleTop: values.targetGlobalOriginY,
+          bubbleHeight: values.targetHeight,
+        })
+      : SENT_SHORTEST_RISE_PX;
+    return {
+      initialValues: {
+        opacity: 0,
+        transform: [{ translateY: rise }, { scale: SENT_GROW_FROM_SCALE }],
+      },
+      animations: {
+        opacity: withTiming(1, { duration: SENT_FADE_IN_MS }),
+        transform: [
+          { translateY: withTiming(0, settle) },
+          { scale: withTiming(1, settle) },
+        ],
+      },
+    };
+  };
 
 export const MODEL_STARTING_LABEL = 'Starting the model on your device…';
 
@@ -124,12 +185,20 @@ const MessageItem = memo(
     showForkAction = false,
     onCopy,
     onFork,
+    composerRise,
   }: MessageItemProps) => {
     const { styles } = useThemedStyles(createStyles);
+    const sentBubbleEntering = useMemo(
+      () => sentBubbleEnteringFrom(composerRise),
+      [composerRise]
+    );
     const showPerformanceMetrics = useSettingsStore(
       (state) => state.showPerformanceMetrics
     );
     const [sentJustNow] = useState(() => role === 'user' && message.id < 0);
+    const [answersFreshSend] = useState(
+      () => role === 'assistant' && message.id < 0 && !content
+    );
     const [lightboxVisible, setLightboxVisible] = useState(false);
     const [userRowWidth, setUserRowWidth] = useState<number | null>(null);
     const handleUserRowLayout = useCallback(
@@ -273,9 +342,7 @@ const MessageItem = memo(
           <Animated.View
             style={styles.userMessageGroup}
             onLayout={handleUserRowLayout}
-            entering={
-              sentJustNow ? FadeIn.duration(SENT_FADE_IN_MS) : undefined
-            }
+            entering={sentJustNow ? sentBubbleEntering : undefined}
           >
             {imagePath && (
               <View
@@ -334,7 +401,10 @@ const MessageItem = memo(
             )}
           </Animated.View>
         ) : (
-          <View style={styles.aiMessage}>
+          <Animated.View
+            style={styles.aiMessage}
+            entering={answersFreshSend ? answerEnteringAfterBubble : undefined}
+          >
             <View style={styles.bubbleContent}>
               {content.trim() || isAwaitingFirstToken ? (
                 <Animated.Text
@@ -423,7 +493,7 @@ const MessageItem = memo(
                 )}
               {actions}
             </View>
-          </View>
+          </Animated.View>
         )}
       </>
     );
@@ -445,6 +515,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'flex-end',
       marginBottom: space.six,
       gap: space.one,
+      transformOrigin: 'right bottom',
     },
     userBubble: {
       flexDirection: 'column',

@@ -134,6 +134,7 @@ interface Props {
    * long messages.
    */
   bottomOffset: number;
+  barHeight?: SharedValue<number>;
   /**
    * Freeze the scroll layout while an overlay (bottom sheet, attachment
    * picker, etc.) is presented, to prevent content jumps when the keyboard
@@ -231,6 +232,7 @@ const Messages = ({
   canRetryGeneration = false,
   turnFooter,
   bottomOffset,
+  barHeight,
   freeze = false,
   chatBarInset,
   topInset,
@@ -367,6 +369,9 @@ const Messages = ({
   }, [branchMarkers]);
 
   const keyboardLift = useKeyboardLift();
+  const composerRise = useDerivedValue(
+    () => (barHeight ? barHeight.get() : 0) - keyboardLift.get()
+  );
   const keyboardOwnedElsewhere = useKeyboardOwnerStore(
     selectKeyboardOwnedElsewhere
   );
@@ -1315,6 +1320,7 @@ const Messages = ({
               showForkAction={showForkAction}
               onCopy={handleCopyMessage}
               onFork={handleForkMessage}
+              composerRise={composerRise}
             />
             {message.stoppedByUser && (
               <StoppedMarker
