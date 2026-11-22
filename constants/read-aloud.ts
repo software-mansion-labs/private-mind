@@ -16,6 +16,7 @@ export const READ_ALOUD_VOICES: Record<ReverbLanguage, ReverbDefaultVoiceName> =
 
 export const MAX_SPOKEN_CHARACTERS = 3000;
 export const LANGUAGE_SAMPLE_CHARACTERS = 600;
+export const MAX_STRAY_SCRIPT_SHARE = 0.1;
 export const MIN_SPOKEN_CHARACTERS = 2;
 export const PLAYBACK_START_TIMEOUT_MS = 30_000;
 export const READ_ALOUD_MODEL_FILES_LABEL = 'Read aloud';

@@ -26,6 +26,26 @@ describe('readAloudPlanFor', () => {
     expect(plan?.voice).toBe(READ_ALOUD_VOICES.pl);
   });
 
+  it('reads a Polish answer that carries a few stray CJK characters', () => {
+    const plan = readAloudPlanFor({
+      role: 'assistant',
+      content:
+        'Niebo jest niebieskie dzięki światłu słonecznemu, które jest rozpraszane w atmosferze. Jego długa 成分 fala rozprasza się słabiej niż krótka.',
+    });
+
+    expect(plan?.language).toBe('pl');
+    expect(plan?.text).not.toMatch(/成分/);
+  });
+
+  it('offers nothing when another script carries the answer', () => {
+    expect(
+      readAloudPlanFor({
+        role: 'assistant',
+        content: '天空是蓝色的，因为 Rayleigh 散射使短波长的光更容易散射。',
+      })
+    ).toBeNull();
+  });
+
   it('recognises a German answer', () => {
     const plan = readAloudPlanFor(
       answer('Das Wetter ist heute schön und morgen wird es wärmer.')
