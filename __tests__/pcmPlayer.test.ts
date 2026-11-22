@@ -13,6 +13,7 @@ describe('createPcmPlayer', () => {
     player.enqueue(chunk());
     expect(lastQueue().enqueueBuffer).toHaveBeenCalledTimes(2);
     expect(lastQueue().start).toHaveBeenCalledTimes(1);
+    expect(lastQueue().start).toHaveBeenCalledWith(0, 0);
   });
 
   it('finishes only once every queued buffer has ended', async () => {

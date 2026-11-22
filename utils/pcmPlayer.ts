@@ -6,6 +6,9 @@ export interface PcmPlayer {
   stop: () => Promise<void>;
 }
 
+const START_NOW = 0;
+const FROM_FIRST_SAMPLE = 0;
+
 export const createPcmPlayer = (sampleRate: number): PcmPlayer => {
   const context = new AudioContext({ sampleRate });
   const queue = context.createBufferQueueSource();
@@ -39,7 +42,7 @@ export const createPcmPlayer = (sampleRate: number): PcmPlayer => {
     enqueued += 1;
     if (started) return;
     started = true;
-    queue.start();
+    queue.start(START_NOW, FROM_FIRST_SAMPLE);
   };
 
   const finish = () => {
