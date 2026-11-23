@@ -227,7 +227,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: radius.full,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: theme.bg.tile,
+      backgroundColor: theme.bg.sheetTile,
     },
     iconCircleIcon: {
       color: theme.text.defaultSecondary,

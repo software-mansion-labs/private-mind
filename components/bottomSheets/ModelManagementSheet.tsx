@@ -75,7 +75,7 @@ const ActionRow = ({ action }: { action: Action }) => {
   const { styles, theme } = useThemedStyles(createStyles);
   const { background, foreground } = {
     accent: { background: theme.bg.accentSoft, foreground: theme.text.accent },
-    neutral: { background: theme.bg.tile, foreground: theme.text.primary },
+    neutral: { background: theme.bg.sheetTile, foreground: theme.text.primary },
     destructive: {
       background: theme.bg.errorSecondary,
       foreground: theme.text.error,

@@ -160,7 +160,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + space.three,
       gap: space.six,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.sheet,
     },
     header: {
       alignItems: 'center',

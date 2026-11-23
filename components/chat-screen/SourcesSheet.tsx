@@ -272,7 +272,7 @@ const createStyles = (theme: Theme) =>
       paddingTop: space.two,
       paddingBottom: theme.insets.bottom + space.eight,
       gap: space.three,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.sheet,
     },
     sourcesSheetTitle: {
       ...textStyles.titleH3,
