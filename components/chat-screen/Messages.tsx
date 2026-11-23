@@ -1262,6 +1262,12 @@ const Messages = ({
     );
 
   const firstRowUnderFooter = turnFooter ? lastUserIndex : chatHistory.length;
+  const turnHasNoAnswerRow =
+    lastUserIndex >= 0 && lastAssistantIndex === -1 && !footerMeasuresTurn;
+  const stoppedQuestionIndex =
+    turnHasNoAnswerRow && chatHistory[lastUserIndex]?.stoppedByUser
+      ? lastUserIndex
+      : -1;
 
   const measurementKeyAt = (index: number): string | null => {
     const message = chatHistory[index];
@@ -1322,7 +1328,7 @@ const Messages = ({
               onFork={handleForkMessage}
               composerRise={composerRise}
             />
-            {message.stoppedByUser && (
+            {message.stoppedByUser && index !== stoppedQuestionIndex && (
               <StoppedMarker
                 onRetry={
                   canRetryGeneration &&
@@ -1392,6 +1398,7 @@ const Messages = ({
       onRetryGeneration,
       pinFloorStyle,
       questionForAssistantAt,
+      stoppedQuestionIndex,
       styles.messageRow,
     ]
   );
@@ -1486,6 +1493,22 @@ const Messages = ({
               </View>
             </View>
           )}
+          {turnHasNoAnswerRow &&
+            (pinFloorStyle || stoppedQuestionIndex >= 0) && (
+              <View style={pinFloorStyle} collapsable={false}>
+                {stoppedQuestionIndex >= 0 && (
+                  <StoppedMarker
+                    onRetry={
+                      canRetryGeneration &&
+                      stoppedQuestionIndex === chatHistory.length - 1 &&
+                      !isGenerating
+                        ? onRetryGeneration
+                        : undefined
+                    }
+                  />
+                )}
+              </View>
+            )}
           {sentTurnSpacerStyle && <View style={sentTurnSpacerStyle} />}
         </KeyboardChatScrollView>
       </Reanimated.View>
