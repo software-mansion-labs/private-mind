@@ -12,6 +12,7 @@ import {
   joinContinuation,
   isConversationalOpener,
   isQuestionEchoAnswer,
+  isAnswerInOtherLanguage,
   isWrongLanguageAnswer,
   strayedFromWelcome,
   retryDropsGroundedDetail,
@@ -1008,6 +1009,23 @@ describe('isConversationalOpener', () => {
     '?!',
   ])('does not mistake %j for one', (turn) => {
     expect(isConversationalOpener(turn)).toBe(false);
+  });
+});
+
+describe('isAnswerInOtherLanguage', () => {
+  const french = { code: 'fr', name: 'French' };
+
+  it('flags an English answer when the thread is French', () => {
+    expect(
+      isAnswerInOtherLanguage(
+        'The weather today is sunny and the price of bread is two euros.',
+        french
+      )
+    ).toBe(true);
+  });
+
+  it('says nothing when the thread has no known language', () => {
+    expect(isAnswerInOtherLanguage('The weather is sunny.', null)).toBe(false);
   });
 });
 

@@ -44,10 +44,11 @@ import { onModelFilesReplaced } from '../utils/modelFilesReplaced';
 import { Feedback } from '../utils/Feedback';
 import {
   answerLanguageAnchor,
+  answerLanguageOf,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
-import { detectQuestionLanguage } from '../utils/questionLanguage';
+import { type QuestionLanguage } from '../utils/questionLanguage';
 import {
   detectGroundingCaveats,
   claimsMissingEvidenceItHas,
@@ -62,7 +63,7 @@ import {
   endsInsideList,
   joinContinuation,
   isQuestionEchoAnswer,
-  isWrongLanguageAnswer,
+  isAnswerInOtherLanguage,
   strayedFromWelcome,
   retryDropsGroundedDetail,
   stripEchoedQuestionPrefix,
@@ -823,10 +824,8 @@ const NO_ANSWER_FALLBACK: Record<string, string> = {
   en: 'I could not answer this question from the sources I found.',
 };
 
-const noAnswerFallback = (question: string | undefined): string => {
-  const code = detectQuestionLanguage(question ?? '')?.code ?? 'en';
-  return NO_ANSWER_FALLBACK[code] ?? NO_ANSWER_FALLBACK.en!;
-};
+const noAnswerFallback = (language: QuestionLanguage | null): string =>
+  NO_ANSWER_FALLBACK[language?.code ?? 'en'] ?? NO_ANSWER_FALLBACK.en!;
 
 const EVIDENCE_PRESENT_RETRY_PROMPT =
   'The block does contain a figure of the kind the question asks for. Read it ' +
@@ -1769,25 +1768,25 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       let nudged = welcomeTakesNoNudge;
       const answerRetries: AnswerRetry[] = [];
 
-      const questionLanguage = detectQuestionLanguage(currentQuestion ?? '');
+      const answerLanguage = answerLanguageOf(get().activeChatMessages);
       const continuedRetry = (prompt: string): ExecutorchMessage[] => [
         ...effectivePrepared,
         { role: 'assistant', content: finalResponse as string },
         {
           role: 'user',
-          content: prompt + answerLanguageAnchor(questionLanguage),
+          content: prompt + answerLanguageAnchor(answerLanguage),
         },
       ];
       const focusedRetry = (lines: string[]): ExecutorchMessage[] => [
         {
           role: 'system',
-          content: focusedRetrySystemPrompt(questionLanguage),
+          content: focusedRetrySystemPrompt(answerLanguage),
         },
         {
           role: 'user',
           content:
             focusedEvidencePrompt(currentQuestion ?? '', lines) +
-            answerLanguageAnchor(questionLanguage),
+            answerLanguageAnchor(answerLanguage),
         },
       ];
       const evidenceRetry = (prompt: string): ExecutorchMessage[] => {
@@ -1853,12 +1852,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       if (
         get().isGenerating &&
         finalResponse &&
-        isWrongLanguageAnswer(finalResponse, currentQuestion)
+        isAnswerInOtherLanguage(finalResponse, answerLanguage)
       ) {
         await nudgeOnce(
           'Answer in the wrong language, retrying once with a nudge',
           continuedRetry(WRONG_LANGUAGE_RETRY_PROMPT),
-          (retried) => isWrongLanguageAnswer(retried, currentQuestion)
+          (retried) => isAnswerInOtherLanguage(retried, answerLanguage)
         );
       }
 
@@ -1867,7 +1866,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         get().isGenerating &&
         finalResponse &&
         isQuestionEchoAnswer(finalResponse, currentQuestion) &&
-        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+        !isAnswerInOtherLanguage(finalResponse, answerLanguage)
       ) {
         await nudgeOnce(
           'Question echoed back, retrying once with a nudge',
@@ -1878,7 +1877,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           finalResponse &&
           isQuestionEchoAnswer(finalResponse, currentQuestion)
         ) {
-          finalResponse = noAnswerFallback(currentQuestion);
+          finalResponse = noAnswerFallback(answerLanguage);
           loopGuardTrimmed = false;
         }
       }
@@ -1903,7 +1902,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               currentQuestion,
               promptContext,
               webIntentKind
-            ) || isWrongLanguageAnswer(retried, currentQuestion),
+            ) || isAnswerInOtherLanguage(retried, answerLanguage),
           true
         );
       }
@@ -1935,7 +1934,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           (retried) =>
             ((ignoresEvidence(retried) || buriesFigure(retried)) &&
               !retryStatesWhatDraftLacks(retried)) ||
-            isWrongLanguageAnswer(retried, currentQuestion),
+            isAnswerInOtherLanguage(retried, answerLanguage),
           true
         );
       }
@@ -1945,7 +1944,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         get().isGenerating &&
         finalResponse &&
         isCircularNonAnswer(finalResponse) &&
-        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+        !isAnswerInOtherLanguage(finalResponse, answerLanguage)
       ) {
         await nudgeOnce(
           'Circular non-answer, retrying once with a nudge',
@@ -1981,7 +1980,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         (isDanglingListAnswer(finalResponse) ||
           (loopGuardTrimmed && endsInsideList(finalResponse))) &&
         !isQuestionEchoAnswer(finalResponse, currentQuestion) &&
-        !isWrongLanguageAnswer(finalResponse, currentQuestion)
+        !isAnswerInOtherLanguage(finalResponse, answerLanguage)
       ) {
         console.warn(
           'Dangling list answer, retrying once with a continuation nudge'
@@ -1989,7 +1988,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         updateChatStateForGeneration(set, 'generating');
         const continuationPrompt =
           DANGLING_LIST_CONTINUATION_PROMPT +
-          answerLanguageAnchor(detectQuestionLanguage(currentQuestion ?? ''));
+          answerLanguageAnchor(answerLanguage);
         const continuationGeneration = await generateRefinement(
           [
             ...effectivePrepared,
