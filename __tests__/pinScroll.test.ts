@@ -9,6 +9,7 @@ import {
   pinOffsetFor,
   pinReleaseTarget,
   blankLeftBehind,
+  distanceFromAnswerEnd,
   scrollButtonShows,
   stoppedTurnLandsShort,
   turnEndFor,
@@ -227,6 +228,38 @@ describe('floorIsOffscreen', () => {
 
   it('fails while reserved blank space is still in view', () => {
     expect(floorIsOffscreen(830, 800)).toBe(false);
+  });
+});
+
+describe('distanceFromAnswerEnd', () => {
+  it('ignores the blank floor left below a short answer', () => {
+    expect(
+      distanceFromAnswerEnd({
+        distanceFromContentEnd: 400,
+        floor: 700,
+        rowHeight: 200,
+      })
+    ).toBe(-100);
+  });
+
+  it('measures from the content end once the answer outgrows the floor', () => {
+    expect(
+      distanceFromAnswerEnd({
+        distanceFromContentEnd: 400,
+        floor: 700,
+        rowHeight: 900,
+      })
+    ).toBe(400);
+  });
+
+  it('measures from the content end without a floor', () => {
+    expect(
+      distanceFromAnswerEnd({
+        distanceFromContentEnd: 150,
+        floor: 0,
+        rowHeight: 0,
+      })
+    ).toBe(150);
   });
 });
 

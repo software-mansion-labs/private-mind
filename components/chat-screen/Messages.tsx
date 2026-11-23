@@ -81,6 +81,7 @@ import {
 import { useSendKeyboardFreeze } from './useSendKeyboardFreeze';
 import {
   blankLeftBehind,
+  distanceFromAnswerEnd,
   floorIsOffscreen,
   floorIsOutgrown,
   lastTurnRows,
@@ -213,6 +214,7 @@ const LongPressableMessage = memo(
 );
 
 const SENT_TURN_ROWS_TIMEOUT_MS = 3000;
+const AT_BOTTOM_THRESHOLD_PX = 100;
 const OPENED_CHAT_FOLLOWS_END_MS = 2500;
 const MESSAGE_WINDOW_INITIAL = 40;
 const MESSAGE_WINDOW_STEP = 40;
@@ -249,6 +251,17 @@ const Messages = ({
   const isAtBottomRef = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const pinLandingUntil = useRef(0);
+  const pinFloorRef = useRef(0);
+  const lastAssistantHeight = useRef(0);
+  const isNearAnswerEnd = useCallback(
+    (distanceFromContentEnd: number) =>
+      distanceFromAnswerEnd({
+        distanceFromContentEnd,
+        floor: pinFloorRef.current,
+        rowHeight: lastAssistantHeight.current,
+      }) < AT_BOTTOM_THRESHOLD_PX,
+    []
+  );
   const updateScrollButton = useCallback((atBottom: boolean) => {
     const pinLanding =
       pendingPinRef.current || Date.now() < pinLandingUntil.current;
@@ -479,7 +492,6 @@ const Messages = ({
 
   const containerHeight = useRef(0);
   const lastUserHeight = useRef(0);
-  const lastAssistantHeight = useRef(0);
   const lastUserMeasurementKey = useRef<string | null>(null);
   const lastAssistantMeasurementKey = useRef<string | null>(null);
 
@@ -655,7 +667,6 @@ const Messages = ({
         }) - floorTrim
       )
     : 0;
-  const pinFloorRef = useRef(0);
   pinFloorRef.current = pinFloor;
   const [awaitedTurnAfterLength, setAwaitedTurnAfterLength] = useState<
     number | null
@@ -1013,7 +1024,7 @@ const Messages = ({
         contentSize.height +
         bottomInset -
         (contentOffset.y + layoutMeasurement.height);
-      const atBottom = distanceFromBottom < 100;
+      const atBottom = isNearAnswerEnd(distanceFromBottom);
       isAtBottomRef.current = atBottom;
       updateScrollButton(atBottom);
       if (
@@ -1032,7 +1043,7 @@ const Messages = ({
         dropPinFloor();
       }
     },
-    [dropPinFloor, releaseTarget, updateScrollButton]
+    [dropPinFloor, isNearAnswerEnd, releaseTarget, updateScrollButton]
   );
 
   const scrollToBottom = useCallback(() => {
@@ -1221,7 +1232,7 @@ const Messages = ({
       if (containerHeight.current > 0) {
         const layoutH = lastLayoutHeight.current || containerHeight.current;
         const distFromBottom = h - (lastScrollOffset.current + layoutH);
-        const atBottom = distFromBottom < 100;
+        const atBottom = isNearAnswerEnd(distFromBottom);
         if (atBottom !== isAtBottomRef.current) {
           isAtBottomRef.current = atBottom;
           updateScrollButton(atBottom);
@@ -1231,6 +1242,7 @@ const Messages = ({
     [
       applyPendingPin,
       followPin,
+      isNearAnswerEnd,
       landPredictedPin,
       listBottomPadding,
       listTopPadding,
