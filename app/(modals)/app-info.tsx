@@ -15,16 +15,21 @@ import SecondaryButton from '../../components/SecondaryButton';
 import Logo from '../../assets/icons/logo.svg';
 import GithubIcon from '../../assets/icons/github.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
-import SwmLogo from '../../assets/icons/swm-logo.svg';
+import SwmLogo from '../../assets/icons/swm-ai-labs-logo.svg';
 import RneLogo from '../../assets/icons/rne-logo.svg';
 import { pressedOpacity } from '../../styles/pressable';
+import {
+  APP_INFO_SWM_URL,
+  OPENS_IN_BROWSER_HINT,
+  SWM_AI_LABS_NAME,
+} from '../../constants/model-attribution';
 import { radius, space, stroke } from '../../constants/design-system';
 
 const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
 const FOOTER_LOGO_COLOR = '#e6e7eb';
 const FOOTER_HEIGHT = 80;
-const SWM_LOGO_SIZE = { width: 51.4, height: 27.8 };
+const SWM_LOGO_SIZE = { width: 100, height: 32 };
 const RNE_LOGO_SIZE = { width: 116.5, height: 32.5 };
 const FOOTER_SEPARATOR_HEIGHT = 21;
 
@@ -55,8 +60,8 @@ const AppHeader = () => {
         </Text>
       </View>
       <Text style={[styles.appDescription, { color: theme.text.primary }]}>
-        An app brought to you by Software Mansion to run AI models, locally on
-        your device.
+        An app brought to you by Software Mansion AI Labs to run AI models,
+        locally on your device.
       </Text>
     </View>
   );
@@ -138,6 +143,8 @@ export default function AppInfoScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useGlassScreenHeaderHeight();
 
+  const handleOpenSwmAiLabs = () => Linking.openURL(APP_INFO_SWM_URL);
+
   return (
     <View style={[styles.screen, { backgroundColor: theme.bg.softPrimary }]}>
       <ScrollView
@@ -155,7 +162,15 @@ export default function AppInfoScreen() {
         <VersionInfo />
         <View style={styles.footer}>
           <View style={styles.footerLogos}>
-            <SwmLogo {...SWM_LOGO_SIZE} style={styles.footerLogo} />
+            <Pressable
+              onPress={handleOpenSwmAiLabs}
+              accessibilityRole="link"
+              accessibilityLabel={SWM_AI_LABS_NAME}
+              accessibilityHint={OPENS_IN_BROWSER_HINT}
+              style={({ pressed }) => pressed && pressedOpacity}
+            >
+              <SwmLogo {...SWM_LOGO_SIZE} style={styles.footerLogo} />
+            </Pressable>
             <View style={styles.footerSeparator} />
             <RneLogo {...RNE_LOGO_SIZE} style={styles.footerLogo} />
           </View>
