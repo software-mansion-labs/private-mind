@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import ChatScreen from '../../../components/chat-screen/ChatScreen';
 import { useState } from 'react';
@@ -6,6 +6,7 @@ import { useReducedMotion, useSharedValue } from 'react-native-reanimated';
 import { useLLMStore } from '../../../store/llmStore';
 import { useModelStore } from '../../../store/modelStore';
 import { Model } from '../../../database/modelRepository';
+import { Message } from '../../../database/chatRepository';
 import { UNSET_CHAT_MODEL, useChatStore } from '../../../store/chatStore';
 import useChatHeader from '../../../hooks/useChatHeader';
 import { useChatBackGuard } from '../../../hooks/useChatBackGuard';
@@ -67,8 +68,12 @@ function ChatScreenInner() {
     !isPhantom && activeChatId !== chatId
   );
 
-  const historyForThisChat =
-    activeChatId !== null && activeChatId !== chatId ? [] : activeChatMessages;
+  const storeHoldsThisChat = activeChatId === null || activeChatId === chatId;
+  const lastOwnHistory = useRef<Message[]>([]);
+  if (storeHoldsThisChat) lastOwnHistory.current = activeChatMessages;
+  const historyForThisChat = storeHoldsThisChat
+    ? activeChatMessages
+    : lastOwnHistory.current;
 
   const isEmpty = !isLoading && historyForThisChat.length === 0;
   const shouldExitOnBack = isPhantom && isEmpty;
@@ -91,7 +96,9 @@ function ChatScreenInner() {
       if (currentActiveId === chatId) return;
 
       const initChat = async () => {
-        if (!isPhantom) setIsLoading(true);
+        if (!isPhantom && lastOwnHistory.current.length === 0) {
+          setIsLoading(true);
+        }
         await useLLMStore.getState().setActiveChatId(chatId);
         setIsLoading(false);
       };
