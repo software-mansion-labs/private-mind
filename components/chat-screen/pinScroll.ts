@@ -107,6 +107,19 @@ export const blankLeftBehind = ({
 export const floorIsOffscreen = (offset: number, releaseTarget: number) =>
   offset <= releaseTarget + PIN_READY_SLACK_PX;
 
+export interface AnswerEndDistance {
+  distanceFromContentEnd: number;
+  floor: number;
+  rowHeight: number;
+}
+
+export const distanceFromAnswerEnd = ({
+  distanceFromContentEnd,
+  floor,
+  rowHeight,
+}: AnswerEndDistance): number =>
+  distanceFromContentEnd - Math.max(0, floor - rowHeight);
+
 export const floorIsOutgrown = (floor: number, rowHeight: number) =>
   floor > 0 && rowHeight >= floor;
 
