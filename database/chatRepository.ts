@@ -69,7 +69,13 @@ export type WebStats = {
   queries: number;
 };
 
-export type RetrievalStats = { rag?: RagStats; web?: WebStats };
+export type WindowStats = { tokens: number; reason: string };
+
+export type RetrievalStats = {
+  rag?: RagStats;
+  web?: WebStats;
+  window?: WindowStats;
+};
 
 export type SourceKind = 'document' | 'web';
 
@@ -154,6 +160,14 @@ const readStatCounts = <K extends string>(
   return counts;
 };
 
+const readWindowStats = (value: unknown): WindowStats | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const { tokens, reason } = value as Record<string, unknown>;
+  if (typeof tokens !== 'number' || !Number.isFinite(tokens)) return undefined;
+  if (typeof reason !== 'string') return undefined;
+  return { tokens, reason };
+};
+
 const parseRetrievalStats = (
   retrievalStats?: string | null
 ): RetrievalStats | undefined => {
@@ -171,9 +185,14 @@ const parseRetrievalStats = (
       (parsed as Record<string, unknown>).web,
       WEB_STAT_KEYS
     );
-    if (!rag && !web) return undefined;
+    const window = readWindowStats((parsed as Record<string, unknown>).window);
+    if (!rag && !web && !window) return undefined;
 
-    return { ...(rag ? { rag } : {}), ...(web ? { web } : {}) };
+    return {
+      ...(rag ? { rag } : {}),
+      ...(web ? { web } : {}),
+      ...(window ? { window } : {}),
+    };
   } catch {
     return undefined;
   }
@@ -182,7 +201,7 @@ const parseRetrievalStats = (
 const serializeRetrievalStats = (
   retrievalStats?: RetrievalStats
 ): string | null =>
-  retrievalStats?.rag || retrievalStats?.web
+  retrievalStats?.rag || retrievalStats?.web || retrievalStats?.window
     ? JSON.stringify(retrievalStats)
     : null;
 

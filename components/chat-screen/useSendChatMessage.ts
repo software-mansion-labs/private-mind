@@ -36,6 +36,15 @@ import { isStalledOnPlanning } from './webSearchTrace';
 import type { WebIntentKind } from '../../utils/web/intentKind';
 import { webViewScrapeProvider } from '../../utils/web/scrape/webViewScrapeProvider';
 import { webContextCharBudget } from '../../utils/web/contextBudget';
+import {
+  chosenConversationMemory,
+  conversationWindowFor,
+} from '../../utils/conversationWindow';
+import { planTurnWindow } from '../../utils/planTurnWindow';
+import {
+  getSourceTokenBudget,
+  sourceRoomFor,
+} from '../../constants/context-window';
 import { WEB_SKIP_COPY, type WebSkipReason } from '../../constants/web-copy';
 import {
   RAG_PRIORITY_OVER_WEB_SEARCH,
@@ -47,6 +56,7 @@ import {
 } from '../../constants/web';
 import {
   getModelProfile,
+  withExtendedSourceRoom,
   isWebSearchReady,
 } from '../../constants/model-profiles';
 import {
@@ -207,7 +217,12 @@ export const useSendChatMessage = ({
         .filter(Boolean)
         .join(', ') || undefined;
 
-    const modelProfile = getModelProfile(useLLMStore.getState().model);
+    const conversationMemory = chosenConversationMemory();
+    const attachedDocuments = (attachments ?? []).flatMap((attachment) =>
+      attachment.type === 'document' && attachment.sourceId
+        ? [{ sourceId: attachment.sourceId, name: attachment.name ?? '' }]
+        : []
+    );
 
     const digestOfThisChat = (): string | null => {
       const llmState = useLLMStore.getState();
@@ -217,7 +232,34 @@ export const useSendChatMessage = ({
     };
 
     // Deferred so retrieval runs only after the optimistic message is on screen.
-    const buildSources = async (signal?: AbortSignal) => {
+    const buildSources = async (
+      signal?: AbortSignal,
+      readyModel?: Model | null
+    ) => {
+      const modelForSources = readyModel ?? useLLMStore.getState().model;
+      const turnWindow = modelForSources
+        ? await planTurnWindow({
+            model: modelForSources,
+            memory: conversationMemory,
+            thinkingEnabled: chatSettings.thinkingEnabled,
+            attachedDocuments,
+            vectorStore,
+          })
+        : undefined;
+      const sourceWindow = modelForSources
+        ? conversationWindowFor(modelForSources, {
+            memory: conversationMemory,
+            thinkingEnabled: chatSettings.thinkingEnabled,
+            carriesSources: true,
+            ceilingTokens: turnWindow?.ceilingTokens,
+          })
+        : undefined;
+      const modelProfile = withExtendedSourceRoom(
+        getModelProfile(modelForSources),
+        modelForSources && sourceWindow
+          ? sourceRoomFor(modelForSources, sourceWindow)
+          : 'standard'
+      );
       const webSearchEnabled = useWebSearchStore
         .getState()
         .isEnabled(targetChatId);
@@ -245,7 +287,9 @@ export const useSendChatMessage = ({
       let webSubQueries: string[] | undefined;
       let webWeak: boolean | undefined;
       let webSearchFailed: boolean | undefined;
-      const retrievalStats: RetrievalStats = {};
+      const retrievalStats: RetrievalStats = turnWindow
+        ? { window: turnWindow.stats }
+        : {};
       const hasRagSources =
         enabledSources.length > 0 || attachmentSourceIds.length > 0;
       if (vectorStore && hasRagSources) {
@@ -258,6 +302,15 @@ export const useSendChatMessage = ({
             vectorStore,
             embeddings,
             maxRelevantChunks: modelProfile.ragMaxRelevantChunks,
+            extraChunks: {
+              count: modelProfile.ragExtraChunks,
+              maxSimilarityGap: modelProfile.ragExtraChunkMaxSimilarityGap,
+            },
+            sourceTokenBudget:
+              modelForSources && sourceWindow
+                ? getSourceTokenBudget(modelForSources, sourceWindow)
+                : undefined,
+            passWholeDocument: !!turnWindow?.passesWholeDocument,
             history: messageHistory,
             digest: digestOfThisChat() ?? undefined,
           });
@@ -424,6 +477,8 @@ export const useSendChatMessage = ({
         webWeak,
         webSearchFailed,
         retrievalStats,
+        ceilingTokens: turnWindow?.ceilingTokens,
+        conversationMemory,
       };
     };
     const generation = sendChatMessage(

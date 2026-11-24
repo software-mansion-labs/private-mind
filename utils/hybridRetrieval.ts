@@ -92,6 +92,7 @@ const parseChunkId = (
 };
 
 const NEIGHBOR_RADIUS = 1;
+const WHOLE_DOCUMENT_SIMILARITY = 1;
 
 const expandSelectedWithNeighbors = async (
   selectedIds: string[],
@@ -218,6 +219,32 @@ const expandSelectedWithNeighbors = async (
   return result;
 };
 
+export const loadDocumentChunks = async (
+  vectorStore: OPSQLiteVectorStore,
+  documentId: number,
+  name: string
+): Promise<ContextChunk[]> => {
+  const result = await vectorStore.db.execute(
+    'SELECT id, document FROM vectors WHERE id >= ? AND id < ?',
+    [`${documentId}:`, `${documentId};`]
+  );
+  return result.rows
+    .map((row: Record<string, Scalar>) => ({
+      index: parseChunkId(String(row.id))?.chunkIndex,
+      document: (row.document as string | null) ?? undefined,
+    }))
+    .filter(
+      (row): row is { index: number; document: string } =>
+        row.index !== undefined && !!row.document
+    )
+    .sort((a, b) => a.index - b.index)
+    .map((row) => ({
+      document: row.document,
+      similarity: WHOLE_DOCUMENT_SIMILARITY,
+      metadata: { documentId, name },
+    }));
+};
+
 export type HybridRetrieveParams = {
   prompt: string;
   enabledSourceIds: number[];
@@ -226,7 +253,15 @@ export type HybridRetrieveParams = {
   embeddings?: LFMEmbeddings | null;
   attachmentSourceIds?: number[];
   maxRelevantChunks?: number;
+  extraChunks?: ExtraChunkAllowance;
 };
+
+export interface ExtraChunkAllowance {
+  count: number;
+  maxSimilarityGap: number;
+}
+
+const NO_EXTRA_CHUNKS: ExtraChunkAllowance = { count: 0, maxSimilarityGap: 0 };
 
 export const hybridRetrieve = async ({
   prompt,
@@ -236,6 +271,7 @@ export const hybridRetrieve = async ({
   embeddings,
   attachmentSourceIds = [],
   maxRelevantChunks = MAX_RELEVANT_CHUNKS,
+  extraChunks = NO_EXTRA_CHUNKS,
 }: HybridRetrieveParams): Promise<ContextChunk[]> => {
   const attachmentSet = new Set(attachmentSourceIds);
   const enabledSet = new Set(enabledSourceIds);
@@ -374,9 +410,9 @@ export const hybridRetrieve = async ({
   // Cap chunks per document only when the pool spans several documents, so one
   // long or freshly-attached file can't evict every other enabled source.
   const distinctDocs = new Set(qualified.map((c) => c.documentId)).size;
-  const selected = maximalMarginalRelevance(
+  const offered = maximalMarginalRelevance(
     mmrCandidates,
-    maxRelevantChunks,
+    maxRelevantChunks + extraChunks.count,
     undefined,
     distinctDocs > 1
       ? {
@@ -389,6 +425,15 @@ export const hybridRetrieve = async ({
           maxPerGroup: MAX_CHUNKS_PER_FILE,
         }
       : undefined
+  );
+  const similarityOf = (id: string) => byId.get(id)?.similarity ?? 0;
+  const topSimilarity = Math.max(
+    ...offered.map((item) => similarityOf(item.id))
+  );
+  const selected = offered.filter(
+    (item, index) =>
+      index < maxRelevantChunks ||
+      similarityOf(item.id) >= topSimilarity - extraChunks.maxSimilarityGap
   );
 
   // Adaptive-k on the non-attachment tail: drop chunks past the first large

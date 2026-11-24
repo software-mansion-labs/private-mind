@@ -257,7 +257,10 @@ export class LLMEngine {
     this.templateFlags = { ...flags };
   }
 
-  async generate(messages: ExecutorchMessage[]): Promise<string> {
+  async generate(
+    messages: ExecutorchMessage[],
+    { maxNewTokens }: { maxNewTokens?: number } = {}
+  ): Promise<string> {
     this.generatedTokens = 0;
     this.promptTokens = 0;
     this.stalled = false;
@@ -278,7 +281,9 @@ export class LLMEngine {
         this.runner,
         prompt,
         {
-          config: this.sampling,
+          config: maxNewTokens
+            ? { ...this.sampling, maxNewTokens }
+            : this.sampling,
           stopTokens: this.stopTokens,
           stall: this.stall,
           onToken: countToken,

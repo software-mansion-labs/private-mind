@@ -17,11 +17,11 @@ import {
   estimatePromptTokens,
   getConversationCharBudget,
   getConversationTokenBudget,
-  getPromptCharBudget,
-  type ConversationWindowInput,
+  getSourceCharBudget,
+  type ConversationMemory,
+  DEFAULT_CONVERSATION_MEMORY,
 } from '../constants/context-window';
-import { getDeviceMemoryGB } from './modelCompatibility';
-import { modelContextCapacity } from './modelContextCapacity';
+import { conversationWindowFor } from './conversationWindow';
 import { calendarFacts, mentionsTime, namesAnotherDay } from './calendarFacts';
 import type { WebIntentKind } from './web/intentKind';
 import {
@@ -607,6 +607,8 @@ export interface PrepareMessagesOptions {
   webSearchFailed?: boolean;
   digest?: string;
   openingWelcome?: string;
+  ceilingTokens?: number;
+  conversationMemory?: ConversationMemory;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -662,23 +664,6 @@ const withQuestionForImage = (message: Message): Message =>
     ? { ...message, content: questionForImage(message.content) }
     : message;
 
-const deviceMemoryGBOrZero = (): number => {
-  try {
-    return getDeviceMemoryGB();
-  } catch {
-    return 0;
-  }
-};
-
-const conversationWindowFor = (
-  model: Model,
-  settings: ChatSettings
-): ConversationWindowInput => ({
-  thinking: !!settings.thinkingEnabled && !!model.thinking,
-  deviceRamGB: deviceMemoryGBOrZero(),
-  modelCapacityTokens: modelContextCapacity(model.id),
-});
-
 const userContents = (messages: Message[]): string[] =>
   messages.filter((msg) => msg.role === 'user').map((msg) => msg.content);
 
@@ -717,6 +702,8 @@ export const prepareMessagesForLLM = (
     webSearchFailed,
     digest,
     openingWelcome,
+    ceilingTokens,
+    conversationMemory = DEFAULT_CONVERSATION_MEMORY,
   } = options;
   const activeChatMessages = chatMessages.map(withQuestionForImage);
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
@@ -824,10 +811,15 @@ export const prepareMessagesForLLM = (
   const budgetSample = `${messagesWithSystemPrompt[0].content}${context.join(
     ' '
   )}${lastMessage.content}`;
+  const conversationWindow = conversationWindowFor(model, {
+    memory: conversationMemory,
+    thinkingEnabled: settings.thinkingEnabled,
+    carriesSources: hasContext,
+    ceilingTokens,
+  });
   const budgetChars = Math.floor(
-    getPromptCharBudget(model, budgetSample) * budgetScale
+    getSourceCharBudget(model, conversationWindow, budgetSample) * budgetScale
   );
-  const conversationWindow = conversationWindowFor(model, settings);
   const conversationBudgetChars = Math.floor(
     getConversationCharBudget(model, conversationWindow, budgetSample) *
       budgetScale

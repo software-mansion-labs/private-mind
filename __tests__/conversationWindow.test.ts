@@ -12,7 +12,6 @@ import {
   sourceRoomFor,
   type ConversationMemory,
 } from '../constants/context-window';
-import { useSettingsStore } from '../store/settingsStore';
 import {
   ADAPTIVE_EXTRA_CHUNK_MAX_SIMILARITY_GAP,
   EXTENDED_ROOM_EXTRA_RAG_CHUNKS,
@@ -282,18 +281,22 @@ const guideContext = formatContextChunks([
   },
 ] as Parameters<typeof formatContextChunks>[0]);
 
-const promptOf = (thinkingEnabled = false, context: string[] = []) =>
+const promptOf = (
+  thinkingEnabled = false,
+  context: string[] = [],
+  conversationMemory: ConversationMemory = 'auto'
+) =>
   prepareMessagesForLLM(longChat(), context, settings(thinkingEnabled), model, {
     sourceDocuments: context.length
       ? [{ documentId: 7, name: 'guide.txt' }]
       : undefined,
+    conversationMemory,
   });
 
 describe('prepareMessagesForLLM with a larger conversation window', () => {
   afterEach(() => {
     forgetModelContextCapacities();
     mockTotalMemory.mockReturnValue(8 * GB);
-    useSettingsStore.setState({ conversationMemory: 'auto' });
   });
 
   it('keeps more of a long conversation on an 8 GB phone with a capable model', () => {
@@ -330,8 +333,7 @@ describe('prepareMessagesForLLM with a larger conversation window', () => {
     rememberModelContextCapacity(model.id, 8192);
     mockTotalMemory.mockReturnValue(5.6 * GB);
     const auto = promptOf();
-    useSettingsStore.setState({ conversationMemory: 'high' });
-    expect(promptOf()).toEqual(auto);
+    expect(promptOf(false, [], 'high')).toEqual(auto);
   });
 
   it('keeps fewer turns on Low and gives a document the standard room', () => {
@@ -340,10 +342,9 @@ describe('prepareMessagesForLLM with a larger conversation window', () => {
     const standardWithDocument = promptOf(false, guideContext);
     mockTotalMemory.mockReturnValue(5.6 * GB);
     const auto = promptOf();
-    useSettingsStore.setState({ conversationMemory: 'low' });
 
-    expect(promptOf().length).toBeLessThan(auto.length);
-    expect(promptOf(false, guideContext).at(-1)!.content).toBe(
+    expect(promptOf(false, [], 'low').length).toBeLessThan(auto.length);
+    expect(promptOf(false, guideContext, 'low').at(-1)!.content).toBe(
       standardWithDocument.at(-1)!.content
     );
   });

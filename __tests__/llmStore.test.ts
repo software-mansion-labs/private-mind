@@ -18,6 +18,11 @@ import { useWebSearchStore } from '../store/webSearchStore';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
 import { existingFiles } from '../__mocks__/expo-file-system';
 import { announceModelFilesReplaced } from '../utils/modelFilesReplaced';
+import {
+  forgetModelContextCapacities,
+  rememberModelContextCapacity,
+} from '../utils/modelContextCapacity';
+import { GROUNDED_ANSWER_TOKEN_LIMIT } from '../constants/context-window';
 
 const memoryProbe = { samples: [] as number[], available: false };
 jest.mock('../modules/memory-probe', () => ({
@@ -3413,6 +3418,20 @@ describe('a model picked just before sending must be the one that answers', () =
     expect(assistantWrites.at(-1)![1].modelName).toBe('Second LLM');
   });
 
+  it('builds the sources for the newly selected model, not the previous one', async () => {
+    const buildSources = jest.fn(noSources);
+    useLLMStore.getState().loadModel(otherModel);
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, buildSources, settings);
+
+    expect(buildSources).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ modelName: 'Second LLM' })
+    );
+  });
+
   it('leaves the store on the newly selected model after the turn', async () => {
     useLLMStore.getState().loadModel(otherModel);
 
@@ -3421,6 +3440,54 @@ describe('a model picked just before sending must be the one that answers', () =
       .sendChatMessage('ping', 1, noSources, settings);
 
     expect(useLLMStore.getState().model?.modelName).toBe('Second LLM');
+  });
+});
+
+describe('the context size a turn was planned with', () => {
+  const settings = { systemPrompt: 'be helpful' };
+  const STANDARD_WINDOW_TOKENS = 2048;
+
+  beforeEach(async () => {
+    await loadModel();
+    rememberModelContextCapacity(baseModel.id, 8192);
+    mockPersistMessage.mockResolvedValue(42);
+    useLLMStore.setState({ activeChatId: 1, activeChatMessages: [] });
+  });
+
+  afterEach(() => {
+    forgetModelContextCapacities();
+    useSettingsStore.setState({ conversationMemory: 'auto' });
+  });
+
+  const answerLimitOf = (call: number): number | undefined =>
+    (mockInstance.generate.mock.calls[call]?.[1] as { maxNewTokens?: number })
+      ?.maxNewTokens;
+
+  it('sizes the answer by the level the turn was planned with, not one picked mid-turn', async () => {
+    mockInstance.generate.mockResolvedValue('The answer is 42.');
+    const plannedOnAuto = async () => {
+      useSettingsStore.setState({ conversationMemory: 'low' });
+      return { ...(await noSources()), conversationMemory: 'auto' as const };
+    };
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('ping', 1, plannedOnAuto, settings);
+
+    expect(answerLimitOf(0)).toBeGreaterThan(STANDARD_WINDOW_TOKENS);
+  });
+
+  it('does not cap a continuation of an answer without sources at the grounded limit', async () => {
+    mockInstance.generate
+      .mockResolvedValueOnce('Oto co warto zabrać:')
+      .mockResolvedValueOnce('- Paszport\n- Bilet lotniczy')
+      .mockResolvedValue('');
+
+    await useLLMStore
+      .getState()
+      .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
+
+    expect(answerLimitOf(1)).toBeGreaterThan(GROUNDED_ANSWER_TOKEN_LIMIT);
   });
 });
 
