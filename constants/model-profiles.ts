@@ -1,7 +1,13 @@
 import { type Model } from '../database/modelRepository';
 import { getModelFamily } from '../utils/modelFamily';
+import type { SourceRoom } from './context-window';
 import { MAX_RELEVANT_CHUNKS } from './retrieval';
-import { WEB_FETCH_TOP_N_CONTENT, WEB_RETRIEVAL_TOP_K } from './web';
+import {
+  WEB_FETCH_TOP_N_CONTENT,
+  WEB_RETRIEVAL_FETCH_TOP_N,
+  WEB_RETRIEVAL_TOP_K,
+  WEB_SEARCH_MAX_RESULTS,
+} from './web';
 
 export type WebPlannerMode = 'llm' | 'verbatim';
 
@@ -12,7 +18,12 @@ export interface ModelProfile {
   repetitionPenalty: number;
   webRetrievalTopK: number;
   webFetchTopNContent: number;
+  webRetrievalFetchTopN: number;
+  webSplitQuestionParts: boolean;
+  webCandidatePages: number;
   ragMaxRelevantChunks: number;
+  ragExtraChunks: number;
+  ragExtraChunkMaxSimilarityGap: number;
   webEmbeddingRetrieval: boolean;
   webSearchReady: boolean;
   webSearchMinDeviceMemoryGB?: number;
@@ -30,6 +41,29 @@ export const scaledGenerationReserve = (contextWindowTokens: number): number =>
     Math.round(contextWindowTokens * GENERATION_RESERVE_SHARE)
   );
 
+export const EXTENDED_ROOM_EXTRA_RAG_CHUNKS = 3;
+export const ADAPTIVE_EXTRA_CHUNK_MAX_SIMILARITY_GAP = 0.1;
+
+const EXTRA_CHUNK_MAX_SIMILARITY_GAP: Record<
+  Exclude<SourceRoom, 'standard'>,
+  number
+> = {
+  adaptive: ADAPTIVE_EXTRA_CHUNK_MAX_SIMILARITY_GAP,
+  full: Number.POSITIVE_INFINITY,
+};
+
+export const withExtendedSourceRoom = (
+  profile: ModelProfile,
+  room: SourceRoom
+): ModelProfile =>
+  room === 'standard'
+    ? profile
+    : {
+        ...profile,
+        ragExtraChunks: EXTENDED_ROOM_EXTRA_RAG_CHUNKS,
+        ragExtraChunkMaxSimilarityGap: EXTRA_CHUNK_MAX_SIMILARITY_GAP[room],
+      };
+
 export const DEFAULT_PROFILE: ModelProfile = {
   webPlanner: 'verbatim',
   contextWindowTokens: 2048,
@@ -37,7 +71,12 @@ export const DEFAULT_PROFILE: ModelProfile = {
   repetitionPenalty: 1,
   webRetrievalTopK: WEB_RETRIEVAL_TOP_K,
   webFetchTopNContent: WEB_FETCH_TOP_N_CONTENT,
+  webRetrievalFetchTopN: WEB_RETRIEVAL_FETCH_TOP_N,
+  webSplitQuestionParts: true,
+  webCandidatePages: WEB_SEARCH_MAX_RESULTS,
   ragMaxRelevantChunks: MAX_RELEVANT_CHUNKS,
+  ragExtraChunks: 0,
+  ragExtraChunkMaxSimilarityGap: 0,
   webEmbeddingRetrieval: true,
   webSearchReady: true,
   thinkingSwitch: 'suffix',

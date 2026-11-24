@@ -100,29 +100,84 @@ export const getPromptCharBudget = (model: Model, sample?: string): number =>
   charBudgetForTokens(getPromptTokenBudget(model), sample);
 
 export const EXTENDED_CONTEXT_WINDOW_TOKENS = 4096;
-export const EXTENDED_WINDOW_MIN_DEVICE_RAM_GB = 8;
+export const EXTENDED_WINDOW_MIN_DEVICE_RAM_GB = 6;
+export const LARGE_CONTEXT_WINDOW_TOKENS = 8192;
+export const LARGE_WINDOW_MIN_DEVICE_RAM_GB = 8;
+const SOURCE_SHARE_OF_EXTRA_ROOM = 0.5;
+
+export type ConversationMemory = 'low' | 'medium' | 'high' | 'auto';
+export const DEFAULT_CONVERSATION_MEMORY: ConversationMemory = 'auto';
+export const CONVERSATION_MEMORY_LEVELS: readonly ConversationMemory[] = [
+  'low',
+  'medium',
+  'high',
+  'auto',
+];
+
+const isConversationMemory = (value: unknown): value is ConversationMemory =>
+  CONVERSATION_MEMORY_LEVELS.some((level) => level === value);
+
+export const sanitizeConversationMemory = (
+  value: unknown
+): ConversationMemory =>
+  isConversationMemory(value) ? value : DEFAULT_CONVERSATION_MEMORY;
 
 export interface ConversationWindowInput {
   thinking: boolean;
   deviceRamGB: number;
   modelCapacityTokens?: number;
+  memory?: ConversationMemory;
+  carriesSources?: boolean;
+  ceilingTokens?: number;
+  modelFitsDevice?: boolean;
 }
+
+const isLargeWindowAvailable = (deviceRamGB: number): boolean =>
+  Math.ceil(deviceRamGB) >= LARGE_WINDOW_MIN_DEVICE_RAM_GB;
+
+const largeWindowReachable = ({
+  deviceRamGB,
+  modelFitsDevice = false,
+}: ConversationWindowInput): boolean =>
+  modelFitsDevice && isLargeWindowAvailable(deviceRamGB);
+
+const extendedCeilingFor = (input: ConversationWindowInput): number => {
+  const { ceilingTokens, memory = DEFAULT_CONVERSATION_MEMORY } = input;
+  const autoWantsLarge =
+    memory === 'auto' &&
+    ceilingTokens === LARGE_CONTEXT_WINDOW_TOKENS &&
+    isLargeWindowAvailable(input.deviceRamGB);
+  const highWantsLarge = memory === 'high' && largeWindowReachable(input);
+  return autoWantsLarge || highWantsLarge
+    ? LARGE_CONTEXT_WINDOW_TOKENS
+    : EXTENDED_CONTEXT_WINDOW_TOKENS;
+};
+
+export const isExtendedWindowAvailable = (deviceRamGB: number): boolean =>
+  Math.ceil(deviceRamGB) >= EXTENDED_WINDOW_MIN_DEVICE_RAM_GB;
 
 export const getConversationWindowTokens = (
   model: Model,
-  { thinking, deviceRamGB, modelCapacityTokens }: ConversationWindowInput
+  input: ConversationWindowInput
 ): number => {
+  const {
+    thinking,
+    deviceRamGB,
+    modelCapacityTokens,
+    memory = DEFAULT_CONVERSATION_MEMORY,
+  } = input;
   const base = getContextWindowTokens(model);
+  if (memory === 'low') return base;
   if (
     thinking ||
-    Math.ceil(deviceRamGB) < EXTENDED_WINDOW_MIN_DEVICE_RAM_GB ||
-    modelCapacityTokens === undefined
+    modelCapacityTokens === undefined ||
+    !isExtendedWindowAvailable(deviceRamGB)
   ) {
     return base;
   }
   return Math.max(
     base,
-    Math.min(EXTENDED_CONTEXT_WINDOW_TOKENS, modelCapacityTokens)
+    Math.min(extendedCeilingFor(input), modelCapacityTokens)
   );
 };
 
@@ -137,9 +192,59 @@ export const getConversationTokenBudget = (
   return Math.max(0, window - scaledGenerationReserve(window));
 };
 
+export const GROUNDED_ANSWER_TOKEN_LIMIT = 1024;
+
+export const getAnswerTokenLimit = (
+  model: Model,
+  input: ConversationWindowInput,
+  promptTokens: number
+): number | undefined => {
+  if (input.thinking) return undefined;
+  const window = getConversationWindowTokens(model, input);
+  const reserve = window - getConversationTokenBudget(model, input);
+  const room = Math.max(reserve, window - promptTokens);
+  return input.carriesSources
+    ? Math.min(room, GROUNDED_ANSWER_TOKEN_LIMIT)
+    : room;
+};
+
 export const getConversationCharBudget = (
   model: Model,
   input: ConversationWindowInput,
   sample?: string
 ): number =>
   charBudgetForTokens(getConversationTokenBudget(model, input), sample);
+
+export const getSourceTokenBudget = (
+  model: Model,
+  input: ConversationWindowInput
+): number => {
+  const base = getPromptTokenBudget(model);
+  const conversation = getConversationTokenBudget(model, {
+    ...input,
+    carriesSources: true,
+  });
+  if (conversation <= base) return base;
+  return base + Math.floor((conversation - base) * SOURCE_SHARE_OF_EXTRA_ROOM);
+};
+
+export const getSourceCharBudget = (
+  model: Model,
+  input: ConversationWindowInput,
+  sample?: string
+): number => charBudgetForTokens(getSourceTokenBudget(model, input), sample);
+
+export const hasExtendedSourceRoom = (
+  model: Model,
+  input: ConversationWindowInput
+): boolean => getSourceTokenBudget(model, input) > getPromptTokenBudget(model);
+
+export type SourceRoom = 'standard' | 'adaptive' | 'full';
+
+export const sourceRoomFor = (
+  model: Model,
+  input: ConversationWindowInput
+): SourceRoom => {
+  if (!hasExtendedSourceRoom(model, input)) return 'standard';
+  return input.memory === 'auto' ? 'adaptive' : 'full';
+};
