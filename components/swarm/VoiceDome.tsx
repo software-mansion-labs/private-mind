@@ -31,6 +31,7 @@ interface Props {
   chunkSeconds: number;
   cornerRadius: number;
   maxHeight: number;
+  palette: readonly (readonly [number, number, number])[];
 }
 
 const MS_PER_SECOND = 1000;
@@ -58,9 +59,11 @@ const VoiceDome = ({
   chunkSeconds,
   cornerRadius,
   maxHeight,
+  palette,
 }: Props) => {
   const canvasRef = useRef<CanvasRef>(null);
   const [built, setBuilt] = useState<Built | null>(null);
+  const firstPalette = useRef(palette);
 
   const size = useSharedValue({ width: 0, height: 0 });
   const onLayout = (event: LayoutChangeEvent) => {
@@ -102,7 +105,7 @@ const VoiceDome = ({
         if (!context || !surface) return;
         const format = navigator.gpu.getPreferredCanvasFormat();
         setBuilt({
-          ...prepareVoiceDome(root, format),
+          ...prepareVoiceDome(root, format, firstPalette.current),
           context,
           format,
           pixelScale: surface.width / surface.clientWidth,
@@ -115,6 +118,10 @@ const VoiceDome = ({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    built?.writePalette(palette);
+  }, [built, palette]);
 
   const lastDrawnAt = useSharedValue<number | null>(null);
   const clock = useSharedValue(0);

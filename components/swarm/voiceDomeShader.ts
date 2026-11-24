@@ -21,16 +21,30 @@ export const VOICE_DOME_FRAME_FLOATS = 14;
 const PALETTE_SIZE = 5;
 const Palette = d.arrayOf(d.vec4f, PALETTE_SIZE);
 
-export const VOICE_DOME_PALETTE: readonly (readonly [
-  number,
-  number,
-  number,
-])[] = [
+type Rgb = readonly [number, number, number];
+
+export const VOICE_DOME_PALETTE: readonly Rgb[] = [
   [111, 231, 255],
   [180, 140, 255],
   [255, 127, 207],
   [255, 169, 138],
   [233, 228, 255],
+];
+
+export const VOICE_DOME_PALETTE_CANCELLED: readonly Rgb[] = [
+  [229, 72, 77],
+  [240, 114, 122],
+  [217, 58, 106],
+  [242, 135, 95],
+  [201, 58, 67],
+];
+
+export const VOICE_DOME_PALETTE_ON_LIGHT: readonly Rgb[] = [
+  [61, 97, 214],
+  [139, 92, 246],
+  [224, 85, 155],
+  [31, 159, 214],
+  [238, 126, 82],
 ];
 
 const layout = tgpu.bindGroupLayout({
@@ -300,16 +314,23 @@ const createPipeline = (root: TgpuRoot, format: GPUTextureFormat) =>
     primitive: { topology: 'triangle-list' },
   });
 
-const paletteValues = () =>
-  VOICE_DOME_PALETTE.map(([r, g, b]) => d.vec4f(r / 255, g / 255, b / 255, 1));
+const paletteValues = (palette: readonly Rgb[]) =>
+  palette.map(([r, g, b]) => d.vec4f(r / 255, g / 255, b / 255, 1));
 
-export const prepareVoiceDome = (root: TgpuRoot, format: GPUTextureFormat) => {
+export const prepareVoiceDome = (
+  root: TgpuRoot,
+  format: GPUTextureFormat,
+  colors: readonly Rgb[]
+) => {
   const frame = root.createBuffer(Frame).$usage('uniform');
-  const palette = root.createBuffer(Palette, paletteValues()).$usage('uniform');
+  const palette = root
+    .createBuffer(Palette, paletteValues(colors))
+    .$usage('uniform');
   return {
     device: root.device,
     pipeline: root.unwrap(createPipeline(root, format)),
     group: root.unwrap(root.createBindGroup(layout, { frame, palette })),
     frameBuffer: root.unwrap(frame),
+    writePalette: (next: readonly Rgb[]) => palette.write(paletteValues(next)),
   };
 };
