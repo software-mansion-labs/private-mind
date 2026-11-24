@@ -93,6 +93,7 @@ const ModelDownloadRow = ({
   const canDownload = status === ModelState.NotStarted && isCompatible;
   const canDelete = isDownloaded && model.source !== 'local';
   const canUpdate = isDownloaded && !selection && needsUpdate(model);
+  const metaBesideTitle = !!selection && !isDownloading;
   const showsCheckbox = selection && !(selection.selected && selection.locked);
   const disabled = selection
     ? !isCompatible || selection.locked
@@ -192,7 +193,12 @@ const ModelDownloadRow = ({
     </Pressable>
   );
 
-  const badges = <ModelCapabilityBadges model={model} style={styles.badges} />;
+  const badges = (
+    <ModelCapabilityBadges
+      model={model}
+      style={!metaBesideTitle && styles.badges}
+    />
+  );
 
   const textBlock = (children?: React.ReactNode) => (
     <ModelRowText
@@ -202,6 +208,7 @@ const ModelDownloadRow = ({
       titleAccessory={titleAccessory}
       accessoryPlacement={isDownloading ? 'end' : 'inline'}
       subtitle={formatModelMeta(model, 'B')}
+      subtitlePlacement={metaBesideTitle ? 'beside' : 'below'}
       style={styles.text}
     >
       {children}
@@ -219,6 +226,23 @@ const ModelDownloadRow = ({
       )}
     </View>
   );
+
+  const trailingControl = selection ? (
+    <View style={styles.trailing}>{showsCheckbox ? checkbox : action}</View>
+  ) : (
+    action
+  );
+
+  const topActions = updateButton ? (
+    <View style={styles.actions}>
+      {updateButton}
+      {action}
+    </View>
+  ) : (
+    trailingControl
+  );
+
+  const badgesUnderActions = !!updateButton || metaBesideTitle;
 
   return (
     <View
@@ -249,16 +273,17 @@ const ModelDownloadRow = ({
             <ModelFamilyTile family={getModelFamily(model)} size="list" />
           </View>
         )}
-        {updateButton ? (
-          <View style={styles.updateLayout}>
-            <View style={styles.updateTop}>
+        {badgesUnderActions ? (
+          <View style={styles.stack}>
+            <View style={styles.stackTop}>
               {textBlock()}
-              <View style={styles.actions}>
-                {updateButton}
-                {action}
-              </View>
+              {topActions}
             </View>
-            <View style={styles.updateBadges}>{badges}</View>
+            {updateButton ? (
+              <View style={styles.updateBadges}>{badges}</View>
+            ) : (
+              badges
+            )}
           </View>
         ) : (
           textBlock(
@@ -280,13 +305,7 @@ const ModelDownloadRow = ({
             </>
           )
         )}
-        {selection ? (
-          <View style={styles.trailing}>
-            {showsCheckbox ? checkbox : action}
-          </View>
-        ) : updateButton ? null : (
-          action
-        )}
+        {!badgesUnderActions && trailingControl}
         {ConfirmElement}
         {UpdateConfirm}
       </ModelRow>
@@ -356,12 +375,12 @@ const createStyles = (
     lockedSelection: {
       opacity: LOCKED_OPACITY,
     },
-    updateLayout: {
+    stack: {
       flex: 1,
       minWidth: 0,
       gap: space.one,
     },
-    updateTop: {
+    stackTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: rowGap,

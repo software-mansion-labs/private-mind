@@ -48,8 +48,9 @@ import {
   useStartingFeatures,
 } from '../../hooks/useStartingFeatures';
 
-const APP_ICON_SIZE = 72;
+const APP_ICON_SIZE = 56;
 const SECTION_GAP = 28;
+const FOOTER_GAP = space.three;
 const CARD_BORDER_ROOM = stroke.strong;
 
 const BYTES_PER_GB = 1_000_000_000;
@@ -383,13 +384,13 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       padding: space.four,
       paddingBottom: theme.insets.bottom,
-      gap: SECTION_GAP,
+      gap: FOOTER_GAP,
       backgroundColor: theme.bg.softPrimary,
     },
     content: {
       flex: 1,
       gap: SECTION_GAP,
-      paddingTop: space.six,
+      paddingTop: space.two,
     },
     header: {
       gap: space.three,

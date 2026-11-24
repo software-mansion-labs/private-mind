@@ -13,6 +13,7 @@ import { space, textStyles } from '../../constants/design-system';
 
 export type SubtitleTone = 'secondary' | 'tertiary';
 export type AccessoryPlacement = 'inline' | 'end';
+export type SubtitlePlacement = 'below' | 'beside';
 
 interface Props {
   title: string;
@@ -24,6 +25,7 @@ interface Props {
   subtitle?: string;
   subtitleTone?: SubtitleTone;
   subtitleLines?: number;
+  subtitlePlacement?: SubtitlePlacement;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }
@@ -38,6 +40,7 @@ const ModelRowText = ({
   subtitle,
   subtitleTone = 'secondary',
   subtitleLines,
+  subtitlePlacement = 'below',
   style,
   children,
 }: Props) => {
@@ -53,35 +56,48 @@ const ModelRowText = ({
     </Text>
   );
 
+  const titleLine = titleAccessory ? (
+    <View
+      style={
+        accessoryPlacement === 'end' ? styles.titleRowEnd : styles.titleRow
+      }
+    >
+      {titleText}
+      {accessoryPlacement === 'inline' ? (
+        <View style={styles.firstLineSlot}>{titleAccessory}</View>
+      ) : (
+        titleAccessory
+      )}
+    </View>
+  ) : (
+    titleText
+  );
+
+  const subtitleText = subtitle ? (
+    <Text
+      style={[
+        styles.subtitle,
+        subtitleTone === 'tertiary' && styles.subtitleTertiary,
+      ]}
+      numberOfLines={subtitleLines}
+    >
+      {subtitle}
+    </Text>
+  ) : null;
+
   return (
     <View style={[styles.text, style]}>
-      {titleAccessory ? (
-        <View
-          style={
-            accessoryPlacement === 'end' ? styles.titleRowEnd : styles.titleRow
-          }
-        >
-          {titleText}
-          {accessoryPlacement === 'inline' ? (
-            <View style={styles.firstLineSlot}>{titleAccessory}</View>
-          ) : (
-            titleAccessory
-          )}
+      {subtitlePlacement === 'beside' ? (
+        <View style={styles.besideRow}>
+          {titleLine}
+          {subtitleText}
         </View>
       ) : (
-        titleText
+        <>
+          {titleLine}
+          {subtitleText}
+        </>
       )}
-      {subtitle ? (
-        <Text
-          style={[
-            styles.subtitle,
-            subtitleTone === 'tertiary' && styles.subtitleTertiary,
-          ]}
-          numberOfLines={subtitleLines}
-        >
-          {subtitle}
-        </Text>
-      ) : null}
       {children}
     </View>
   );
@@ -103,6 +119,12 @@ const createStyles = (theme: Theme) =>
     firstLineSlot: {
       height: textStyles.bodyPrimaryMedium.lineHeight,
       justifyContent: 'center',
+    },
+    besideRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'baseline',
+      columnGap: space.two,
     },
     titleRowEnd: {
       flexDirection: 'row',
