@@ -14,6 +14,7 @@ import type { Attachment } from '../hooks/useAttachment';
 import { WEB_SKIP_COPY } from '../constants/web-copy';
 import { useCpuSupportStore } from '../store/cpuSupportStore';
 import { useSettingsStore } from '../store/settingsStore';
+import * as conversationRecall from '../utils/conversationRecall';
 
 jest.mock('../utils/afterUiUpdates', () => ({
   runAfterUiUpdates: (callback: () => void) => callback(),
@@ -640,6 +641,37 @@ describe('web search in a chat that has a document', () => {
     );
   });
 
+  it('tells web search and the prompt that the turn answers from the document when retrieval found passages', async () => {
+    (buildMessageSources as jest.Mock).mockResolvedValueOnce({
+      context: ['report chunk'],
+      sourceDocuments: [{ name: 'report.pdf', documentId: 5 }],
+      preferredSourceDocuments: [],
+    });
+    await useDocumentChatSend()('what is the weather in Kraków');
+
+    const built = (await lastBuildSources()()) as {
+      answersFromDocument: boolean;
+    };
+
+    expect(runWebSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ answersFromDocument: true })
+    );
+    expect(built.answersFromDocument).toBe(true);
+  });
+
+  it('treats the turn as a web turn when the document had nothing for the question', async () => {
+    await useDocumentChatSend()('what is the weather in Kraków');
+
+    const built = (await lastBuildSources()()) as {
+      answersFromDocument: boolean;
+    };
+
+    expect(runWebSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ answersFromDocument: false })
+    );
+    expect(built.answersFromDocument).toBe(false);
+  });
+
   it('hands the window planned for this turn to its sources and its prompt', async () => {
     const planned = jest
       .spyOn(turnWindowPlanner, 'planTurnWindow')
@@ -704,6 +736,66 @@ describe('web search in a chat that has a document', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ text1: WEB_SKIP_COPY.documents })
     );
+  });
+});
+
+describe('embedding the conversation for recall', () => {
+  const turn = (id: number, content: string) => ({
+    id,
+    chatId: 1,
+    role: id % 2 === 0 ? ('assistant' as const) : ('user' as const),
+    content,
+    timestamp: id,
+  });
+  const useSendWithHistory = (messageHistory: ReturnType<typeof turn>[]) =>
+    useSendChatMessage({
+      chatId: 1,
+      model: { id: 1, modelName: 'Test LLM' } as Model,
+      messageHistory,
+      chatSettings: { systemPrompt: '', thinkingEnabled: false },
+      enabledSources: [5],
+      vectorStore: {} as OPSQLiteVectorStore,
+      embeddings: null,
+      messagesRef,
+      db: {} as SQLiteDatabase,
+      isGenerating: false,
+      isModelLoading: false,
+      isSwitching: false,
+      waitForModelSwitch: noSwitchInFlight,
+    });
+  const buildLastSources = () => {
+    const calls = mockedState().sendChatMessage.mock.calls;
+    return (calls[calls.length - 1][2] as () => Promise<unknown>)();
+  };
+
+  let embedded: jest.SpyInstance;
+  beforeEach(() => {
+    embedded = jest
+      .spyOn(conversationRecall, 'embedConversationForRecall')
+      .mockResolvedValue(null);
+  });
+  afterEach(() => embedded.mockRestore());
+
+  it('embeds nothing in a short chat that fits the window', async () => {
+    await useSendWithHistory([turn(1, 'hello'), turn(2, 'hi there')])('and?');
+    await buildLastSources();
+
+    expect(embedded).not.toHaveBeenCalled();
+  });
+
+  it('embeds only the older messages of a long chat, not the recent turns that are kept', async () => {
+    const history = Array.from({ length: 200 }, (_, index) =>
+      turn(index + 1, `message ${index + 1} ${'about the harbour '.repeat(10)}`)
+    );
+    await useSendWithHistory(history)('what did I say about the harbour?');
+    await buildLastSources();
+
+    const { messages } = embedded.mock.calls[0]![0] as {
+      messages: { id: number }[];
+    };
+    expect(messages.length).toBeGreaterThan(0);
+    expect(messages.length).toBeLessThan(history.length);
+    expect(messages.map((message) => message.id)).not.toContain(200);
   });
 });
 

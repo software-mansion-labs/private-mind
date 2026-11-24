@@ -30,6 +30,7 @@ import {
   MEMORY_CUT_SHORT,
   Message,
   persistMessage,
+  type ConversationMemoryStats,
   RetrievalStats,
   setChatDigest,
   SourceDocument,
@@ -160,6 +161,8 @@ export interface LLMStore {
       webWeak?: boolean;
       webSearchFailed?: boolean;
       retrievalStats?: RetrievalStats;
+      recallSimilarities?: Map<number, number> | null;
+      answersFromDocument?: boolean;
       ceilingTokens?: number;
       conversationMemory?: ConversationMemory;
     }>,
@@ -1607,10 +1610,20 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         webSubQueries,
         webWeak,
         webSearchFailed,
-        retrievalStats,
+        retrievalStats: gatheredRetrievalStats,
+        recallSimilarities,
+        answersFromDocument,
         ceilingTokens,
         conversationMemory = chosenConversationMemory(),
       } = built;
+      let memoryStats: ConversationMemoryStats | undefined;
+      const recordMemoryStats = (stats: ConversationMemoryStats) => {
+        memoryStats = stats;
+      };
+      const turnRetrievalStats = (): RetrievalStats | undefined =>
+        memoryStats
+          ? { ...gatheredRetrievalStats, memory: memoryStats }
+          : gatheredRetrievalStats;
 
       if (!get().isProcessingPrompt) {
         updateChatStateForGeneration(set, 'failed', {
@@ -1673,8 +1686,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           webSearchFailed: webSearchFailed,
           digest: digestForChat(get, chatId) ?? undefined,
           openingWelcome: openingWelcome ?? undefined,
+          recallSimilarities,
+          answersFromDocument,
           ceilingTokens,
           conversationMemory,
+          onConversationMemory: recordMemoryStats,
         }
       );
 
@@ -1755,8 +1771,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             webSearchFailed: webSearchFailed,
             digest: digestForChat(get, chatId) ?? undefined,
             openingWelcome: openingWelcome ?? undefined,
+            recallSimilarities,
+            answersFromDocument,
             ceilingTokens,
             conversationMemory,
+            onConversationMemory: recordMemoryStats,
           }
         );
         generation = await generateLLMResponse(
@@ -2153,7 +2172,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           groundingCaveats,
           tokensPerSecond: responsePerformance.tokensPerSecond,
           timeToFirstToken: responsePerformance.timeToFirstToken,
-          retrievalStats,
+          retrievalStats: turnRetrievalStats(),
           stoppedByUser,
         });
 
@@ -2170,7 +2189,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               groundingCaveats,
               tokensPerSecond: responsePerformance.tokensPerSecond,
               timeToFirstToken: responsePerformance.timeToFirstToken,
-              retrievalStats,
+              retrievalStats: turnRetrievalStats(),
               stoppedByUser,
             },
             timeToFirstToken: responsePerformance.timeToFirstToken,

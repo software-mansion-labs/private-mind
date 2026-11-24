@@ -1,5 +1,6 @@
 import {
   ChatSettings,
+  type ConversationMemoryStats,
   Message,
   SourceDocument,
   sourceKind,
@@ -11,16 +12,28 @@ import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
 import { usesTemplateThinkingSwitch } from '../constants/model-profiles';
 import { stripThinkBlocks } from './thinking';
+import { stripCitations } from './citations';
 import { CUSTOM_PROMPT_GUARD } from '../constants/prompts';
 import type { LLMMessage as ExecutorchMessage } from '../types/llmMessage';
 import {
   estimatePromptTokens,
   getConversationCharBudget,
   getConversationTokenBudget,
+  getConversationWindowTokens,
   getSourceCharBudget,
   type ConversationMemory,
   DEFAULT_CONVERSATION_MEMORY,
 } from '../constants/context-window';
+import {
+  formatRecalledBlock,
+  recallShareFor,
+  selectRecalledMessages,
+  withoutLeastRanked,
+  type RecallCandidate,
+  type RecallSelection,
+  type RecallRole,
+} from './conversationRecall';
+import { RECALL_MIN_KEPT_SHARE } from '../constants/conversation-memory';
 import { conversationWindowFor } from './conversationWindow';
 import { calendarFacts, mentionsTime, namesAnotherDay } from './calendarFacts';
 import type { WebIntentKind } from './web/intentKind';
@@ -607,8 +620,11 @@ export interface PrepareMessagesOptions {
   webSearchFailed?: boolean;
   digest?: string;
   openingWelcome?: string;
+  recallSimilarities?: Map<number, number> | null;
+  answersFromDocument?: boolean;
   ceilingTokens?: number;
   conversationMemory?: ConversationMemory;
+  onConversationMemory?: (stats: ConversationMemoryStats) => void;
 }
 
 const MAX_SHAPE_INSTRUCTIONS = 4;
@@ -702,8 +718,11 @@ export const prepareMessagesForLLM = (
     webSearchFailed,
     digest,
     openingWelcome,
+    recallSimilarities,
+    answersFromDocument = false,
     ceilingTokens,
     conversationMemory = DEFAULT_CONVERSATION_MEMORY,
+    onConversationMemory,
   } = options;
   const activeChatMessages = chatMessages.map(withQuestionForImage);
   const hasContext = context.some((chunk) => chunk.trim().length > 0);
@@ -925,38 +944,139 @@ export const prepareMessagesForLLM = (
   const greetingTurn =
     lastMessage.role === 'user' && !!question && isGreetingOnly(question);
   const history = greetingTurn ? [] : messagesWithSystemPrompt.slice(1, -1);
-  const fitFrom = (turns: ExecutorchMessage[]): ExecutorchMessage[] => {
-    let room = remainingChars;
+  const fitFrom = (
+    turns: ExecutorchMessage[],
+    room: number
+  ): ExecutorchMessage[] => {
+    let left = room;
     const takenReversed: ExecutorchMessage[] = [];
     for (let i = turns.length - 1; i >= 0; i--) {
       const cost = turns[i]!.content.length;
-      if (room - cost < 0) break;
-      room -= cost;
+      if (left - cost < 0) break;
+      left -= cost;
       takenReversed.push(turns[i]!);
     }
     return takenReversed.reverse();
   };
-
-  let kept = fitFrom(history);
-  if (kept.length < history.length) {
-    kept = fitFrom(compactOlderReplies(history));
-  }
-  if (kept.length < history.length) {
-    while (kept[0]?.role === 'assistant') {
-      kept.shift();
+  const keptWithin = (room: number): ExecutorchMessage[] => {
+    const fitted = fitFrom(history, room);
+    const kept =
+      fitted.length < history.length
+        ? fitFrom(compactOlderReplies(history), room)
+        : fitted;
+    if (kept.length < history.length) {
+      while (kept[0]?.role === 'assistant') {
+        kept.shift();
+      }
     }
+    return kept;
+  };
+
+  const baselineKept = keptWithin(remainingChars);
+  let kept = baselineKept;
+  const droppedTurns = kept.length < history.length;
+  const recallEnabled = !answersFromDocument;
+  let recall: RecallSelection = { items: [], mode: 'none' };
+  let recalledBlock = '';
+
+  if (droppedTurns && recallEnabled && question && !greetingTurn) {
+    const windowTokens = getConversationWindowTokens(model, conversationWindow);
+    const share = recallShareFor(windowTokens);
+    const recallCharRoom = Math.min(
+      Math.floor(conversationBudgetChars * share),
+      Math.floor(remainingChars * (1 - RECALL_MIN_KEPT_SHARE))
+    );
+    const conversationTokenBudget = getConversationTokenBudget(
+      model,
+      conversationWindow
+    );
+    const recallTokenRoom = Math.floor(
+      conversationTokenBudget * share * budgetScale
+    );
+    const poolEnd =
+      history.length - keptWithin(remainingChars - recallCharRoom).length;
+    const candidates: RecallCandidate[] = history
+      .slice(0, poolEnd)
+      .map((turn, index) => ({
+        index,
+        key: messagesForLLM[index]?.id,
+        role: turn.role as RecallRole,
+        text:
+          typeof turn.content === 'string' ? stripCitations(turn.content) : '',
+      }))
+      .filter(
+        (candidate) =>
+          (candidate.role === 'user' || candidate.role === 'assistant') &&
+          candidate.text.trim().length > 0
+      );
+    recall = selectRecalledMessages({
+      candidates,
+      question,
+      similarities: recallSimilarities ?? undefined,
+      charRoom: recallCharRoom,
+      tokenRoom: recallTokenRoom,
+    });
+
+    const keptWithRecall = (items: RecallSelection['items']) => {
+      const block = formatRecalledBlock(items);
+      const room = remainingChars - block.length;
+      const next = keptWithin(room);
+      const nextStart = history.length - next.length;
+      return { block, next, nextStart };
+    };
+    const baselineTokens = estimatePromptTokens(
+      [messagesWithSystemPrompt[0]!, ...baselineKept, lastMessage]
+        .map((msg) => msg.content)
+        .join(' ')
+    );
+    const tokenCeiling = Math.max(conversationTokenBudget, baselineTokens);
+    let items = recall.items;
+    while (items.length > 0) {
+      const attempt = keptWithRecall(items);
+      const surviving = items.filter((item) => item.index < attempt.nextStart);
+      const assembled = [
+        {
+          ...messagesWithSystemPrompt[0]!,
+          content: `${messagesWithSystemPrompt[0]!.content}${digestLine}${formatRecalledBlock(surviving)}`,
+        },
+        ...attempt.next,
+        lastMessage,
+      ]
+        .map((msg) => msg.content)
+        .join(' ');
+      if (
+        surviving.length > 0 &&
+        estimatePromptTokens(assembled) <= tokenCeiling
+      ) {
+        kept = attempt.next;
+        recalledBlock = formatRecalledBlock(surviving);
+        recall = { ...recall, items: surviving };
+        break;
+      }
+      items = surviving.length > 0 ? withoutLeastRanked(surviving) : [];
+    }
+    if (!recalledBlock) recall = { items: [], mode: 'none' };
   }
 
-  const droppedTurns = kept.length < history.length;
   const systemMessage =
-    droppedTurns && digestLine
+    droppedTurns && (digestLine || recalledBlock)
       ? {
           ...messagesWithSystemPrompt[0],
-          content: `${messagesWithSystemPrompt[0].content}${digestLine}`,
+          content: `${messagesWithSystemPrompt[0].content}${digestLine}${recalledBlock}`,
         }
       : messagesWithSystemPrompt[0];
 
   const finalMessages = [systemMessage, ...kept, lastMessage];
+
+  if (recallEnabled) {
+    onConversationMemory?.({
+      turnsDropped: history.length - kept.length,
+      messagesRecalled: recall.items.length,
+      recallTokens: estimatePromptTokens(recalledBlock),
+      recallMode: recall.mode,
+      digestChars: droppedTurns ? digestLine.length : 0,
+    });
+  }
 
   if (hasContext && budgetScale > 0.75) {
     const assembled = finalMessages.map((msg) => msg.content).join(' ');
