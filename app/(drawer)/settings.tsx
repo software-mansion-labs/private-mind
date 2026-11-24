@@ -50,10 +50,22 @@ const SettingsScreen = () => {
   const setThemePreference = useSettingsStore(
     (state) => state.setThemePreference
   );
+  const hapticsEnabled = useSettingsStore((state) => state.hapticsEnabled);
+  const setHapticsEnabled = useSettingsStore(
+    (state) => state.setHapticsEnabled
+  );
   const deleteAllChats = useChatStore((state) => state.deleteAllChats);
   const { vectorStore } = useVectorStore();
   const { confirm, ConfirmElement } = useConfirm();
   const importChat = useImportChat();
+
+  const handleHapticsChange = useCallback(
+    (enabled: boolean) => {
+      setHapticsEnabled(enabled);
+      if (enabled) Feedback.toggleOn();
+    },
+    [setHapticsEnabled]
+  );
 
   const handleDeleteAllChats = useCallback(async () => {
     const confirmed = await confirm({
@@ -96,6 +108,11 @@ const SettingsScreen = () => {
             options={THEME_OPTIONS}
             value={themePreference}
             onValueChange={setThemePreference}
+          />
+          <SettingsToggleRow
+            label="Haptic feedback"
+            value={hapticsEnabled}
+            onValueChange={handleHapticsChange}
           />
         </SettingsSection>
         <SettingsSection title="Chat">
