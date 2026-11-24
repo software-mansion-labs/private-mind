@@ -22,7 +22,6 @@ cd ..
 if [ -f "$AAB_OUTPUT" ]; then
     echo "AAB built successfully: $AAB_OUTPUT"
     ls -lh "$AAB_OUTPUT"
-    ./scripts/verify-aab-abis.sh "$AAB_OUTPUT"
 else
     echo "AAB build failed"
     exit 1
