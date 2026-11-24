@@ -98,6 +98,13 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="(modals)/context-size"
+        options={{
+          headerShown: false,
+          animation: 'ios_from_right',
+        }}
+      />
+      <Stack.Screen
         name="(modals)/model-family/[family]"
         options={{
           headerShown: false,

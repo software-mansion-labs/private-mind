@@ -25,6 +25,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { type PasteEventPayload, TextInputWrapper } from 'expo-paste-input';
 import EmbeddingDownloadSheet from '../bottomSheets/EmbeddingDownloadSheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import ContextSizeSheet from '../bottomSheets/ContextSizeSheet';
+import { useContextSizeLabel } from '../settings/ContextSizeSelector';
 import {
   useAttachment,
   Attachment,
@@ -343,8 +346,23 @@ const ChatBar = ({
   const thinkingAvailable = !model || model.thinking === true;
   const webSearchAvailable =
     isWebSearchReady(model) && hasMemoryForWebSearch(model);
+  const contextSizeSheetRef = useRef<BottomSheetModal>(null);
+  const contextSizeValue = useContextSizeLabel(model);
+  const openContextSizeSheet = useCallback(() => {
+    dismissPanelIfOpen();
+    contextSizeSheetRef.current?.present();
+  }, [dismissPanelIfOpen]);
+  const contextSize = useMemo(
+    () => ({
+      value: contextSizeValue,
+      blocked: isRespondingHere,
+      onPress: openContextSizeSheet,
+    }),
+    [contextSizeValue, isRespondingHere, openContextSizeSheet]
+  );
   const menuTools = useMemo(
     () => ({
+      contextSize,
       thinkingEnabled,
       thinkingAvailable,
       onThinkingToggle,
@@ -353,6 +371,7 @@ const ChatBar = ({
       onWebSearchToggle: webSearchToggle,
     }),
     [
+      contextSize,
       thinkingEnabled,
       thinkingAvailable,
       onThinkingToggle,
@@ -851,6 +870,11 @@ const ChatBar = ({
             imagesEnabled={isVisionModel}
             attachmentsBlocked={isRespondingHere}
             tools={menuTools}
+          />
+          <ContextSizeSheet
+            bottomSheetModalRef={contextSizeSheetRef}
+            model={model}
+            disabled={isRespondingHere}
           />
           <EmbeddingDownloadSheet
             bottomSheetModalRef={embeddingDownloadSheetRef}

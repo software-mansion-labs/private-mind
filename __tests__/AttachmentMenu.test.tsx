@@ -243,3 +243,53 @@ describe('menu height', () => {
     );
   });
 });
+
+describe('the context size row in the menu', () => {
+  const entry = (overrides = {}) => ({
+    value: 'Auto',
+    blocked: false,
+    onPress: jest.fn(),
+    ...overrides,
+  });
+
+  it('is left out until the composer supplies it', () => {
+    render(<AttachmentMenu onSelect={jest.fn()} />);
+    expect(screen.queryByTestId('menu-context-size')).toBeNull();
+  });
+
+  it('shows the label with the current level on the right', () => {
+    render(<AttachmentMenu onSelect={jest.fn()} contextSize={entry()} />);
+    const row = screen.getByTestId('menu-context-size');
+    expect(row.props.accessibilityLabel).toBe('Context size, Auto');
+    expect(
+      screen.getByTestId('menu-context-size-value', hidden)
+    ).toHaveTextContent('Auto');
+  });
+
+  it('reports the tap so the composer can open the selector', () => {
+    const contextSize = entry();
+    render(<AttachmentMenu onSelect={jest.fn()} contextSize={contextSize} />);
+    fireEvent.press(screen.getByTestId('menu-context-size'));
+    expect(contextSize.onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('dims the row and ignores the tap while a reply is running', () => {
+    const contextSize = entry({ blocked: true });
+    render(<AttachmentMenu onSelect={jest.fn()} contextSize={contextSize} />);
+    const row = screen.getByTestId('menu-context-size');
+    expect(row.props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(row);
+    expect(contextSize.onPress).not.toHaveBeenCalled();
+  });
+
+  it('sits under the divider and adds one row to the menu height', () => {
+    render(<AttachmentMenu onSelect={jest.fn()} contextSize={entry()} />);
+    expect(screen.getByTestId('menu-divider')).toBeTruthy();
+    expect(
+      attachmentMenuHeight({
+        contextSize: entry(),
+        onThinkingToggle: jest.fn(),
+      }) - attachmentMenuHeight({ onThinkingToggle: jest.fn() })
+    ).toBe(MENU.itemHeight);
+  });
+});
