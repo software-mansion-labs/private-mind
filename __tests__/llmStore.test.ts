@@ -879,6 +879,179 @@ describe('sendChatMessage', () => {
     );
   });
 
+  describe('a close tag LFM 3 writes after its answer, with thinking off', () => {
+    const lfm3 = {
+      ...baseModel,
+      modelName: 'LFM 3 - 1.7B',
+      family: 'LFM 3',
+      thinking: true,
+    };
+    const answer = 'The capital of Australia is Canberra.';
+    const reasoning =
+      'Okay, the user wants the capital of Australia. I should answer briefly.';
+
+    const ask = () =>
+      useLLMStore
+        .getState()
+        .sendChatMessage('What is the capital of Australia?', 1, noSources, {
+          ...settings,
+          thinkingEnabled: false,
+        });
+
+    const shownAnswer = () =>
+      useLLMStore.getState().activeChatMessages.at(-1)?.content;
+
+    const storedAnswer = () =>
+      mockPersistMessage.mock.calls
+        .map(([, message]) => message as Message)
+        .findLast((message) => message.role === 'assistant')?.content;
+
+    beforeEach(() => {
+      useLLMStore.setState({
+        model: lfm3,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
+    });
+
+    it('stops the generation once the text after it repeats the answer, and keeps only the answer', async () => {
+      let interruptsOnceRepeated = -1;
+      let seenWhileStreaming: string | undefined;
+      mockInstance.generate.mockImplementationOnce(async () => {
+        capturedTokenCallback!(answer);
+        await flushFrame();
+        capturedTokenCallback!(
+          '</think>The capital of Australia is Canberra, in the Australian Capital Territory'
+        );
+        capturedTokenCallback!(' and');
+        expect(mockInstance.interrupt).not.toHaveBeenCalled();
+        capturedTokenCallback!(' it');
+        interruptsOnceRepeated = mockInstance.interrupt.mock.calls.length;
+        capturedTokenCallback!(' is home to Parliament House.');
+        await flushFrame();
+        seenWhileStreaming = shownAnswer();
+        return `${answer}</think>The capital of Australia is Canberra, in the Australian Capital Territory and it is home to Parliament House.`;
+      });
+
+      await ask();
+
+      expect(interruptsOnceRepeated).toBe(1);
+      expect(mockInstance.interrupt).toHaveBeenCalledTimes(1);
+      expect(seenWhileStreaming).toBe(answer);
+      expect(shownAnswer()).toBe(answer);
+      expect(storedAnswer()).toBe(answer);
+    });
+
+    it('keeps both parts, like any stray tag, when the text before it was reasoning', async () => {
+      let seenWhileStreaming: string | undefined;
+      mockInstance.generate.mockImplementationOnce(async () => {
+        capturedTokenCallback!(reasoning);
+        await flushFrame();
+        capturedTokenCallback!(`</think>${answer}`);
+        await flushFrame();
+        seenWhileStreaming = shownAnswer();
+        return `${reasoning}</think>${answer}`;
+      });
+
+      await ask();
+
+      expect(seenWhileStreaming).toBe(reasoning);
+      expect(mockInstance.interrupt).not.toHaveBeenCalled();
+      expect(shownAnswer()).toBe(`${reasoning}${answer}`);
+      expect(storedAnswer()).toBe(`${reasoning}${answer}`);
+    });
+
+    it('streams the next turn in full after a turn that ended at the tag', async () => {
+      let seenInNextTurn: string | undefined;
+      mockInstance.generate
+        .mockImplementationOnce(async () => {
+          capturedTokenCallback!(answer);
+          capturedTokenCallback!(`</think>${answer}`);
+          return `${answer}</think>${answer}`;
+        })
+        .mockImplementation(async () => {
+          if (!useLLMStore.getState().isGenerating) return '';
+          capturedTokenCallback!('Sydney is the largest city.');
+          await flushFrame();
+          seenInNextTurn = shownAnswer();
+          return 'Sydney is the largest city.';
+        });
+
+      await ask();
+      await ask();
+
+      expect(seenInNextTurn).toBe('Sydney is the largest city.');
+    });
+
+    it('never shows a tag split across tokens, and still ends the answer at it', async () => {
+      const seenWhileStreaming: (string | undefined)[] = [];
+      mockInstance.generate.mockImplementationOnce(async () => {
+        capturedTokenCallback!('Canberra.</th');
+        await flushFrame();
+        seenWhileStreaming.push(shownAnswer());
+        capturedTokenCallback!('ink>Canberra.');
+        await flushFrame();
+        seenWhileStreaming.push(shownAnswer());
+        return 'Canberra.</think>Canberra.';
+      });
+
+      await ask();
+
+      expect(seenWhileStreaming).toEqual(['Canberra.', 'Canberra.']);
+      expect(storedAnswer()).toBe('Canberra.');
+    });
+
+    it('does not let a frame left over from the answer stop the retry that follows it', async () => {
+      (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+        { role: 'system', content: 'You are helpful.' },
+        {
+          role: 'user',
+          content:
+            'Kurs bitcoina wynosi dziś 98 000 USD. Kurs ethereum wynosi dziś 3 200 USD.\n\nporównaj kurs bitcoina i ethereum',
+        },
+      ]);
+      const head = 'Bitcoin kosztuje obecnie około 98 000 USD.';
+      const pendingFrames: FrameRequestCallback[] = [];
+      const frames = jest
+        .spyOn(global, 'requestAnimationFrame')
+        .mockImplementation((frame) => pendingFrames.push(frame));
+      let interruptsDuringRetry = -1;
+      mockInstance.generate
+        .mockImplementationOnce(async () => {
+          capturedTokenCallback!(head);
+          capturedTokenCallback!(`</think>${head}`);
+          return `${head}</think>${head}`;
+        })
+        .mockImplementationOnce(async () => {
+          const before = mockInstance.interrupt.mock.calls.length;
+          pendingFrames.splice(0).forEach((frame) => frame(0));
+          interruptsDuringRetry =
+            mockInstance.interrupt.mock.calls.length - before;
+          return 'Bitcoin kosztuje około 98 000 USD, a ethereum około 3 200 USD.';
+        })
+        .mockResolvedValue('');
+      const withSubQueries = async () => ({
+        ...(await noSources()),
+        webSubQueries: ['kurs bitcoin', 'kurs ethereum'],
+      });
+
+      try {
+        await useLLMStore
+          .getState()
+          .sendChatMessage(
+            'porównaj kurs bitcoina i ethereum',
+            1,
+            withSubQueries,
+            { ...settings, thinkingEnabled: false }
+          );
+      } finally {
+        frames.mockRestore();
+      }
+
+      expect(interruptsDuringRetry).toBe(0);
+    });
+  });
+
   it('runs a nudge retry of a suffix-thinking model with /no_think', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'system', content: 'You are helpful.' },
