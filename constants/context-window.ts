@@ -104,6 +104,8 @@ export const EXTENDED_WINDOW_MIN_DEVICE_RAM_GB = 6;
 export const LARGE_CONTEXT_WINDOW_TOKENS = 8192;
 export const LARGE_WINDOW_MIN_DEVICE_RAM_GB = 8;
 const SOURCE_SHARE_OF_EXTRA_ROOM = 0.5;
+export const WEB_FIRST_TURN_SOURCE_CAP_TOKENS = 1500;
+export const WEB_FIRST_TURN_SOURCE_CAP_MAX_HISTORY_TOKENS = 600;
 
 export type ConversationMemory = 'low' | 'medium' | 'high' | 'auto';
 export const DEFAULT_CONVERSATION_MEMORY: ConversationMemory = 'auto';

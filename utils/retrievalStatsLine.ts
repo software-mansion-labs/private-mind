@@ -23,6 +23,16 @@ export const retrievalStatsLines = (stats?: RetrievalStats): string[] => {
     );
   }
 
+  if (stats?.memory) {
+    lines.push(
+      [
+        `memory: ${counted(stats.memory.turnsDropped, 'message', 'messages')} dropped`,
+        `${stats.memory.messagesRecalled} recalled (${stats.memory.recallMode})`,
+        `${stats.memory.recallTokens} recall tokens`,
+        `${stats.memory.digestChars} digest chars`,
+      ].join(', ')
+    );
+  }
   if (stats?.window) {
     lines.push(`window: ${stats.window.tokens} tokens, ${stats.window.reason}`);
   }

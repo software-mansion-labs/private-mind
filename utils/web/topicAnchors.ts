@@ -32,6 +32,9 @@ const spokenTurns = (history: ConversationTurn[]): ConversationTurn[] =>
       turn.content.trim().length > 0
   );
 
+export const hasPriorTurns = (history: ConversationTurn[]): boolean =>
+  spokenTurns(history).length > 0;
+
 export const topicAnchors = (
   history: ConversationTurn[],
   digest = ''
@@ -56,10 +59,11 @@ export const topicAnchors = (
     .map((anchor) => anchor.token.toUpperCase());
 };
 
+export const namesItsOwnSubject = (message: string): boolean =>
+  namedEntitiesIn(message).length > 0 || acronymsIn(message).length > 0;
+
 const standsAlone = (message: string): boolean =>
-  namedEntitiesIn(message).length > 0 ||
-  /\p{N}/u.test(message) ||
-  acronymsIn(message).length > 0;
+  namesItsOwnSubject(message) || /\p{N}/u.test(message);
 
 export const topicAnchorer = (
   latestMessage: string,

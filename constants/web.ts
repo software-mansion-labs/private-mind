@@ -59,6 +59,8 @@ export const WEB_QUERY_MAX_SUBQUERIES = 3;
 export const WEB_QUERY_CONCISE_MAX_WORDS = 6;
 export const WEB_QUERY_INTENT_MAX_CHARS = 80;
 
+export const WEB_FAST_PLAN_MIN_TERMS = 2;
+
 export const URL_FETCH_TIMEOUT_MS = 12000;
 export const URL_FETCH_MAX_BYTES = 2_000_000;
 export const URL_PARSE_MAX_CHARS = 600_000;
