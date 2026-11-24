@@ -1,13 +1,21 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../../styles/colors';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
-import { useSpeechInput, type Status } from '../../hooks/useSpeechInput';
+import {
+  AUDIO_LENGTH_SECONDS,
+  SAMPLE_RATE,
+  useSpeechInput,
+  type Status,
+} from '../../hooks/useSpeechInput';
 import CircleButton from '../CircleButton';
 import StopIcon from '../../assets/icons/pause_icon.svg';
 import SendIcon from '../../assets/icons/send_icon.svg';
-import RecordingAnimation from './RecordingAnimation';
+import VoiceDome, {
+  type VoiceDomeHandle,
+  type VoiceDomePhase,
+} from '../swarm/VoiceDome';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -23,8 +31,8 @@ import {
 } from '../../utils/storageSpace';
 import { WHISPER_DOWNLOAD_SIZE_BYTES } from '../../utils/sttModelFiles';
 import { useStableCallback } from '../../hooks/useStableCallback';
-import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
-import { radius, space } from '../../constants/design-system';
+import { dimmedOpacity } from '../../styles/pressable';
+import { space } from '../../constants/design-system';
 import { withoutNonSpeechNotes } from '../../utils/whisperTranscript';
 import { COMPOSER_CARD_RADIUS } from './attachments/constants';
 
@@ -38,13 +46,15 @@ const CANCEL_ANIMATION_DURATION = 500;
 
 type Phase = Status | 'ended';
 
-const ACTION_NOTES: Record<Phase, string> = {
+const ACTION_NOTES: Record<Exclude<Phase, 'listening'>, string> = {
   loading: 'Loading speech recognition...',
   idle: 'Loading speech recognition...',
   processing: 'Finishing the transcript...',
-  listening: 'Click again to send',
   ended: 'Dictation stopped',
 };
+
+const DOME_HEIGHT = 80;
+const DOME_MAX_RISE = 28;
 
 const shownTranscript = (committed: string, nonCommitted: string) =>
   withoutNonSpeechNotes(committed + ' ' + nonCommitted);
@@ -67,8 +77,7 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   const heardSoFarRef = useRef({ committed: '', nonCommitted: '' });
 
-  const animationRef =
-    useRef<React.ComponentRef<typeof RecordingAnimation>>(null);
+  const domeRef = useRef<VoiceDomeHandle>(null);
   const exitStateRef = useRef<
     null | 'pending_submit' | 'pending_cancel' | 'exited'
   >(null);
@@ -90,7 +99,7 @@ const ChatSpeechInput: React.FC<Props> = ({
         setRecordingDuration(
           Math.floor((Date.now() - recordingStartTimeRef.current) / 1000)
         );
-        animationRef.current?.pushChunk(data);
+        domeRef.current?.pushChunk(data);
       },
     });
 
@@ -136,6 +145,7 @@ const ChatSpeechInput: React.FC<Props> = ({
         }
       } catch (error) {
         if (unmountedRef.current) return;
+        console.error('Live transcript could not start', error);
         if (isOutOfSpaceError(error)) {
           showNotEnoughStorage(
             'Voice dictation',
@@ -188,17 +198,6 @@ const ChatSpeechInput: React.FC<Props> = ({
     return () => subscription.remove();
   }, [onInterrupted]);
 
-  const animationWrapperRef = useRef<View | null>(null);
-  const [animationWidth, setAnimationWidth] = useState(0);
-
-  useLayoutEffect(() => {
-    if (animationWrapperRef.current) {
-      animationWrapperRef.current.measure((x, y, width) => {
-        setAnimationWidth(Math.floor(width));
-      });
-    }
-  }, []);
-
   const cancelAnimationProgress = useSharedValue(0);
   const wrapperStyle = useAnimatedStyle(() => {
     return {
@@ -210,8 +209,10 @@ const ChatSpeechInput: React.FC<Props> = ({
     };
   });
 
+  const [cancelling, setCancelling] = useState(false);
   const handleCancel = () => {
     if (exitStateRef.current === null) exitStateRef.current = 'pending_cancel';
+    setCancelling(true);
     stop();
     cancelAnimationProgress.set(
       withTiming(1, {
@@ -243,7 +244,14 @@ const ChatSpeechInput: React.FC<Props> = ({
     setSending(false);
   };
 
-  const actionNote = ACTION_NOTES[phase];
+  const domePhase: VoiceDomePhase =
+    cancelling || phase === 'ended'
+      ? 'leaving'
+      : phase === 'processing' || sending
+        ? 'processing'
+        : phase === 'listening'
+          ? 'listening'
+          : 'loading';
 
   const renderTopNote = () => {
     const fullTranscription = shownTranscript(
@@ -286,26 +294,17 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   return (
     <Animated.View style={[styles.container, wrapperStyle]}>
-      {renderTopNote()}
-
-      <View style={styles.recordingRow}>
-        <RecordingInfo
-          active={status === 'listening'}
-          duration={recordingDuration}
+      <View pointerEvents="none" style={styles.dome}>
+        <VoiceDome
+          ref={domeRef}
+          phase={domePhase}
+          sampleRate={SAMPLE_RATE}
+          chunkSeconds={AUDIO_LENGTH_SECONDS}
+          cornerRadius={COMPOSER_CARD_RADIUS}
+          maxHeight={DOME_MAX_RISE}
         />
-        <View
-          ref={animationWrapperRef}
-          style={styles.recordingAnimationWrapper}
-        >
-          {animationWidth > 0 && (
-            <RecordingAnimation
-              ref={animationRef}
-              width={animationWidth}
-              height={24}
-            />
-          )}
-        </View>
       </View>
+      {renderTopNote()}
 
       <View style={styles.actionRow}>
         <CircleButton
@@ -316,9 +315,13 @@ const ChatSpeechInput: React.FC<Props> = ({
           backgroundColor={theme.bg.voiceModeSurface}
           testID="speech-cancel"
         />
-        <Text style={[styles.secondaryNote, styles.actionNote]}>
-          {actionNote}
-        </Text>
+        <View style={styles.actionNote}>
+          {phase === 'listening' ? (
+            <RecordingInfo duration={recordingDuration} />
+          ) : (
+            <Text style={styles.secondaryNote}>{ACTION_NOTES[phase]}</Text>
+          )}
+        </View>
         <View
           style={status === 'listening' || sending ? undefined : dimmedOpacity}
         >
@@ -340,10 +343,9 @@ const ChatSpeechInput: React.FC<Props> = ({
 export default ChatSpeechInput;
 
 const RecordingInfo: React.FC<{
-  active: boolean;
   /** in seconds */
   duration: number;
-}> = ({ active, duration }) => {
+}> = ({ duration }) => {
   const { styles } = useThemedStyles(createStyles);
 
   const minutes = Math.floor(duration / 60);
@@ -351,7 +353,7 @@ const RecordingInfo: React.FC<{
 
   return (
     <View style={styles.recordingInfo}>
-      <View style={[styles.recordingDot, !active && styles.recordingDotOff]} />
+      <View style={styles.recordingDot} />
       <Text style={styles.note}>
         {minutes}:{seconds.toString().padStart(2, '0')}
       </Text>
@@ -377,7 +379,15 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.bg.main,
       borderRadius: COMPOSER_CARD_RADIUS,
       padding: space.four,
-      gap: space.four,
+      gap: space.three,
+      overflow: 'hidden',
+    },
+    dome: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: DOME_HEIGHT,
     },
 
     note: {
@@ -391,15 +401,6 @@ const createStyles = (theme: Theme) =>
       color: theme.text.contrastTertiary,
     },
 
-    recordingRow: {
-      backgroundColor: theme.bg.voiceModeSurface,
-      height: 40,
-      borderRadius: radius.full,
-      flexDirection: 'row',
-      paddingHorizontal: space.three,
-      paddingVertical: space.two,
-      gap: space.two,
-    },
     recordingInfo: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -411,13 +412,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: 3,
       backgroundColor: theme.bg.errorPrimary,
     },
-    recordingDotOff: {
-      backgroundColor: theme.text.contrastPrimary,
-      opacity: DIMMED_OPACITY,
-    },
-    recordingAnimationWrapper: {
-      flex: 1,
-    },
 
     actionRow: {
       flexDirection: 'row',
@@ -426,7 +420,7 @@ const createStyles = (theme: Theme) =>
     },
     actionNote: {
       flex: 1,
-      textAlign: 'center',
+      alignItems: 'center',
     },
 
     transcriptWrapper: {
