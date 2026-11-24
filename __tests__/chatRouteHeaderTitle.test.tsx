@@ -59,4 +59,15 @@ describe('the chat title in the header', () => {
 
     expect(mockHeader.hideTitle).toBe(true);
   });
+
+  it('stays while another chat, such as a fresh fork, takes over the store', () => {
+    openChat();
+    render(<ChatRoute />);
+
+    act(() =>
+      useLLMStore.setState({ activeChatId: 9, activeChatMessages: [] })
+    );
+
+    expect(mockHeader.hideTitle).toBe(false);
+  });
 });
