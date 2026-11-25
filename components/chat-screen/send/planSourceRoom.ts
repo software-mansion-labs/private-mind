@@ -15,7 +15,7 @@ import {
 import {
   recallEmbeddingPool,
   type EmbeddableMessage,
-} from '../../../utils/conversationRecall';
+} from '../../../utils/recall/recallEmbeddings';
 import { conversationWindowFor } from '../../../utils/conversationWindow';
 import {
   planTurnWindow,
