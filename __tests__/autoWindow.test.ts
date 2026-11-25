@@ -261,8 +261,8 @@ describe('no path gives a weak device the larger window', () => {
     expect(window(3.7, 'auto', LARGE_CONTEXT_WINDOW_TOKENS)).toBe(2048);
   });
 
-  it('a 6 GB phone gets 4096 at most', () => {
-    expect(window(5.6, 'auto', LARGE_CONTEXT_WINDOW_TOKENS)).toBe(4096);
+  it('a 6 GB phone stays at the base window on Auto', () => {
+    expect(window(5.6, 'auto', LARGE_CONTEXT_WINDOW_TOKENS)).toBe(2048);
   });
 
   it('High without the footprint gate stays at 4096, even on a 12 GB phone', () => {
@@ -594,6 +594,13 @@ describe('the four levels on each phone and model', () => {
       name: 'Auto on a 6 GB phone',
       memory: 'auto',
       ram: 5.6,
+      capacity: 8192,
+      expected: 2048,
+    },
+    {
+      name: 'Auto on an 8 GB phone starts at 4096',
+      memory: 'auto',
+      ram: 7.5,
       capacity: 8192,
       expected: 4096,
     },

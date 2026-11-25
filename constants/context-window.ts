@@ -101,6 +101,7 @@ export const getPromptCharBudget = (model: Model, sample?: string): number =>
 
 export const EXTENDED_CONTEXT_WINDOW_TOKENS = 4096;
 export const EXTENDED_WINDOW_MIN_DEVICE_RAM_GB = 6;
+export const AUTO_EXTENDED_WINDOW_MIN_DEVICE_RAM_GB = 8;
 export const LARGE_CONTEXT_WINDOW_TOKENS = 8192;
 export const LARGE_WINDOW_MIN_DEVICE_RAM_GB = 8;
 const SOURCE_SHARE_OF_EXTRA_ROOM = 0.5;
@@ -156,6 +157,9 @@ const extendedCeilingFor = (input: ConversationWindowInput): number => {
 export const isExtendedWindowAvailable = (deviceRamGB: number): boolean =>
   Math.ceil(deviceRamGB) >= EXTENDED_WINDOW_MIN_DEVICE_RAM_GB;
 
+const autoExtendsWindow = (deviceRamGB: number): boolean =>
+  Math.ceil(deviceRamGB) >= AUTO_EXTENDED_WINDOW_MIN_DEVICE_RAM_GB;
+
 export const getConversationWindowTokens = (
   model: Model,
   input: ConversationWindowInput
@@ -171,7 +175,8 @@ export const getConversationWindowTokens = (
   if (
     thinking ||
     modelCapacityTokens === undefined ||
-    !isExtendedWindowAvailable(deviceRamGB)
+    !isExtendedWindowAvailable(deviceRamGB) ||
+    (memory === 'auto' && !autoExtendsWindow(deviceRamGB))
   ) {
     return base;
   }

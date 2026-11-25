@@ -76,9 +76,9 @@ describe('getConversationWindowTokens', () => {
       expected: 2048,
     },
     {
-      name: 'a 6 GB phone with an 8192 model gets 4096',
+      name: 'a 6 GB phone with an 8192 model stays at 2048 on Auto',
       input: at(5.6, 8192),
-      expected: 4096,
+      expected: 2048,
     },
     {
       name: 'a 4 GB iPhone SE with an 8192 model gets 2048',
@@ -170,7 +170,7 @@ describe('conversation memory levels', () => {
     {
       name: 'Auto on a 6 GB phone',
       input: withMemory('auto', 5.6),
-      expected: 4096,
+      expected: 2048,
     },
     {
       name: 'Auto on a 4 GB iPhone SE',
@@ -329,18 +329,18 @@ describe('prepareMessagesForLLM with a larger conversation window', () => {
     expect(after.length).toBeGreaterThan(before.length);
   });
 
-  it('keeps as much of a long conversation on Auto as on High on a 6 GB phone', () => {
+  it('keeps more of a long conversation on High than on Auto on a 6 GB phone', () => {
     rememberModelContextCapacity(model.id, 8192);
     mockTotalMemory.mockReturnValue(5.6 * GB);
     const auto = promptOf();
-    expect(promptOf(false, [], 'high')).toEqual(auto);
+    expect(promptOf(false, [], 'high').length).toBeGreaterThan(auto.length);
   });
 
   it('keeps fewer turns on Low and gives a document the standard room', () => {
     rememberModelContextCapacity(model.id, 8192);
     mockTotalMemory.mockReturnValue(3.7 * GB);
     const standardWithDocument = promptOf(false, guideContext);
-    mockTotalMemory.mockReturnValue(5.6 * GB);
+    mockTotalMemory.mockReturnValue(7.5 * GB);
     const auto = promptOf();
 
     expect(promptOf(false, [], 'low').length).toBeLessThan(auto.length);
@@ -388,7 +388,7 @@ describe('sourceRoomFor', () => {
     {
       name: 'Auto on a 6 GB phone',
       input: withMemory('auto', 5.6),
-      expected: 'adaptive',
+      expected: 'standard',
     },
     {
       name: 'High on a 6 GB phone',
