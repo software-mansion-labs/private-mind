@@ -1,4 +1,5 @@
 import {
+  WEB_FAST_PLAN_LANGUAGES,
   WEB_FAST_PLAN_MIN_TERMS,
   WEB_QUERY_MAX_CHARS,
 } from '../../constants/web';
@@ -82,6 +83,7 @@ export const fastPlanWebSearch = (
   if (mayNeedConversation(query, history)) return null;
 
   const language = detectQuestionLanguage(query)?.code;
+  if (!language || !WEB_FAST_PLAN_LANGUAGES.has(language)) return null;
   if (!hasStopwordCoverage(language)) return null;
 
   const keywordQuery = keywordQueryFor(query, history, opts?.digest);
