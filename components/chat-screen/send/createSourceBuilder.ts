@@ -81,7 +81,6 @@ export const createSourceBuilder = ({
       : undefined;
   };
 
-  // Deferred so retrieval runs only after the optimistic message is on screen.
   return async (signal, readyModel) => {
     const model = readyModel ?? useLLMStore.getState().model;
     const room = await planSourceRoom({
