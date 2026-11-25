@@ -1,6 +1,5 @@
-import React, { createRef } from 'react';
+import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({
@@ -11,22 +10,6 @@ jest.mock('../context/ThemeContext', () => ({
   }),
 }));
 
-let mockSheetData: unknown = null;
-jest.mock('../components/bottomSheets/BackDismissibleSheetModal', () => {
-  const { View } = require('react-native');
-  return ({
-    children,
-  }: {
-    children: (props: { data: unknown }) => React.ReactNode;
-  }) =>
-    mockSheetData ? <View>{children({ data: mockSheetData })}</View> : null;
-});
-
-jest.mock('@gorhom/bottom-sheet', () => {
-  const { View } = require('react-native');
-  return { BottomSheetView: View };
-});
-
 const mockOpenExternalUrl = jest.fn();
 jest.mock('../utils/web/openExternalUrl', () => ({
   openExternalUrl: (url: string | undefined) => mockOpenExternalUrl(url),
@@ -34,9 +17,9 @@ jest.mock('../utils/web/openExternalUrl', () => ({
 
 import SwmAttributionCard from '../components/model-hub/SwmAttributionCard';
 import FamilyProviderRow from '../components/model-hub/FamilyProviderRow';
-import SwmAttributionSheet, {
-  type SwmAttributionSheetData,
-} from '../components/bottomSheets/SwmAttributionSheet';
+import SwmAttributionContent, {
+  type SwmAttributionData,
+} from '../components/model-hub/SwmAttributionContent';
 import {
   FAMILY_PROVIDERS,
   FAMILY_SWM_ROLES,
@@ -47,13 +30,10 @@ import bundledCatalog from '../catalog/model-catalog-v2.json';
 const GEMMA_URL =
   'https://huggingface.co/software-mansion/gemma-4-E2B-it-ExecuTorch';
 
-const renderSheet = (data: SwmAttributionSheetData) => {
-  mockSheetData = data;
-  const ref = createRef<BottomSheetModal<SwmAttributionSheetData>>();
-  return render(<SwmAttributionSheet bottomSheetModalRef={ref} />);
-};
+const renderContent = (data: SwmAttributionData) =>
+  render(<SwmAttributionContent data={data} topInset={0} />);
 
-const gemma: SwmAttributionSheetData = {
+const gemma: SwmAttributionData = {
   family: 'Gemma 4',
   provider: 'Google',
   role: 'optimized',
@@ -61,7 +41,6 @@ const gemma: SwmAttributionSheetData = {
 };
 
 beforeEach(() => {
-  mockSheetData = null;
   mockOpenExternalUrl.mockClear();
 });
 
@@ -177,9 +156,9 @@ describe('FamilyProviderRow without a Software Mansion role', () => {
   });
 });
 
-describe('SwmAttributionSheet', () => {
+describe('SwmAttributionContent', () => {
   it('lists the four agreed rows for Gemma 4, each read as one sentence', () => {
-    renderSheet(gemma);
+    renderContent(gemma);
     expect(screen.getByText('How this model runs on your phone')).toBeTruthy();
     const rowLabel = (key: string) =>
       screen.getByTestId(`swm-attribution-row-${key}`).props.accessibilityLabel;
@@ -196,13 +175,13 @@ describe('SwmAttributionSheet', () => {
   });
 
   it('names the prepared role in the second row', () => {
-    renderSheet({ ...gemma, role: 'prepared' });
+    renderContent({ ...gemma, role: 'prepared' });
     expect(screen.getByText('Prepared for mobile by')).toBeTruthy();
     expect(screen.queryByText('Optimized by')).toBeNull();
   });
 
   it('keeps the Software Mansion AI Labs name on one line under its role', () => {
-    renderSheet(gemma);
+    renderContent(gemma);
     expect(screen.getByText('Optimized by')).toBeTruthy();
     expect(
       screen.getByText('Software Mansion AI Labs').props.numberOfLines
@@ -210,7 +189,7 @@ describe('SwmAttributionSheet', () => {
   });
 
   it('opens the model page and the UTM-tagged Software Mansion page as links', () => {
-    renderSheet(gemma);
+    renderContent(gemma);
     fireEvent.press(screen.getByRole('link', { name: 'View model details' }));
     fireEvent.press(
       screen.getByRole('link', { name: 'About Software Mansion AI Labs' })
@@ -224,7 +203,7 @@ describe('SwmAttributionSheet', () => {
   });
 
   it('hides "View model details" when the model has no confirmed link', () => {
-    renderSheet({ ...gemma, modelUrl: undefined });
+    renderContent({ ...gemma, modelUrl: undefined });
     expect(screen.queryByText('View model details')).toBeNull();
     expect(screen.getByText('About Software Mansion AI Labs')).toBeTruthy();
   });

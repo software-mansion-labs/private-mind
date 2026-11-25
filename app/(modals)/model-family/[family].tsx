@@ -1,5 +1,11 @@
-import React, { useMemo, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  findNodeHandle,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -25,15 +31,16 @@ import ModelFamilyTile from '../../../components/model-hub/ModelFamilyTile';
 import RowGroup from '../../../components/model-hub/RowGroup';
 import FamilyProviderRow from '../../../components/model-hub/FamilyProviderRow';
 import SwmAttributionCard from '../../../components/model-hub/SwmAttributionCard';
-import SwmAttributionSheet, {
-  SwmAttributionSheetData,
-} from '../../../components/bottomSheets/SwmAttributionSheet';
+import SwmAttributionContent from '../../../components/model-hub/SwmAttributionContent';
+import PushTransition from '../../../components/model-hub/PushTransition';
 import SectionHeader from '../../../components/model-hub/SectionHeader';
 import {
   FAMILY_DESCRIPTIONS,
   FAMILY_PROVIDERS,
   FAMILY_SWM_ROLES,
 } from '../../../constants/family-descriptions';
+import { PUSH_TRANSITION_MS } from '../../../constants/push-transition';
+import { useBackToDismiss } from '../../../hooks/useBackToDismiss';
 import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
 import { space } from '../../../constants/design-system';
 
@@ -52,8 +59,8 @@ const FamilyScreen = () => {
   const wifiWarningSheetRef = useRef<BottomSheetModal<WarningSheetData> | null>(
     null
   );
-  const attributionSheetRef =
-    useRef<BottomSheetModal<SwmAttributionSheetData> | null>(null);
+  const attributionTitleRef = useRef<Text>(null);
+  const [attributionOpen, setAttributionOpen] = useState(false);
 
   const familyModels = useMemo(
     () =>
@@ -79,15 +86,23 @@ const FamilyScreen = () => {
       ? `${downloadedCount} downloaded · ${downloadedGB.toFixed(2)} GB`
       : 'None downloaded';
 
-  const handleOpenAttribution = () => {
-    if (!provider || !swmRole) return;
-    attributionSheetRef.current?.present({
-      family: familyName,
-      provider,
-      role: swmRole,
-      modelUrl: familyRepoUrl,
-    });
-  };
+  const handleOpenAttribution = () => setAttributionOpen(true);
+  const handleCloseAttribution = () => setAttributionOpen(false);
+  const handleLeaveScreen = () => router.back();
+  const handleHeaderBack = attributionOpen
+    ? handleCloseAttribution
+    : handleLeaveScreen;
+
+  useBackToDismiss(attributionOpen, handleCloseAttribution);
+
+  useEffect(() => {
+    if (!attributionOpen) return;
+    const timer = setTimeout(() => {
+      const node = findNodeHandle(attributionTitleRef.current);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }, PUSH_TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, [attributionOpen]);
 
   const renderAttribution = () => {
     if (!provider) return null;
@@ -101,43 +116,65 @@ const FamilyScreen = () => {
     );
   };
 
+  const details = (
+    <>
+      {familyModels.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No variants available.</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          {...scrollIndicatorProps(headerHeight)}
+        >
+          {renderAttribution()}
+          {description && <Text style={styles.description}>{description}</Text>}
+          <View style={styles.section}>
+            <SectionHeader
+              title={`Variants · ${familyModels.length}`}
+              summary={downloadedSummary}
+            />
+            <RowGroup separatorInset={0}>
+              {familyModels.map((model) => (
+                <ModelDownloadRow
+                  key={model.id}
+                  model={model}
+                  onPress={() =>
+                    modelManagementSheetRef.current?.present(model)
+                  }
+                  wifiWarningSheetRef={wifiWarningSheetRef}
+                />
+              ))}
+            </RowGroup>
+          </View>
+        </ScrollView>
+      )}
+    </>
+  );
+
+  const attribution =
+    provider && swmRole ? (
+      <SwmAttributionContent
+        data={{
+          family: familyName,
+          provider,
+          role: swmRole,
+          modelUrl: familyRepoUrl,
+        }}
+        topInset={headerHeight}
+        titleRef={attributionTitleRef}
+      />
+    ) : null;
+
   return (
     <BottomSheetModalProvider>
       <View style={styles.container}>
-        {familyModels.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No variants available.</Text>
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            {...scrollIndicatorProps(headerHeight)}
-          >
-            {renderAttribution()}
-            {description && (
-              <Text style={styles.description}>{description}</Text>
-            )}
-            <View style={styles.section}>
-              <SectionHeader
-                title={`Variants · ${familyModels.length}`}
-                summary={downloadedSummary}
-              />
-              <RowGroup separatorInset={0}>
-                {familyModels.map((model) => (
-                  <ModelDownloadRow
-                    key={model.id}
-                    model={model}
-                    onPress={() =>
-                      modelManagementSheetRef.current?.present(model)
-                    }
-                    wifiWarningSheetRef={wifiWarningSheetRef}
-                  />
-                ))}
-              </RowGroup>
-            </View>
-          </ScrollView>
-        )}
+        <PushTransition
+          showSecond={attributionOpen}
+          first={details}
+          second={attribution}
+        />
         <GlassScreenHeader
           title={familyName}
           titleIcon={
@@ -147,12 +184,11 @@ const FamilyScreen = () => {
               bareIconSize={HEADER_ICON_SIZE}
             />
           }
-          onBack={() => router.back()}
+          onBack={handleHeaderBack}
           sheet
         />
         <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
         <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
-        <SwmAttributionSheet bottomSheetModalRef={attributionSheetRef} />
       </View>
     </BottomSheetModalProvider>
   );
