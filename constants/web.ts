@@ -60,6 +60,18 @@ export const WEB_QUERY_CONCISE_MAX_WORDS = 6;
 export const WEB_QUERY_INTENT_MAX_CHARS = 80;
 
 export const WEB_FAST_PLAN_MIN_TERMS = 2;
+export const WEB_FAST_PLAN_LANGUAGES: ReadonlySet<string> = new Set([
+  'en',
+  'pl',
+  'de',
+  'es',
+  'fr',
+  'pt',
+  'hi',
+  'ur',
+  'fa',
+  'ar',
+]);
 
 export const URL_FETCH_TIMEOUT_MS = 12000;
 export const URL_FETCH_MAX_BYTES = 2_000_000;

@@ -233,6 +233,20 @@ describe('fastPlanWebSearch', () => {
     ).toBeNull();
   });
 
+  it('defers a language whose writing and opinion requests it cannot recognise', () => {
+    for (const request of [
+      'Scrivi una poesia sulla città di Roma',
+      'İstanbul hakkında kısa bir şiir yaz',
+      'Tuliskan puisi pendek tentang kota Jakarta',
+      'Что ты думаешь о новом iPhone 17 Pro?',
+    ]) {
+      expect(fastPlanWebSearch(request, [])).toBeNull();
+    }
+    expect(
+      fastPlanWebSearch('Kto wygrał finał Ligi Mistrzów w 2025 roku?', [])
+    ).not.toBeNull();
+  });
+
   it('defers when too few terms are left to search on', () => {
     expect(fastPlanWebSearch('Zorblax?', [])).toBeNull();
     expect(fastPlanWebSearch('   ', [])).toBeNull();
