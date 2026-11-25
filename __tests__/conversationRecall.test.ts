@@ -518,18 +518,17 @@ describe('recallEmbeddingPool', () => {
 });
 
 describe('retrievalStatsLines for memory', () => {
-  it('prints the memory counters so a report shows the mechanism fired', () => {
-    const [line] = retrievalStatsLines({
-      memory: {
-        turnsDropped: 12,
-        messagesRecalled: 2,
-        recallTokens: 40,
-        recallMode: 'lexical',
-        digestChars: 0,
-      },
-    });
-
-    expect(line).toContain('12 messages dropped');
-    expect(line).toContain('2 recalled (lexical)');
+  it('keeps the memory counters out of the stats shown under an answer', () => {
+    expect(
+      retrievalStatsLines({
+        memory: {
+          turnsDropped: 12,
+          messagesRecalled: 2,
+          recallTokens: 40,
+          recallMode: 'lexical',
+          digestChars: 0,
+        },
+      })
+    ).toEqual([]);
   });
 });
