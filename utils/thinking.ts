@@ -50,8 +50,8 @@ const SENTENCE_END = /[.!?…。！？।॥۔؟]["'”’»)\]*_`]*$/u;
 const WORD = /[\p{L}\p{M}\p{N}]+/gu;
 const TAIL_WINDOW_MIN_WORDS = 12;
 const TAIL_WINDOW_MAX_WORDS = 48;
-const RESTATED_HEAD_TERMS_MIN_PERCENT = 50;
-const TAIL_TERMS_FROM_HEAD_MIN_PERCENT = 50;
+const RESTATED_HEAD_TERMS_MIN_PERCENT = 60;
+const TAIL_TERMS_FROM_HEAD_MIN_PERCENT = 60;
 
 const endsASentence = (visible: string): boolean =>
   SENTENCE_END.test(visible.trimEnd());

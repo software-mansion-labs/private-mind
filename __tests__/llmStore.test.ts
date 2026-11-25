@@ -921,16 +921,16 @@ describe('sendChatMessage', () => {
         capturedTokenCallback!(answer);
         await flushFrame();
         capturedTokenCallback!(
-          '</think>The capital of Australia is Canberra, in the Australian Capital Territory'
+          '</think>The capital of Australia is Canberra. Yes, the capital of Australia'
         );
-        capturedTokenCallback!(' and');
+        capturedTokenCallback!(' is');
         expect(mockInstance.interrupt).not.toHaveBeenCalled();
-        capturedTokenCallback!(' it');
+        capturedTokenCallback!(' Canberra.');
         interruptsOnceRepeated = mockInstance.interrupt.mock.calls.length;
-        capturedTokenCallback!(' is home to Parliament House.');
+        capturedTokenCallback!(' It is home to Parliament House.');
         await flushFrame();
         seenWhileStreaming = shownAnswer();
-        return `${answer}</think>The capital of Australia is Canberra, in the Australian Capital Territory and it is home to Parliament House.`;
+        return `${answer}</think>The capital of Australia is Canberra. Yes, the capital of Australia is Canberra. It is home to Parliament House.`;
       });
 
       await ask();

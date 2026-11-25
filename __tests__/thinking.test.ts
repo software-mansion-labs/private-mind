@@ -74,12 +74,36 @@ describe('a close tag no open tag precedes, with thinking off', () => {
   it('ends the answer there when the text after it says the same again', () => {
     expect(
       cutAtStrayThinkClose(
-        'The capital of Australia is Canberra.</think>The capital is Canberra.'
+        'The capital of Australia is Canberra.</think>Canberra is the capital of Australia.'
       )
     ).toEqual({
       text: 'The capital of Australia is Canberra.',
       answerEnded: true,
     });
+  });
+
+  it('ends the answer there when the text after it is a shorter repeat', () => {
+    expect(
+      cutAtStrayThinkClose(
+        'The capital of Australia is Canberra.</think>The capital is Canberra.'
+      ).answerEnded
+    ).toBe(true);
+  });
+
+  it('keeps both parts when the text after it adds facts about the same subject', () => {
+    expect(
+      cutAtStrayThinkClose(
+        'The Eiffel Tower is in Paris.</think>The Eiffel Tower stands on the Champ de Mars in Paris and was built for the 1889 World Fair by Gustave Eiffel.'
+      ).answerEnded
+    ).toBe(false);
+  });
+
+  it('keeps both parts when the text after it explains a one-line answer at length', () => {
+    expect(
+      cutAtStrayThinkClose(
+        'Python lists are mutable.</think>Lists in Python are mutable, which means you can append, remove and change items after creating them.'
+      ).answerEnded
+    ).toBe(false);
   });
 
   it('keeps both parts when the text before it was reasoning, not the answer', () => {
@@ -171,8 +195,8 @@ describe('a close tag no open tag precedes, while the answer streams', () => {
     expect(
       pushAll(filter, [
         'The capital of Australia is Canberra.',
-        '</think>The capital',
-        ' is Canberra.',
+        '</think>Canberra is',
+        ' the capital of Australia.',
       ])
     ).toEqual(['The capital of Australia is Canberra.', '', '']);
     expect(filter.answerEnded()).toBe(false);
