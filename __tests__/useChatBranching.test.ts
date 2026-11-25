@@ -92,6 +92,67 @@ it('loads branch markers for a persisted chat', async () => {
   expect(mockGetChatBranchMarkers).toHaveBeenCalledWith(expect.any(Object), 1);
 });
 
+it('keeps the same markers array when a reload finds nothing new, so the message list does not re-render', async () => {
+  mockGetChatBranchMarkers.mockImplementation(async () => [
+    { ...branchMarker },
+  ]);
+  const { result, rerender } = renderHook(
+    ({ length }: { length: number }) =>
+      useChatBranching({ chatId: 1, messageHistoryLength: length }),
+    { initialProps: { length: 2 } }
+  );
+  await waitFor(() =>
+    expect(result.current.branchMarkers).toEqual([branchMarker])
+  );
+  const first = result.current.branchMarkers;
+
+  rerender({ length: 3 });
+  await waitFor(() =>
+    expect(mockGetChatBranchMarkers).toHaveBeenCalledTimes(2)
+  );
+
+  expect(result.current.branchMarkers).toBe(first);
+});
+
+it('keeps the same empty array when a chat without branches is reloaded', async () => {
+  mockGetChatBranchMarkers.mockImplementation(async () => []);
+  const { result, rerender } = renderHook(
+    ({ length }: { length: number }) =>
+      useChatBranching({ chatId: 1, messageHistoryLength: length }),
+    { initialProps: { length: 2 } }
+  );
+  await waitFor(() =>
+    expect(mockGetChatBranchMarkers).toHaveBeenCalledTimes(1)
+  );
+  const first = result.current.branchMarkers;
+
+  rerender({ length: 3 });
+  await waitFor(() =>
+    expect(mockGetChatBranchMarkers).toHaveBeenCalledTimes(2)
+  );
+
+  expect(result.current.branchMarkers).toBe(first);
+});
+
+it('replaces the markers when a new branch appears', async () => {
+  mockGetChatBranchMarkers.mockResolvedValueOnce([]);
+  const { result, rerender } = renderHook(
+    ({ length }: { length: number }) =>
+      useChatBranching({ chatId: 1, messageHistoryLength: length }),
+    { initialProps: { length: 2 } }
+  );
+  await waitFor(() =>
+    expect(mockGetChatBranchMarkers).toHaveBeenCalledTimes(1)
+  );
+
+  mockGetChatBranchMarkers.mockResolvedValueOnce([branchMarker]);
+  rerender({ length: 3 });
+
+  await waitFor(() =>
+    expect(result.current.branchMarkers).toEqual([branchMarker])
+  );
+});
+
 it('does not load branch markers for an unpersisted phantom chat', async () => {
   mockUseChatStore.mockReturnValue({
     phantomChat: { id: 1 },
