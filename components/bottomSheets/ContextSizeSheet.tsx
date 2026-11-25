@@ -48,7 +48,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + space.four,
       gap: space.four,
-      backgroundColor: theme.bg.softPrimary,
+      backgroundColor: theme.bg.sheet,
     },
     title: {
       fontSize: fontSizes.lg,
