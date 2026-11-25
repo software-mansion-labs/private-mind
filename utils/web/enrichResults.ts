@@ -22,7 +22,8 @@ export interface EnrichPageEvent {
 export type ArticleFetcher = (
   url: string,
   timeoutMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onExtractMs?: (ms: number) => void
 ) => Promise<ExtractedArticle>;
 
 export const enrichWebResults = async (

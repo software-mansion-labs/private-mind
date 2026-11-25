@@ -62,11 +62,41 @@ export type Message = {
 
 export type RagStats = { ms: number; chunks: number };
 
+export type WebSearchTiming = { query: string; ms: number; cached?: boolean };
+
+export type WebPageTiming = {
+  host: string;
+  ms: number;
+  extractMs?: number;
+  cached?: boolean;
+};
+
+export type WebPlannerPath = 'llm' | 'fast';
+
+export type WebTimings = {
+  plannerMs?: number;
+  planner?: WebPlannerPath;
+  searches: WebSearchTiming[];
+  pages: WebPageTiming[];
+  embedRankMs: number;
+};
+
 export type WebStats = {
   ms: number;
   sources: number;
   read: number;
   queries: number;
+  timings?: WebTimings;
+};
+
+export type ConversationRecallMode = 'none' | 'lexical' | 'fused';
+
+export type ConversationMemoryStats = {
+  turnsDropped: number;
+  messagesRecalled: number;
+  recallTokens: number;
+  recallMode: ConversationRecallMode;
+  digestChars: number;
 };
 
 export type WindowStats = { tokens: number; reason: string };
@@ -74,6 +104,7 @@ export type WindowStats = { tokens: number; reason: string };
 export type RetrievalStats = {
   rag?: RagStats;
   web?: WebStats;
+  memory?: ConversationMemoryStats;
   window?: WindowStats;
 };
 
@@ -142,6 +173,28 @@ const parseGroundingCaveats = (
 
 const RAG_STAT_KEYS = ['ms', 'chunks'] as const;
 const WEB_STAT_KEYS = ['ms', 'sources', 'read', 'queries'] as const;
+const MEMORY_STAT_KEYS = [
+  'turnsDropped',
+  'messagesRecalled',
+  'recallTokens',
+  'digestChars',
+] as const;
+const RECALL_MODES: readonly ConversationRecallMode[] = [
+  'none',
+  'lexical',
+  'fused',
+];
+
+const readMemoryStats = (
+  value: unknown
+): ConversationMemoryStats | undefined => {
+  const counts = readStatCounts(value, MEMORY_STAT_KEYS);
+  const mode = (value as Record<string, unknown> | undefined)?.recallMode;
+  if (!counts || !RECALL_MODES.includes(mode as ConversationRecallMode)) {
+    return undefined;
+  }
+  return { ...counts, recallMode: mode as ConversationRecallMode };
+};
 
 const readStatCounts = <K extends string>(
   value: unknown,
@@ -168,6 +221,54 @@ const readWindowStats = (value: unknown): WindowStats | undefined => {
   return { tokens, reason };
 };
 
+const TIMING_ENTRIES_MAX = 40;
+
+const isMs = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+const readTimingEntries = <T extends { ms: number }>(
+  value: unknown,
+  label: 'query' | 'host',
+  optional: readonly string[]
+): T[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const entries: T[] = [];
+  for (const item of value.slice(0, TIMING_ENTRIES_MAX)) {
+    const raw = item as Record<string, unknown> | null;
+    if (!raw || typeof raw[label] !== 'string' || !isMs(raw.ms))
+      return undefined;
+    const entry: Record<string, unknown> = { [label]: raw[label], ms: raw.ms };
+    for (const key of optional) {
+      if (key === 'cached' && raw[key] === true) entry[key] = true;
+      if (key === 'extractMs' && isMs(raw[key])) entry[key] = raw[key];
+    }
+    entries.push(entry as T);
+  }
+  return entries;
+};
+
+const readWebTimings = (value: unknown): WebTimings | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const searches = readTimingEntries<WebSearchTiming>(raw.searches, 'query', [
+    'cached',
+  ]);
+  const pages = readTimingEntries<WebPageTiming>(raw.pages, 'host', [
+    'extractMs',
+    'cached',
+  ]);
+  if (!searches || !pages || !isMs(raw.embedRankMs)) return undefined;
+  return {
+    ...(isMs(raw.plannerMs) ? { plannerMs: raw.plannerMs } : {}),
+    ...(raw.planner === 'fast' || raw.planner === 'llm'
+      ? { planner: raw.planner }
+      : {}),
+    searches,
+    pages,
+    embedRankMs: raw.embedRankMs,
+  };
+};
+
 const parseRetrievalStats = (
   retrievalStats?: string | null
 ): RetrievalStats | undefined => {
@@ -185,12 +286,20 @@ const parseRetrievalStats = (
       (parsed as Record<string, unknown>).web,
       WEB_STAT_KEYS
     );
+    const memory = readMemoryStats((parsed as Record<string, unknown>).memory);
     const window = readWindowStats((parsed as Record<string, unknown>).window);
-    if (!rag && !web && !window) return undefined;
+    if (!rag && !web && !memory && !window) return undefined;
 
+    const timings = web
+      ? readWebTimings(
+          ((parsed as Record<string, unknown>).web as Record<string, unknown>)
+            .timings
+        )
+      : undefined;
     return {
       ...(rag ? { rag } : {}),
-      ...(web ? { web } : {}),
+      ...(web ? { web: { ...web, ...(timings ? { timings } : {}) } } : {}),
+      ...(memory ? { memory } : {}),
       ...(window ? { window } : {}),
     };
   } catch {
@@ -201,7 +310,10 @@ const parseRetrievalStats = (
 const serializeRetrievalStats = (
   retrievalStats?: RetrievalStats
 ): string | null =>
-  retrievalStats?.rag || retrievalStats?.web || retrievalStats?.window
+  retrievalStats?.rag ||
+  retrievalStats?.web ||
+  retrievalStats?.memory ||
+  retrievalStats?.window
     ? JSON.stringify(retrievalStats)
     : null;
 

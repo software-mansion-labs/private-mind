@@ -383,7 +383,10 @@ export const extractSiteRestriction = (userInput: string): string | null => {
     : null;
 };
 
-const withSiteRestriction = (query: string, domain: string | null): string =>
+export const withSiteRestriction = (
+  query: string,
+  domain: string | null
+): string =>
   domain && !query.toLowerCase().includes(`site:${domain}`)
     ? `${query} site:${domain}`
     : query;
@@ -544,18 +547,22 @@ const looksLikeTemporalFollowUp = (query: string): boolean => {
   );
 };
 
+const looksIncomplete = (query: string): boolean =>
+  NEEDS_REFERENT.test(query) ||
+  looksLikeDroppedSubject(query) ||
+  hasAnaphoricReference(query) ||
+  looksLikeElidedSubject(query) ||
+  looksLikeTemporalFollowUp(query);
+
+export const dependsOnConversation = (query: string): boolean =>
+  looksIncomplete(query) && !hasOwnEntity(query);
+
 export const carryReferentIntoQuery = (
   query: string,
   history: { role: string; content: string }[],
   digest?: string
 ): string => {
-  const looksIncomplete =
-    NEEDS_REFERENT.test(query) ||
-    looksLikeDroppedSubject(query) ||
-    hasAnaphoricReference(query) ||
-    looksLikeElidedSubject(query) ||
-    looksLikeTemporalFollowUp(query);
-  if (!looksIncomplete || hasOwnEntity(query)) return query;
+  if (!dependsOnConversation(query)) return query;
   const subject = conversationSubject(history);
   if (subject) return `${query} ${subject}`;
   const carried = digest?.trim();

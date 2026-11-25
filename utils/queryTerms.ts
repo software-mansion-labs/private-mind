@@ -562,6 +562,9 @@ const STOPWORDS_BY_LANGUAGE: Record<string, string[]> = {
 
 const ALL_STOPWORDS = new Set(Object.values(STOPWORDS_BY_LANGUAGE).flat());
 
+export const hasStopwordCoverage = (language?: string): boolean =>
+  !!language && language in STOPWORDS_BY_LANGUAGE;
+
 const stopwordCache = new Map<string, Set<string>>();
 
 const stopwordsFor = (language?: string): Set<string> => {

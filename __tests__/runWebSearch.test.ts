@@ -16,6 +16,11 @@ jest.mock('react-native-rag', () => ({
     })),
 }));
 
+jest.mock('../utils/web/fastPlan', () => ({
+  ...jest.requireActual('../utils/web/fastPlan'),
+  fastPlanWebSearch: () => null,
+}));
+
 jest.mock('../utils/web/url/extractArticle', () => ({
   ...jest.requireActual('../utils/web/url/extractArticle'),
   extractArticle: jest.fn(),

@@ -64,6 +64,10 @@ export class LFMEmbeddings implements Embeddings {
     return this;
   }
 
+  isLoaded(): boolean {
+    return this.embedder !== null;
+  }
+
   async unload(): Promise<void> {
     this.embedder?.dispose();
     this.embedder = null;
