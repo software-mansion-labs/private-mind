@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { Theme } from '../../../styles/colors';
 import { SvgComponent } from '../../../utils/SvgComponent';
@@ -9,8 +9,12 @@ import ImageIcon from '../../../assets/icons/image.svg';
 import AttachmentIcon from '../../../assets/icons/attachment.svg';
 import LightBulbIcon from '../../../assets/icons/light_bulb.svg';
 import WebIcon from '../../../assets/icons/web.svg';
+import ProcessorIcon from '../../../assets/icons/processor.svg';
 import MenuRow from '../../menu/MenuRow';
 import { ThemedSwitch } from '../../ThemedSwitch';
+import { CAPPED_TEXT_MAX_SCALE } from '../../../constants/font-scale';
+import { CONVERSATION_MEMORY_LABEL } from '../../../constants/conversation-memory-copy';
+import { fontFamily, fontSizes } from '../../../styles/fontStyles';
 import { MENU, PANEL_CONTENT, PRESS_ANYWHERE, menuHeight } from './constants';
 
 export type MenuAction = 'camera' | 'photos' | 'files';
@@ -43,7 +47,14 @@ const ITEMS: Item[] = [
   },
 ];
 
+interface ContextSizeEntry {
+  value: string;
+  blocked: boolean;
+  onPress: () => void;
+}
+
 export interface MenuTools {
+  contextSize?: ContextSizeEntry;
   thinkingEnabled?: boolean;
   thinkingAvailable?: boolean;
   onThinkingToggle?: () => void;
@@ -102,7 +113,7 @@ const toolsOf = ({
 ];
 
 export const attachmentMenuHeight = (tools: MenuTools) => {
-  const toolRows = toolsOf(tools).length;
+  const toolRows = toolsOf(tools).length + (tools.contextSize ? 1 : 0);
   return menuHeight({
     rows: ITEMS.length + toolRows,
     dividers: toolRows > 0 ? 1 : 0,
@@ -135,6 +146,8 @@ const AttachmentMenu = ({
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
   const tools = toolsOf(menuTools);
+  const { contextSize } = menuTools;
+  const rowsBelowDivider = tools.length + (contextSize ? 1 : 0);
 
   return (
     <View style={[styles.root, { height: attachmentMenuHeight(menuTools) }]}>
@@ -154,7 +167,7 @@ const AttachmentMenu = ({
           />
         );
       })}
-      {tools.length > 0 && (
+      {rowsBelowDivider > 0 && (
         <View testID="menu-divider" style={styles.divider} />
       )}
       {tools.map((tool) => (
@@ -177,6 +190,26 @@ const AttachmentMenu = ({
           }
         />
       ))}
+      {contextSize && (
+        <MenuRow
+          label={CONVERSATION_MEMORY_LABEL}
+          accessibilityLabel={`${CONVERSATION_MEMORY_LABEL}, ${contextSize.value}`}
+          icon={ProcessorIcon}
+          testID="menu-context-size"
+          dimmed={contextSize.blocked}
+          pressRetentionOffset={PRESS_ANYWHERE}
+          onPress={contextSize.blocked ? undefined : contextSize.onPress}
+          trailing={
+            <Text
+              style={styles.value}
+              testID="menu-context-size-value"
+              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+            >
+              {contextSize.value}
+            </Text>
+          }
+        />
+      )}
     </View>
   );
 };
@@ -190,6 +223,11 @@ const createStyles = (theme: Theme) =>
       width: MENU.width,
       paddingVertical: MENU.paddingVertical,
       paddingHorizontal: MENU.paddingHorizontal,
+    },
+    value: {
+      fontFamily: fontFamily.regular,
+      fontSize: fontSizes.sm,
+      color: theme.text.defaultTertiary,
     },
     divider: {
       height: MENU.dividerThickness,

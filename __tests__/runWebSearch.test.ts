@@ -35,6 +35,7 @@ import { extractArticle } from '../utils/web/url/extractArticle';
 import { clearWebCaches } from '../utils/web/cache/webCache';
 import { WEB_SEARCH_MAX_RESULTS } from '../constants/web';
 import { sourcesPresentInContext } from '../utils/contextUtils';
+import { DEFAULT_PROFILE } from '../constants/model-profiles';
 
 const axisOf = (text: string): number[] => {
   const lower = text.toLowerCase();
@@ -225,6 +226,53 @@ describe('runWebSearch', () => {
       'https://weather.example/1',
     ]);
     expect(out.context.join(' ')).not.toContain('وارسو');
+  });
+
+  describe('a question with two parts', () => {
+    const question =
+      'Who won the 2025 Nobel Prizes in Physics and in Chemistry?';
+    const searchWith = async (profile?: typeof DEFAULT_PROFILE) => {
+      const provider = new MockProvider({});
+      await runWebSearch({
+        query: question,
+        history: [],
+        provider,
+        embeddings: fakeEmbeddings,
+        embeddingModelReady: true,
+        generate: noGen,
+        today: '2026-07-20',
+        ...(profile ? { profile } : {}),
+      });
+      return provider.calls;
+    };
+
+    it('searches each part on its own when the plan has a single query', async () => {
+      const calls = await searchWith();
+      expect(
+        calls.some((call) => /Physics/.test(call) && !/Chemistry/.test(call))
+      ).toBe(true);
+      expect(
+        calls.some((call) => /Chemistry/.test(call) && !/Physics/.test(call))
+      ).toBe(true);
+      expect(calls.every((call) => call.includes('2025'))).toBe(true);
+    });
+
+    it('still searches the planned query next to the parts', async () => {
+      const calls = await searchWith();
+      expect(
+        calls.some((call) => /Physics/.test(call) && /Chemistry/.test(call))
+      ).toBe(true);
+    });
+
+    it('keeps one search when the profile turns splitting off', async () => {
+      const calls = await searchWith({
+        ...DEFAULT_PROFILE,
+        webSplitQuestionParts: false,
+      });
+      expect(
+        calls.some((call) => /Physics/.test(call) && /Chemistry/.test(call))
+      ).toBe(true);
+    });
   });
 
   it('runs one round and reports it on strong retrieval', async () => {

@@ -23,6 +23,7 @@ export const radius = {
   six: 6,
   twelve: 12,
   eighteen: 18,
+  twenty: 20,
   full: 9999,
 } as const;
 

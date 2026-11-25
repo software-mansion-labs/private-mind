@@ -10,9 +10,11 @@ import {
   isSmallTalk,
   planWebSearch,
   dedupeQueries,
+  toKeywordQuery,
   verbatimQueryFor,
   type QueryRewriteFn,
 } from './buildSearchQuery';
+import { partQueriesFor } from './questionParts';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
   resolveCurrencyQuote,
@@ -306,7 +308,17 @@ const searchWithCleanup = async (
     ...(input.profile ? { rewrite: input.profile.webPlanner === 'llm' } : {}),
     ...(input.digest ? { digest: input.digest } : {}),
   });
+  const candidatePages =
+    input.profile?.webCandidatePages ?? WEB_SEARCH_MAX_RESULTS;
   let baseQueries = dedupeQueries(plan.queries);
+  const splitsIntoParts =
+    (input.profile?.webSplitQuestionParts ?? true) && baseQueries.length === 1;
+  const partQueries = splitsIntoParts
+    ? partQueriesFor(query, baseQueries[0]!, toKeywordQuery)
+    : [];
+  if (partQueries.length >= 2) {
+    baseQueries = dedupeQueries([...partQueries, ...baseQueries]);
+  }
   telemetry.needsSearch = plan.needsSearch;
   telemetry.intent = plan.intent;
   telemetry.intentKind = plan.kind;
@@ -373,6 +385,7 @@ const searchWithCleanup = async (
           const region =
             SEARCH_REGION_BY_LANGUAGE[detectQuestionLanguage(q)?.code ?? ''];
           found = await provider.search(q, {
+            maxResults: candidatePages,
             ...(signal ? { signal } : {}),
             ...(region ? { region } : {}),
             onEngine: (engine) => {
@@ -413,7 +426,7 @@ const searchWithCleanup = async (
   };
 
   const maxEnrich = useEmbeddings
-    ? WEB_RETRIEVAL_FETCH_TOP_N
+    ? (input.profile?.webRetrievalFetchTopN ?? WEB_RETRIEVAL_FETCH_TOP_N)
     : (input.profile?.webFetchTopNContent ?? WEB_FETCH_TOP_N_CONTENT);
   const embeddingCache = createWebEmbeddingCache();
 
@@ -610,7 +623,7 @@ const searchWithCleanup = async (
     telemetry.plannedQueries = baseQueries;
   }
   const found = foundGroups.flat();
-  const outcome = await groundAndEvaluate(foundGroups, WEB_SEARCH_MAX_RESULTS);
+  const outcome = await groundAndEvaluate(foundGroups, candidatePages);
 
   let finalResults = outcome.grounded;
   let evaluation = outcome.evaluation;

@@ -3,7 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontFamily, fontSizes, lineHeights } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
-import { radius, space } from '../../constants/design-system';
+import { space } from '../../constants/design-system';
+import { SETTINGS_ROW_HEIGHT } from './SettingsRow';
 import { ThemedSwitch } from '../ThemedSwitch';
 
 interface Props {
@@ -24,12 +25,10 @@ export const SettingsToggleRow = ({
   const { styles } = useThemedStyles(createStyles);
 
   return (
-    <View style={styles.card}>
+    <View style={styles.row}>
       {icon}
       <View style={styles.texts}>
-        <Text numberOfLines={1} style={styles.label}>
-          {label}
-        </Text>
+        <Text style={styles.label}>{label}</Text>
         {description && <Text style={styles.description}>{description}</Text>}
       </View>
       <ThemedSwitch value={value} onValueChange={onValueChange} />
@@ -39,10 +38,10 @@ export const SettingsToggleRow = ({
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    card: {
-      padding: space.four,
-      borderRadius: radius.eighteen,
-      backgroundColor: theme.bg.softTertiary,
+    row: {
+      minHeight: SETTINGS_ROW_HEIGHT,
+      paddingVertical: space.three,
+      paddingHorizontal: space.four,
       flexDirection: 'row',
       alignItems: 'center',
       gap: space.three,

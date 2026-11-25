@@ -6,9 +6,10 @@ import { useHeaderHeight } from 'expo-router/react-navigation';
 import Toast from 'react-native-toast-message';
 import useDefaultHeader from '../../hooks/useDefaultHeader';
 import { SettingsRow } from '../../components/settings/SettingsRow';
-import { SettingsSection } from '../../components/settings/SettingsSection';
+import { SettingsGroup } from '../../components/settings/SettingsGroup';
 import { SettingsToggleRow } from '../../components/settings/SettingsToggleRow';
 import { SettingsChoiceRow } from '../../components/settings/SettingsChoiceRow';
+import { ContextSizeSettingRow } from '../../components/settings/ContextSizeSettingRow';
 import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
 import EditIcon from '../../assets/icons/edit.svg';
 import InfoCircleIcon from '../../assets/icons/info-circle.svg';
@@ -67,6 +68,10 @@ const SettingsScreen = () => {
     [setHapticsEnabled]
   );
 
+  const handleOpenCustomInstructions = () =>
+    navigation.push('/custom-system-prompt');
+  const handleOpenAppInfo = () => navigation.push('/app-info');
+
   const handleDeleteAllChats = useCallback(async () => {
     const confirmed = await confirm({
       title: 'Delete all chats?',
@@ -95,14 +100,25 @@ const SettingsScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <SettingsSection title="Personalization">
+        <SettingsGroup title="Chat">
           <SettingsRow
             label="Custom instructions"
             icon={<EditIcon width={20} height={20} style={styles.rowIcon} />}
-            onPress={() => navigation.push('/custom-system-prompt')}
+            onPress={handleOpenCustomInstructions}
+            showChevron
           />
-        </SettingsSection>
-        <SettingsSection title="Appearance">
+          <ContextSizeSettingRow />
+          <SettingsToggleRow
+            label="Response speed stats"
+            description="Show what each answer cost: document and web retrieval, time to first token, tokens per second."
+            icon={
+              <BenchmarkIcon width={20} height={20} style={styles.rowIcon} />
+            }
+            value={showPerformanceMetrics}
+            onValueChange={setShowPerformanceMetrics}
+          />
+        </SettingsGroup>
+        <SettingsGroup title="Appearance">
           <SettingsChoiceRow
             label="Theme"
             options={THEME_OPTIONS}
@@ -114,19 +130,8 @@ const SettingsScreen = () => {
             value={hapticsEnabled}
             onValueChange={handleHapticsChange}
           />
-        </SettingsSection>
-        <SettingsSection title="Chat">
-          <SettingsToggleRow
-            label="Response speed stats"
-            description="Show what each answer cost: document and web retrieval, time to first token, tokens per second."
-            icon={
-              <BenchmarkIcon width={20} height={20} style={styles.rowIcon} />
-            }
-            value={showPerformanceMetrics}
-            onValueChange={setShowPerformanceMetrics}
-          />
-        </SettingsSection>
-        <SettingsSection title="Data controls">
+        </SettingsGroup>
+        <SettingsGroup title="Data controls">
           <SettingsRow
             label="Import chat"
             icon={
@@ -146,16 +151,17 @@ const SettingsScreen = () => {
             onPress={handleDeleteAllChats}
             destructive
           />
-        </SettingsSection>
-        <SettingsSection title="About">
+        </SettingsGroup>
+        <SettingsGroup title="About">
           <SettingsRow
             label="App info"
             icon={
               <InfoCircleIcon width={20} height={20} style={styles.rowIcon} />
             }
-            onPress={() => navigation.push('/app-info')}
+            onPress={handleOpenAppInfo}
+            showChevron
           />
-        </SettingsSection>
+        </SettingsGroup>
       </ScrollView>
       <GlassScrollEdge anchor={headerHeight} />
       {ConfirmElement}

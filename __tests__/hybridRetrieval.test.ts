@@ -133,6 +133,46 @@ describe('hybridRetrieve', () => {
     expect(names).not.toContain('Filler');
   });
 
+  describe('extra chunks beyond the cap', () => {
+    const chunk = (index: number, similarity: number) => ({
+      id: `1:${index}`,
+      document: `passage ${index} about the harbour report`,
+      embedding: [Math.cos(index), Math.sin(index)],
+      similarity,
+      metadata: { documentId: 1, name: `chunk-${index}` },
+    });
+    const retrieve = (maxSimilarityGap: number) =>
+      hybridRetrieve({
+        prompt: 'harbour report',
+        enabledSourceIds: [1],
+        attachmentSourceIds: [1],
+        vectorStore: makeVectorStore(
+          [chunk(0, 0.8), chunk(10, 0.75), chunk(20, 0.5)],
+          {}
+        ),
+        sourceNamesById: new Map(),
+        embeddings: null,
+        maxRelevantChunks: 1,
+        extraChunks: { count: 2, maxSimilarityGap },
+      });
+    const namesOf = async (maxSimilarityGap: number) =>
+      (await retrieve(maxSimilarityGap)).map((c) => c.metadata?.name);
+
+    beforeEach(() => mockKeywordSearch.mockResolvedValue([]));
+
+    it('adds an extra chunk that is nearly as similar as the best one', async () => {
+      const names = await namesOf(0.1);
+      expect(names).toContain('chunk-10');
+      expect(names).not.toContain('chunk-20');
+    });
+
+    it('adds every offered extra chunk when the gap is unlimited', async () => {
+      expect(await namesOf(Number.POSITIVE_INFINITY)).toEqual(
+        expect.arrayContaining(['chunk-0', 'chunk-10', 'chunk-20'])
+      );
+    });
+  });
+
   it('returns an empty list when nothing qualifies', async () => {
     mockKeywordSearch.mockResolvedValue([]);
 

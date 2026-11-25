@@ -12,6 +12,13 @@ describe('useSettingsStore', () => {
     });
   });
 
+  it('keeps the automatic conversation memory until the user picks a level', () => {
+    expect(useSettingsStore.getState().conversationMemory).toBe('auto');
+    useSettingsStore.getState().setConversationMemory('high');
+    expect(useSettingsStore.getState().conversationMemory).toBe('high');
+    useSettingsStore.getState().setConversationMemory('auto');
+  });
+
   it('follows the system theme until the user picks one', () => {
     expect(useSettingsStore.getState().themePreference).toBe('system');
     useSettingsStore.getState().setThemePreference('dark');
@@ -111,4 +118,73 @@ describe('haptics setting', () => {
 
     expect(Settings.enableHaptics).toHaveBeenLastCalledWith(true);
   });
+});
+
+describe('conversation memory persistence', () => {
+  const STORAGE_KEY = 'app-settings';
+
+  const seedStorage = (state: Record<string, unknown>, version = 0) =>
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ state, version }));
+
+  const flushWrites = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const storedMemory = async () => {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    return JSON.parse(raw ?? '{}').state.conversationMemory;
+  };
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    useSettingsStore.setState({ conversationMemory: 'auto' });
+  });
+
+  it('writes the chosen level to storage as soon as it is set', async () => {
+    useSettingsStore.getState().setConversationMemory('high');
+    await flushWrites();
+    expect(await storedMemory()).toBe('high');
+  });
+
+  it('restores the stored level on rehydrate', async () => {
+    await seedStorage({ conversationMemory: 'low' });
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().conversationMemory).toBe('low');
+    expect(useSettingsStore.getState().hasHydrated).toBe(true);
+  });
+
+  it('round-trips through a fresh store as an app restart would', async () => {
+    useSettingsStore.getState().setConversationMemory('high');
+    await flushWrites();
+    const persistedBytes = await AsyncStorage.getItem(STORAGE_KEY);
+    let restarted: typeof useSettingsStore | undefined;
+    jest.isolateModules(() => {
+      const freshStorage = require('@react-native-async-storage/async-storage')
+        .default as typeof AsyncStorage;
+      freshStorage.setItem(STORAGE_KEY, persistedBytes ?? '');
+      restarted = require('../store/settingsStore').useSettingsStore;
+    });
+    await flushWrites();
+    expect(restarted?.getState().hasHydrated).toBe(true);
+    expect(restarted?.getState().conversationMemory).toBe('high');
+  });
+
+  it('gives an install with no stored value the auto level', async () => {
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().conversationMemory).toBe('auto');
+  });
+
+  it('gives an install that predates the field the auto level', async () => {
+    await seedStorage({ themePreference: 'dark' });
+    await useSettingsStore.persist.rehydrate();
+    expect(useSettingsStore.getState().conversationMemory).toBe('auto');
+    expect(useSettingsStore.getState().themePreference).toBe('dark');
+  });
+
+  it.each(['huge', 3, null, ''])(
+    'falls back to auto for the invalid stored value %p',
+    async (invalid) => {
+      await seedStorage({ conversationMemory: invalid });
+      await useSettingsStore.persist.rehydrate();
+      expect(useSettingsStore.getState().conversationMemory).toBe('auto');
+    }
+  );
 });

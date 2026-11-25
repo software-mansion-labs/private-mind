@@ -35,7 +35,7 @@ export const SettingsChoiceRow = <T extends string>({
   };
 
   return (
-    <View style={styles.card}>
+    <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.options}>
         {options.map((option) => {
@@ -70,10 +70,8 @@ export const SettingsChoiceRow = <T extends string>({
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    card: {
+    row: {
       padding: space.four,
-      borderRadius: radius.eighteen,
-      backgroundColor: theme.bg.softTertiary,
       gap: space.three,
     },
     label: {

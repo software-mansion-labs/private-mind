@@ -3,6 +3,11 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { Settings } from 'react-native-pulsar';
 import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../constants/settings';
+import {
+  type ConversationMemory,
+  DEFAULT_CONVERSATION_MEMORY,
+  sanitizeConversationMemory,
+} from '../constants/context-window';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -17,6 +22,8 @@ export interface SettingsStore {
   setThemePreference: (preference: ThemePreference) => void;
   hapticsEnabled: boolean;
   setHapticsEnabled: (enabled: boolean) => void;
+  conversationMemory: ConversationMemory;
+  setConversationMemory: (memory: ConversationMemory) => void;
   hasHydrated: boolean;
 }
 
@@ -43,6 +50,9 @@ export const useSettingsStore = create<SettingsStore>()(
         Settings.enableHaptics(hapticsEnabled);
         set({ hapticsEnabled });
       },
+      conversationMemory: DEFAULT_CONVERSATION_MEMORY,
+      setConversationMemory: (conversationMemory) =>
+        set({ conversationMemory }),
       hasHydrated: false,
     }),
     {
@@ -54,6 +64,14 @@ export const useSettingsStore = create<SettingsStore>()(
         dismissedWhatsNewVersion: state.dismissedWhatsNewVersion,
         themePreference: state.themePreference,
         hapticsEnabled: state.hapticsEnabled,
+        conversationMemory: state.conversationMemory,
+      }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<SettingsStore> | undefined),
+        conversationMemory: sanitizeConversationMemory(
+          (persisted as Partial<SettingsStore> | undefined)?.conversationMemory
+        ),
       }),
       onRehydrateStorage: () => (state) => {
         Settings.enableHaptics(state?.hapticsEnabled ?? true);

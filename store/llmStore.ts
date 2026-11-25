@@ -1,4 +1,12 @@
-import { estimatePromptTokens } from '../constants/context-window';
+import {
+  type ConversationMemory,
+  estimatePromptTokens,
+  getAnswerTokenLimit,
+} from '../constants/context-window';
+import {
+  chosenConversationMemory,
+  conversationWindowFor,
+} from '../utils/conversationWindow';
 import {
   dropStrayThinkClose,
   hasUnclosedThink,
@@ -139,7 +147,10 @@ export interface LLMStore {
   sendChatMessage: (
     newMessage: string,
     chatId: number,
-    buildSources: (signal?: AbortSignal) => Promise<{
+    buildSources: (
+      signal?: AbortSignal,
+      readyModel?: Model | null
+    ) => Promise<{
       context: string[];
       sourceDocuments?: SourceDocument[];
       preferredSourceDocuments?: SourceDocument[];
@@ -149,6 +160,8 @@ export interface LLMStore {
       webWeak?: boolean;
       webSearchFailed?: boolean;
       retrievalStats?: RetrievalStats;
+      ceilingTokens?: number;
+      conversationMemory?: ConversationMemory;
     }>,
     settings: ChatSettings,
     imagePath?: string,
@@ -937,6 +950,35 @@ export const FIRST_TOKEN_TIMEOUT_MS = 5 * 60_000;
 const digestForChat = (get: () => LLMStore, chatId: number): string | null =>
   get().activeChatDigestChatId === chatId ? get().activeChatDigest : null;
 
+const promptTextOf = (messages: ExecutorchMessage[]): string =>
+  messages
+    .map((message) =>
+      typeof message.content === 'string'
+        ? message.content
+        : JSON.stringify(message.content)
+    )
+    .join(' ');
+
+interface TurnWindowChoice {
+  memory: ConversationMemory;
+  thinkingEnabled?: boolean;
+  carriesSources: boolean;
+  ceilingTokens?: number;
+}
+
+const answerTokenLimitFor = (
+  model: Model | null,
+  messages: ExecutorchMessage[],
+  window: TurnWindowChoice
+): number | undefined =>
+  model
+    ? getAnswerTokenLimit(
+        model,
+        conversationWindowFor(model, window),
+        estimatePromptTokens(promptTextOf(messages))
+      )
+    : undefined;
+
 const reportPromptEstimateAccuracy = (
   messages: ExecutorchMessage[],
   instance: { getPromptTokensCount?: () => number },
@@ -947,13 +989,7 @@ const reportPromptEstimateAccuracy = (
   }
   const actual = instance.getPromptTokensCount();
   if (!actual) return;
-  const assembled = messages
-    .map((message) =>
-      typeof message.content === 'string'
-        ? message.content
-        : JSON.stringify(message.content)
-    )
-    .join(' ');
+  const assembled = promptTextOf(messages);
   const estimated = estimatePromptTokens(assembled);
   console.log(
     '[prompt-tokens]',
@@ -993,7 +1029,8 @@ const generateLLMResponse = (
   messages: ExecutorchMessage[],
   get: () => LLMStore,
   generationConfig?: LLMGenerationConfig,
-  chatTemplateFlags: Record<string, unknown> = {}
+  chatTemplateFlags: Record<string, unknown> = {},
+  answerTokenLimit?: number
 ): Promise<LLMGenerationResult> => {
   const instance = llmInstance;
   if (!instance) return Promise.resolve(NO_LLM_RESPONSE);
@@ -1016,7 +1053,9 @@ const generateLLMResponse = (
     const startTime = performance.now();
     let finalResponse: Awaited<ReturnType<typeof instance.generate>>;
     try {
-      finalResponse = await instance.generate(messages);
+      finalResponse = await instance.generate(messages, {
+        maxNewTokens: answerTokenLimit,
+      });
     } finally {
       clearTimeout(firstTokenWatchdog);
     }
@@ -1051,7 +1090,8 @@ const generateLLMResponse = (
 
 const generateRefinement = (
   messages: ExecutorchMessage[],
-  get: () => LLMStore
+  get: () => LLMStore,
+  window: Omit<TurnWindowChoice, 'thinkingEnabled'>
 ): Promise<LLMGenerationResult> => {
   const model = get().model;
   const prepared =
@@ -1062,7 +1102,8 @@ const generateRefinement = (
     prepared,
     get,
     undefined,
-    chatTemplateFlagsFor(model, false)
+    chatTemplateFlagsFor(model, false),
+    answerTokenLimitFor(model, prepared, window)
   )
     .then((result) => (result.stalled ? NO_LLM_RESPONSE : result))
     .catch((error) => {
@@ -1554,7 +1595,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const built = openingWelcome
         ? NOTHING_GATHERED
         : await endsWhenStopped(
-            buildSources(abortController.signal),
+            buildSources(abortController.signal, currentModel),
             abortController.signal
           );
       const {
@@ -1567,6 +1608,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         webWeak,
         webSearchFailed,
         retrievalStats,
+        ceilingTokens,
+        conversationMemory = chosenConversationMemory(),
       } = built;
 
       if (!get().isProcessingPrompt) {
@@ -1630,6 +1673,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           webSearchFailed: webSearchFailed,
           digest: digestForChat(get, chatId) ?? undefined,
           openingWelcome: openingWelcome ?? undefined,
+          ceilingTokens,
+          conversationMemory,
         }
       );
 
@@ -1658,9 +1703,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }));
       }
 
+      const turnCarriesSources = context.some(
+        (chunk) => chunk.trim().length > 0
+      );
       const turnGenerationConfig = getGenerationConfigForModel(
         currentModel,
-        context.some((chunk) => chunk.trim().length > 0)
+        turnCarriesSources
       );
 
       // Set generation state and generate response
@@ -1675,7 +1723,13 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
               messagesWithSystemPrompt,
               get,
               turnGenerationConfig,
-              chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled)
+              chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled),
+              answerTokenLimitFor(currentModel, messagesWithSystemPrompt, {
+                memory: conversationMemory,
+                thinkingEnabled: settings.thinkingEnabled,
+                carriesSources: turnCarriesSources,
+                ceilingTokens,
+              })
             );
       } catch (error) {
         if (abortController.signal.aborted || !stillOurs()) throw error;
@@ -1701,13 +1755,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             webSearchFailed: webSearchFailed,
             digest: digestForChat(get, chatId) ?? undefined,
             openingWelcome: openingWelcome ?? undefined,
+            ceilingTokens,
+            conversationMemory,
           }
         );
         generation = await generateLLMResponse(
           effectivePrepared,
           get,
           turnGenerationConfig,
-          chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled)
+          chatTemplateFlagsFor(currentModel, !!settings.thinkingEnabled),
+          answerTokenLimitFor(currentModel, effectivePrepared, {
+            memory: conversationMemory,
+            thinkingEnabled: settings.thinkingEnabled,
+            carriesSources: turnCarriesSources,
+            ceilingTokens,
+          })
         );
       }
       generation = {
@@ -1810,7 +1872,11 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         set({ isRefining: true });
         let retryGeneration: Awaited<ReturnType<typeof generateLLMResponse>>;
         try {
-          retryGeneration = await generateRefinement(messages, get);
+          retryGeneration = await generateRefinement(messages, get, {
+            memory: conversationMemory,
+            carriesSources: turnCarriesSources,
+            ceilingTokens,
+          });
         } finally {
           suppressUtilityStreaming = false;
         }
@@ -1995,7 +2061,12 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             { role: 'assistant', content: finalResponse },
             { role: 'user', content: continuationPrompt },
           ],
-          get
+          get,
+          {
+            memory: conversationMemory,
+            carriesSources: turnCarriesSources,
+            ceilingTokens,
+          }
         );
         const continuationResponse = continuationGeneration.response
           ? truncateAtRepeatedClause(

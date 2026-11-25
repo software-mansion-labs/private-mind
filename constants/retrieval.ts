@@ -23,6 +23,8 @@ export const ATTACHMENT_RELEVANCE_BONUS = 10;
 /** Max chunks kept from one document in the final selection, applied only when ≥2 documents qualify. */
 export const MAX_CHUNKS_PER_FILE = 3;
 
+export const WHOLE_DOCUMENT_BUDGET_SHARE = 0.7;
+
 /** Adaptive-k: after MMR, drop trailing chunks once relevance falls below this fraction of the previous. */
 export const ADAPTIVE_K_DROP_RATIO = 0.45;
 

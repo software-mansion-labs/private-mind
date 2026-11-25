@@ -98,7 +98,7 @@ const LARGEST_DEVICE_RAM_GB = 64;
 const INCOMPATIBLE_LABEL = 'Incompatible';
 const UNNAMED_DEVICE = 'this phone';
 
-const thisDeviceName = (): string => {
+export const thisDeviceName = (): string => {
   const name = DeviceInfo.getModel();
   return name && name !== 'unknown' ? name : UNNAMED_DEVICE;
 };

@@ -7,13 +7,20 @@ import {
   type GroundingCaveatKind,
 } from '../database/chatRepository';
 import {
+  type ContextChunk,
   formatContextChunks,
   formatFirstChunks,
   getSourceDocumentsFromChunks,
   sourceKey,
   sourcesPresentInContext,
 } from './contextUtils';
-import { hybridRetrieve } from './hybridRetrieval';
+import {
+  type ExtraChunkAllowance,
+  hybridRetrieve,
+  loadDocumentChunks,
+} from './hybridRetrieval';
+import { estimatePromptTokens } from '../constants/context-window';
+import { WHOLE_DOCUMENT_BUDGET_SHARE } from '../constants/retrieval';
 import { normalizeLine } from './loopDetection';
 import { extractQueryTerms, foldForMatching, stemPrefix } from './queryTerms';
 import {
@@ -593,6 +600,30 @@ const pickLocalCitationsByAnswer = (
     .map((s) => s.doc);
 };
 
+const loadWholeAttachments = async (
+  activeAttachmentSources: SourceRow[],
+  vectorStore: OPSQLiteVectorStore,
+  sourceTokenBudget: number
+): Promise<ContextChunk[] | null> => {
+  if (activeAttachmentSources.length === 0) return null;
+  try {
+    const perDocument = await Promise.all(
+      activeAttachmentSources.map((source) =>
+        loadDocumentChunks(vectorStore, source.id, source.name)
+      )
+    );
+    if (perDocument.some((chunks) => chunks.length === 0)) return null;
+    const chunks = perDocument.flat();
+    const tokens = estimatePromptTokens(formatContextChunks(chunks).join(' '));
+    return tokens <= sourceTokenBudget * WHOLE_DOCUMENT_BUDGET_SHARE
+      ? chunks
+      : null;
+  } catch (error) {
+    console.error('Error loading whole attachment:', error);
+    return null;
+  }
+};
+
 const retrieveChunks = async (
   userInput: string,
   allSourceIds: number[],
@@ -600,7 +631,8 @@ const retrieveChunks = async (
   attachmentSourceIds: number[],
   vectorStore: OPSQLiteVectorStore,
   embeddings?: LFMEmbeddings | null,
-  maxRelevantChunks?: number
+  maxRelevantChunks?: number,
+  extraChunks?: ExtraChunkAllowance
 ) => {
   try {
     const relevantChunks = await hybridRetrieve({
@@ -611,6 +643,7 @@ const retrieveChunks = async (
       embeddings,
       attachmentSourceIds,
       maxRelevantChunks,
+      extraChunks,
     });
     return relevantChunks;
   } catch (error) {
@@ -627,6 +660,9 @@ export interface BuildMessageSourcesParams {
   vectorStore: OPSQLiteVectorStore;
   embeddings?: LFMEmbeddings | null;
   maxRelevantChunks?: number;
+  extraChunks?: ExtraChunkAllowance;
+  sourceTokenBudget?: number;
+  passWholeDocument?: boolean;
   history?: { role: string; content: string }[];
   digest?: string;
 }
@@ -645,6 +681,9 @@ export const buildMessageSources = async ({
   vectorStore,
   embeddings,
   maxRelevantChunks,
+  extraChunks,
+  sourceTokenBudget,
+  passWholeDocument = false,
   history,
   digest,
 }: BuildMessageSourcesParams): Promise<MessageSources> => {
@@ -679,17 +718,33 @@ export const buildMessageSources = async ({
       history ?? [],
       digest
     );
-    const relevantChunks = await retrieveChunks(
-      retrievalQuery,
-      allSourceIds,
-      activeSources,
-      attachmentSourceIds,
-      vectorStore,
-      embeddings,
-      maxRelevantChunks
-    );
+    const wholeAttachments =
+      passWholeDocument && sourceTokenBudget !== undefined
+        ? await loadWholeAttachments(
+            activeAttachmentSources,
+            vectorStore,
+            sourceTokenBudget
+          )
+        : null;
+    const retrievalSourceIds = wholeAttachments
+      ? allSourceIds.filter((id) => !attachmentSourceIds.includes(id))
+      : allSourceIds;
+    const retrievedChunks =
+      retrievalSourceIds.length > 0
+        ? await retrieveChunks(
+            retrievalQuery,
+            retrievalSourceIds,
+            activeSources,
+            wholeAttachments ? [] : attachmentSourceIds,
+            vectorStore,
+            embeddings,
+            maxRelevantChunks,
+            extraChunks
+          )
+        : [];
+    const relevantChunks = [...(wholeAttachments ?? []), ...retrievedChunks];
     context.push(...formatContextChunks(relevantChunks));
-    context.push(...attachmentOverview());
+    if (!wholeAttachments) context.push(...attachmentOverview());
 
     const retrieved = getSourceDocumentsFromChunks(relevantChunks);
     sourceDocuments = assembleSourceDocuments(

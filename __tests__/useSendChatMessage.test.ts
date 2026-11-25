@@ -6,12 +6,14 @@ import type { Model } from '../database/modelRepository';
 import type { MessagesHandle } from '../components/chat-screen/Messages';
 import type { RetrievalStats } from '../database/chatRepository';
 import { buildMessageSources } from '../utils/messageSources';
+import * as turnWindowPlanner from '../utils/planTurnWindow';
 import { runWebSearch } from '../utils/web/runWebSearch';
 import Toast from 'react-native-toast-message';
 import type { OPSQLiteVectorStore } from '@react-native-rag/op-sqlite';
 import type { Attachment } from '../hooks/useAttachment';
 import { WEB_SKIP_COPY } from '../constants/web-copy';
 import { useCpuSupportStore } from '../store/cpuSupportStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 jest.mock('../utils/afterUiUpdates', () => ({
   runAfterUiUpdates: (callback: () => void) => callback(),
@@ -548,12 +550,12 @@ describe('what a turn paid for its sources', () => {
     ]);
   });
 
-  it('reports nothing for a turn with no documents and no search', async () => {
+  it('reports only the planned window for a turn with no documents and no search', async () => {
     await useSendWith({})('hello');
 
     const built = await capturedBuildSources()();
 
-    expect(built.retrievalStats).toEqual({});
+    expect(Object.keys(built.retrievalStats ?? {})).toEqual(['window']);
   });
 });
 
@@ -636,6 +638,59 @@ describe('web search in a chat that has a document', () => {
     expect(Toast.show).not.toHaveBeenCalledWith(
       expect.objectContaining({ text1: WEB_SKIP_COPY.documents })
     );
+  });
+
+  it('hands the window planned for this turn to its sources and its prompt', async () => {
+    const planned = jest
+      .spyOn(turnWindowPlanner, 'planTurnWindow')
+      .mockResolvedValue({
+        memory: 'auto',
+        stats: { tokens: 8192, reason: 'whole-document' },
+        ceilingTokens: 8192,
+        passesWholeDocument: true,
+      });
+    await useDocumentChatSend()('summarise this', undefined, [
+      { type: 'document', sourceId: 5, name: 'report.pdf' } as Attachment,
+    ]);
+
+    const built = (await lastBuildSources()()) as {
+      ceilingTokens?: number;
+      retrievalStats: RetrievalStats;
+    };
+    planned.mockRestore();
+
+    expect(buildMessageSources).toHaveBeenLastCalledWith(
+      expect.objectContaining({ passWholeDocument: true })
+    );
+    expect(built.ceilingTokens).toBe(8192);
+    expect(built.retrievalStats.window).toEqual({
+      tokens: 8192,
+      reason: 'whole-document',
+    });
+  });
+
+  it('plans the window for the model that answers, at the size chosen when the message was sent', async () => {
+    const planned = jest.spyOn(turnWindowPlanner, 'planTurnWindow');
+    useSettingsStore.setState({ conversationMemory: 'high' });
+    await useDocumentChatSend()('summarise this', undefined, [
+      { type: 'document', sourceId: 5, name: 'report.pdf' } as Attachment,
+    ]);
+    useSettingsStore.setState({ conversationMemory: 'low' });
+    const readyModel = { id: 2, modelName: 'Second LLM' } as Model;
+
+    expect(planned).not.toHaveBeenCalled();
+    const buildSources = lastBuildSources() as (
+      signal?: AbortSignal,
+      readyModel?: Model
+    ) => Promise<{ conversationMemory?: string }>;
+    const built = await buildSources(undefined, readyModel);
+
+    expect(planned).toHaveBeenCalledWith(
+      expect.objectContaining({ model: readyModel, memory: 'high' })
+    );
+    expect(built.conversationMemory).toBe('high');
+    planned.mockRestore();
+    useSettingsStore.setState({ conversationMemory: 'auto' });
   });
 
   it('keeps the web out of the message the document is attached to', async () => {

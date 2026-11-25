@@ -165,6 +165,21 @@ describe('LLMEngine', () => {
     now.mockRestore();
   });
 
+  it('caps the answer length only for the turn that asks for it', async () => {
+    const runner = makeRunner(() => {});
+    const engine = await loadEngine(runner);
+    engine.configure({ generationConfig: { temperature: 0.3 } });
+    await engine.generate([{ role: 'user', content: 'hi' }], {
+      maxNewTokens: 1500,
+    });
+    await engine.generate([{ role: 'user', content: 'hi' }]);
+    const [capped, uncapped] = runner.generate.mock.calls.map(
+      (call: unknown[]) => call[1] as Record<string, unknown>
+    );
+    expect(capped).toMatchObject({ temperature: 0.3, maxNewTokens: 1500 });
+    expect(uncapped).not.toHaveProperty('maxNewTokens');
+  });
+
   it('does not report a stall when a fast pass breaks the slow run', async () => {
     const now = jest.spyOn(Date, 'now');
     [1000, 5000, 5100, 9100].forEach((t) => now.mockReturnValueOnce(t));
