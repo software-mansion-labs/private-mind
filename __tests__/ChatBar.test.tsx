@@ -964,6 +964,20 @@ describe('speech input', () => {
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
 
+  it('keeps dictating when the chat model stops being available mid-dictation', async () => {
+    const { rerender } = renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    rerender(
+      <ChatBar
+        {...defaultProps}
+        model={{ ...downloadedModel, isDownloaded: false }}
+      />
+    );
+    expect(screen.getByTestId('speech-input')).toBeTruthy();
+  });
+
   it('calls onSend with transcript and hides speech input on submit', async () => {
     const onSend = jest.fn();
     renderBar({ onSend });
@@ -972,7 +986,9 @@ describe('speech input', () => {
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
     expect(onSend).toHaveBeenCalledWith('voice transcript', undefined, []);
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId('speech-input')).toBeNull()
+    );
   });
 
   it('spins the send button where the mic would be while a dictated message goes out', async () => {
@@ -1076,7 +1092,9 @@ describe('speech input', () => {
     });
     fireEvent.press(screen.getByTestId('speech-cancel'));
     expect(onSend).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId('speech-input')).toBeNull()
+    );
   });
 
   it('does not call onSend when transcript is empty on submit', async () => {
@@ -1098,7 +1116,9 @@ describe('speech input', () => {
     fireEvent.press(screen.getByTestId('speech-submit'));
     // With the module-level mock, transcript = 'voice transcript' (non-empty), so we
     // verify the guard by checking the original mock behavior
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId('speech-input')).toBeNull()
+    );
   });
 });
 

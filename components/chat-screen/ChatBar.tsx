@@ -16,9 +16,15 @@ import {
   StyleSheet,
   Keyboard,
   Platform,
+  type LayoutChangeEvent,
 } from 'react-native';
 import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
   FadeOut,
+  runOnJS,
+  withTiming,
   useAnimatedStyle,
   useSharedValue,
   type SharedValue,
@@ -91,6 +97,11 @@ import { Glass } from '../Glass';
 
 const PROMPTS_LEAVE_SINK_PX = 8;
 const SENT_ECHO_WINDOW_MS = 300;
+const MODE_SWAP_IN_MS = 300;
+const MODE_SWAP_OUT_MS = 200;
+const CARD_RISE_PX = 6;
+const OUTGOING_GONE_AT = 0.45;
+const INCOMING_STARTS_AT = 0.3;
 
 const REFUSAL_COPY: Record<SendRefusal, string | null> = {
   'nothing-to-send': 'Add a message or an attachment first.',
@@ -176,8 +187,10 @@ const ChatBar = ({
     [styles.container, theme.insets.bottom]
   );
 
+  const speechShown = useSharedValue(0);
   const promptsLeaveStyle = useAnimatedStyle(() => {
-    const shown = promptsShown ? promptsShown.get() : 1;
+    const shown =
+      (promptsShown ? promptsShown.get() : 1) * (1 - speechShown.get());
     return {
       opacity: shown,
       transform: [{ translateY: (1 - shown) * PROMPTS_LEAVE_SINK_PX }],
@@ -629,6 +642,63 @@ const ChatBar = ({
     onSpeechInputChange?.(showSpeechInput);
   }, [onSpeechInputChange, showSpeechInput]);
 
+  const [speechMounted, setSpeechMounted] = useState(false);
+  useEffect(() => {
+    if (showSpeechInput) {
+      setSpeechMounted(true);
+      speechShown.set(
+        withTiming(1, {
+          duration: MODE_SWAP_IN_MS,
+          easing: Easing.out(Easing.cubic),
+        })
+      );
+      return;
+    }
+    speechShown.set(
+      withTiming(
+        0,
+        { duration: MODE_SWAP_OUT_MS, easing: Easing.inOut(Easing.quad) },
+        (finished) => {
+          if (finished) runOnJS(setSpeechMounted)(false);
+        }
+      )
+    );
+  }, [showSpeechInput, speechShown]);
+
+  const composerSwapStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      speechShown.get(),
+      [0, OUTGOING_GONE_AT],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
+  }));
+  const speechSwapStyle = useAnimatedStyle(() => {
+    const shown = interpolate(
+      speechShown.get(),
+      [INCOMING_STARTS_AT, 1],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity: shown,
+      transform: [{ translateY: (1 - shown) * CARD_RISE_PX }],
+    };
+  });
+
+  const composerHeight = useSharedValue(0);
+  const speechHeight = useSharedValue(0);
+  const cardHeightStyle = useAnimatedStyle(() => {
+    const from = composerHeight.get();
+    const to = speechHeight.get();
+    if (from === 0 || to === 0) return {};
+    return { height: from + (to - from) * speechShown.get() };
+  });
+  const measureComposer = (event: LayoutChangeEvent) =>
+    composerHeight.set(event.nativeEvent.layout.height);
+  const measureSpeech = (event: LayoutChangeEvent) =>
+    speechHeight.set(event.nativeEvent.layout.height);
+
   const openSpeechInput = async () => {
     if (hasLoadingAttachment) {
       Toast.show({
@@ -652,46 +722,34 @@ const ChatBar = ({
     setShowSpeechInput(true);
   };
 
-  if (showSpeechInput) {
-    const handleSubmit = (transcript: string) => {
-      setShowSpeechInput(false);
-      if (transcript) {
-        const attachmentsToSend = attachments;
-        const imageUriToSend = imageAttachment?.uri;
-        clearAll({ cleanupSources: false });
-        setSendInFlight(true);
-        setSendPending(true);
-        settleSend(
-          onSend(transcript, imageUriToSend, attachmentsToSend),
-          transcript,
-          attachmentsToSend
-        );
-        dismissKeyboardAfterUiUpdates();
-      }
-    };
+  const handleSpeechSubmit = (transcript: string) => {
+    setShowSpeechInput(false);
+    if (transcript) {
+      const attachmentsToSend = attachments;
+      const imageUriToSend = imageAttachment?.uri;
+      clearAll({ cleanupSources: false });
+      setSendInFlight(true);
+      setSendPending(true);
+      settleSend(
+        onSend(transcript, imageUriToSend, attachmentsToSend),
+        transcript,
+        attachmentsToSend
+      );
+      dismissKeyboardAfterUiUpdates();
+    }
+  };
 
-    return (
-      <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
-        <ChatSpeechInput
-          onSubmit={handleSubmit}
-          onCancel={() => setShowSpeechInput(false)}
-          onInterrupted={(heard) => {
-            setShowSpeechInput(false);
-            if (!heard) return;
-            setUserInput((current) =>
-              current ? `${current} ${heard}` : heard
-            );
-            Toast.show({
-              type: 'defaultToast',
-              text1: 'Dictation stopped. What it heard is in the message box.',
-            });
-          }}
-        />
-      </View>
-    );
-  }
+  const handleSpeechInterrupted = (heard: string) => {
+    setShowSpeechInput(false);
+    if (!heard) return;
+    setUserInput((current) => (current ? `${current} ${heard}` : heard));
+    Toast.show({
+      type: 'defaultToast',
+      text1: 'Dictation stopped. What it heard is in the message box.',
+    });
+  };
 
-  if (chatId && model && retiredBy && !model.isDownloaded) {
+  if (!speechMounted && chatId && model && retiredBy && !model.isDownloaded) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <ModelUpdateBanner model={model} replaces={retiredBy} />
@@ -702,7 +760,7 @@ const ChatBar = ({
   const updateBlocksInput =
     !!model && requiresUpdate(model) && (modelLocked ? !!chatId : !hasMessages);
 
-  if (model && updateBlocksInput) {
+  if (!speechMounted && model && updateBlocksInput) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <ModelUpdateBanner
@@ -713,7 +771,7 @@ const ChatBar = ({
     );
   }
 
-  if (chatId && !model?.isDownloaded) {
+  if (!speechMounted && chatId && !model?.isDownloaded) {
     return (
       <View style={containerStyle} onLayout={handleBarLayoutForPadding}>
         <ModelUnavailableCard
@@ -732,122 +790,148 @@ const ChatBar = ({
       onLayout={handleBarLayoutForPadding}
       layout={hasMessages ? BAR_GROW_LAYOUT : undefined}
     >
-      {model?.isDownloaded && (
-        <>
-          {!hasMessages && (
+      {model?.isDownloaded && !hasMessages && (
+        <Animated.View
+          style={[styles.suggestionsContainer, promptsLeaveStyle]}
+          pointerEvents={showSpeechInput ? 'none' : 'auto'}
+          needsOffscreenAlphaCompositing
+        >
+          <PromptSuggestions
+            onSelectPrompt={onSelectPrompt}
+            paused={promptsPaused}
+          />
+        </Animated.View>
+      )}
+      <Glass
+        radius={COMPOSER_CARD_RADIUS}
+        interactive={false}
+        fallbackTint={theme.bg.chatBar}
+      >
+        <Animated.View style={[styles.cardSlot, cardHeightStyle]}>
+          {model?.isDownloaded && (
             <Animated.View
-              style={[styles.suggestionsContainer, promptsLeaveStyle]}
-              needsOffscreenAlphaCompositing
+              style={[styles.inputContainer, composerSwapStyle]}
+              onLayout={measureComposer}
+              pointerEvents={showSpeechInput ? 'none' : 'auto'}
             >
-              <PromptSuggestions
-                onSelectPrompt={onSelectPrompt}
-                paused={promptsPaused}
+              <Animated.View
+                pointerEvents={attachments.length ? 'auto' : 'none'}
+                style={[styles.strip, stripStyle]}
+              >
+                <View style={styles.stripRow}>
+                  {attachments.map((attachment) => (
+                    <Animated.View
+                      key={attachment.id}
+                      exiting={FadeOut.duration(BAR_GROW_DURATION)}
+                      layout={BAR_GROW_LAYOUT}
+                    >
+                      <View
+                        style={
+                          pendingIds.includes(attachment.id)
+                            ? styles.stripPending
+                            : undefined
+                        }
+                      >
+                        <AttachmentThumbnail
+                          attachment={attachment}
+                          onRemove={() => removeAttachment(attachment.id)}
+                        />
+                      </View>
+                    </Animated.View>
+                  ))}
+                </View>
+              </Animated.View>
+              <View
+                style={styles.belowStrip}
+                onLayout={handleRowsBelowStripLayout}
+              >
+                {showIndexChip && (
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.indexUrlChip,
+                      pressed && pressedOpacity,
+                    ]}
+                    onPress={handleIndexUrl}
+                    testID="index-url-chip"
+                  >
+                    <LinkIcon
+                      width={16}
+                      height={16}
+                      style={{ color: theme.text.onChatBar }}
+                    />
+                    <Text style={styles.indexUrlChipText} numberOfLines={1}>
+                      Index {hostname(detectedUrl!)}
+                    </Text>
+                  </Pressable>
+                )}
+                <View style={styles.content}>
+                  <TextInputWrapper
+                    onPaste={onPaste}
+                    style={styles.textInputWrapper}
+                  >
+                    <RNTextInput
+                      {...TEXT_SELECTION}
+                      key={Platform.OS === 'ios' ? iosInputKey : undefined}
+                      ref={textInputRef}
+                      style={styles.input}
+                      multiline
+                      numberOfLines={3}
+                      onFocus={() => loadSelectedModel()}
+                      placeholder="Ask anything"
+                      placeholderTextColor={theme.text.onChatBarMuted}
+                      value={userInput}
+                      editable={!isHoldingInput}
+                      onChangeText={handleChangeTextFromInput}
+                    />
+                  </TextInputWrapper>
+                </View>
+                <ChatBarActions
+                  plusOut={panel.plusOut}
+                  sendPending={sendPending}
+                  sendInFlight={sendInFlight}
+                  onAttach={handleAttach}
+                  onAttachPressIn={panel.onPlusPressIn}
+                  onAttachPressOut={panel.onPlusPressOut}
+                  hasAttachments={attachments.length > 0}
+                  isLoadingAttachment={hasLoadingAttachment}
+                  userInput={userInput}
+                  onSend={handleSend}
+                  isGenerating={isGeneratingHere}
+                  isProcessingPrompt={isProcessingPromptHere}
+                  onInterrupt={interrupt}
+                  onSpeechInput={openSpeechInput}
+                  model={model}
+                  pendingModel={pendingModel}
+                  onSelectModel={onSelectModel}
+                  modelLocked={modelLocked}
+                  thinkingEnabled={thinkingEnabled}
+                  onThinkingToggle={onThinkingToggle}
+                  webSearchEnabled={webSearchEnabled}
+                  onWebSearchToggle={webSearchToggle}
+                />
+              </View>
+            </Animated.View>
+          )}
+          {speechMounted && (
+            <Animated.View
+              style={[
+                model?.isDownloaded && styles.speechLayer,
+                speechSwapStyle,
+              ]}
+              onLayout={measureSpeech}
+              pointerEvents={showSpeechInput ? 'auto' : 'none'}
+            >
+              <ChatSpeechInput
+                onSubmit={handleSpeechSubmit}
+                onCancel={() => setShowSpeechInput(false)}
+                onInterrupted={handleSpeechInterrupted}
               />
             </Animated.View>
           )}
-          <Glass
-            radius={COMPOSER_CARD_RADIUS}
-            interactive={false}
-            fallbackTint={theme.bg.chatBar}
-            style={styles.inputContainer}
-          >
-            <Animated.View
-              pointerEvents={attachments.length ? 'auto' : 'none'}
-              style={[styles.strip, stripStyle]}
-            >
-              <View style={styles.stripRow}>
-                {attachments.map((attachment) => (
-                  <Animated.View
-                    key={attachment.id}
-                    exiting={FadeOut.duration(BAR_GROW_DURATION)}
-                    layout={BAR_GROW_LAYOUT}
-                  >
-                    <View
-                      style={
-                        pendingIds.includes(attachment.id)
-                          ? styles.stripPending
-                          : undefined
-                      }
-                    >
-                      <AttachmentThumbnail
-                        attachment={attachment}
-                        onRemove={() => removeAttachment(attachment.id)}
-                      />
-                    </View>
-                  </Animated.View>
-                ))}
-              </View>
-            </Animated.View>
-            <View
-              style={styles.belowStrip}
-              onLayout={handleRowsBelowStripLayout}
-            >
-              {showIndexChip && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.indexUrlChip,
-                    pressed && pressedOpacity,
-                  ]}
-                  onPress={handleIndexUrl}
-                  testID="index-url-chip"
-                >
-                  <LinkIcon
-                    width={16}
-                    height={16}
-                    style={{ color: theme.text.onChatBar }}
-                  />
-                  <Text style={styles.indexUrlChipText} numberOfLines={1}>
-                    Index {hostname(detectedUrl!)}
-                  </Text>
-                </Pressable>
-              )}
-              <View style={styles.content}>
-                <TextInputWrapper
-                  onPaste={onPaste}
-                  style={styles.textInputWrapper}
-                >
-                  <RNTextInput
-                    {...TEXT_SELECTION}
-                    key={Platform.OS === 'ios' ? iosInputKey : undefined}
-                    ref={textInputRef}
-                    style={styles.input}
-                    multiline
-                    numberOfLines={3}
-                    onFocus={() => loadSelectedModel()}
-                    placeholder="Ask anything"
-                    placeholderTextColor={theme.text.onChatBarMuted}
-                    value={userInput}
-                    editable={!isHoldingInput}
-                    onChangeText={handleChangeTextFromInput}
-                  />
-                </TextInputWrapper>
-              </View>
-              <ChatBarActions
-                plusOut={panel.plusOut}
-                sendPending={sendPending}
-                sendInFlight={sendInFlight}
-                onAttach={handleAttach}
-                onAttachPressIn={panel.onPlusPressIn}
-                onAttachPressOut={panel.onPlusPressOut}
-                hasAttachments={attachments.length > 0}
-                isLoadingAttachment={hasLoadingAttachment}
-                userInput={userInput}
-                onSend={handleSend}
-                isGenerating={isGeneratingHere}
-                isProcessingPrompt={isProcessingPromptHere}
-                onInterrupt={interrupt}
-                onSpeechInput={openSpeechInput}
-                model={model}
-                pendingModel={pendingModel}
-                onSelectModel={onSelectModel}
-                modelLocked={modelLocked}
-                thinkingEnabled={thinkingEnabled}
-                onThinkingToggle={onThinkingToggle}
-                webSearchEnabled={webSearchEnabled}
-                onWebSearchToggle={webSearchToggle}
-              />
-            </View>
-          </Glass>
+        </Animated.View>
+      </Glass>
+      {model?.isDownloaded && (
+        <>
           <AttachmentOverlay
             panel={panel}
             onWindowHeight={setPanelWindowHeight}
@@ -898,6 +982,15 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       paddingHorizontal: space.four,
       flexShrink: 1,
+    },
+    cardSlot: {
+      justifyContent: 'flex-end',
+    },
+    speechLayer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     suggestionsContainer: {
       flexShrink: 1,

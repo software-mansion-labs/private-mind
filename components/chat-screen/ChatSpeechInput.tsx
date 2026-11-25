@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Theme, isDarkTheme } from '../../styles/colors';
-import { Glass } from '../Glass';
 import LoadingBorder from './LoadingBorder';
 import ClosingBorder from './ClosingBorder';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -301,83 +300,75 @@ const ChatSpeechInput: React.FC<Props> = ({
 
   return (
     <View>
-      <Glass
-        radius={COMPOSER_CARD_RADIUS}
-        interactive={false}
-        fallbackTint={theme.bg.chatBar}
-      >
-        <View style={styles.container}>
-          <LoadingBorder
-            active={isPreparing && !cancelling}
-            radius={COMPOSER_CARD_RADIUS}
-            colors={
-              isDarkTheme(theme)
-                ? LOADING_BORDER_ON_DARK
-                : LOADING_BORDER_ON_LIGHT
+      <View style={styles.container}>
+        <LoadingBorder
+          active={isPreparing && !cancelling}
+          radius={COMPOSER_CARD_RADIUS}
+          colors={
+            isDarkTheme(theme)
+              ? LOADING_BORDER_ON_DARK
+              : LOADING_BORDER_ON_LIGHT
+          }
+        />
+        <ClosingBorder
+          active={cancelling}
+          radius={COMPOSER_CARD_RADIUS}
+          color={theme.bg.errorPrimary}
+        />
+        <View pointerEvents="none" style={styles.dome}>
+          <VoiceDome
+            ref={domeRef}
+            phase={domePhase}
+            sampleRate={SAMPLE_RATE}
+            chunkSeconds={AUDIO_LENGTH_SECONDS}
+            cornerRadius={COMPOSER_CARD_RADIUS}
+            maxHeight={DOME_MAX_RISE}
+            palette={
+              cancelling
+                ? VOICE_DOME_PALETTE_CANCELLED
+                : isDarkTheme(theme)
+                  ? VOICE_DOME_PALETTE
+                  : VOICE_DOME_PALETTE_ON_LIGHT
             }
           />
-          <ClosingBorder
-            active={cancelling}
-            radius={COMPOSER_CARD_RADIUS}
-            color={theme.bg.errorPrimary}
-          />
-          <View pointerEvents="none" style={styles.dome}>
-            <VoiceDome
-              ref={domeRef}
-              phase={domePhase}
-              sampleRate={SAMPLE_RATE}
-              chunkSeconds={AUDIO_LENGTH_SECONDS}
-              cornerRadius={COMPOSER_CARD_RADIUS}
-              maxHeight={DOME_MAX_RISE}
-              palette={
-                cancelling
-                  ? VOICE_DOME_PALETTE_CANCELLED
-                  : isDarkTheme(theme)
-                    ? VOICE_DOME_PALETTE
-                    : VOICE_DOME_PALETTE_ON_LIGHT
-              }
-            />
-          </View>
-          <Animated.View style={transcriptStyle}>
-            {renderTopNote()}
-          </Animated.View>
+        </View>
+        <Animated.View style={transcriptStyle}>{renderTopNote()}</Animated.View>
 
-          <View style={styles.actionRow}>
-            <CircleButton
-              icon={StopIcon}
-              onPress={handleCancel}
-              size={13}
-              {...composerControlColors(theme)}
-              color={theme.text.onChatBar}
-              testID="speech-cancel"
+        <View style={styles.actionRow}>
+          <CircleButton
+            icon={StopIcon}
+            onPress={handleCancel}
+            size={13}
+            {...composerControlColors(theme)}
+            color={theme.text.onChatBar}
+            testID="speech-cancel"
+          />
+          <View style={styles.actionNote}>
+            {cancelling ? (
+              <Text style={[styles.secondaryNote, styles.cancelledNote]}>
+                Cancelled
+              </Text>
+            ) : phase === 'listening' ? (
+              <RecordingInfo duration={recordingDuration} />
+            ) : (
+              <Text style={styles.secondaryNote}>{ACTION_NOTES[phase]}</Text>
+            )}
+          </View>
+          <View
+            style={
+              status === 'listening' || sending ? undefined : dimmedOpacity
+            }
+          >
+            <ComposerActionButton
+              action="send"
+              onPress={handleSend}
+              busy={sending}
+              disabled={sending}
+              testID="speech-send"
             />
-            <View style={styles.actionNote}>
-              {cancelling ? (
-                <Text style={[styles.secondaryNote, styles.cancelledNote]}>
-                  Cancelled
-                </Text>
-              ) : phase === 'listening' ? (
-                <RecordingInfo duration={recordingDuration} />
-              ) : (
-                <Text style={styles.secondaryNote}>{ACTION_NOTES[phase]}</Text>
-              )}
-            </View>
-            <View
-              style={
-                status === 'listening' || sending ? undefined : dimmedOpacity
-              }
-            >
-              <ComposerActionButton
-                action="send"
-                onPress={handleSend}
-                busy={sending}
-                disabled={sending}
-                testID="speech-send"
-              />
-            </View>
           </View>
         </View>
-      </Glass>
+      </View>
     </View>
   );
 };
