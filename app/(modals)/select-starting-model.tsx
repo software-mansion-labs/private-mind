@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  Image,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
@@ -49,7 +56,8 @@ import {
 } from '../../hooks/useStartingFeatures';
 
 const APP_ICON_SIZE = 56;
-const SECTION_GAP = 28;
+const MIN_SCREEN_HEIGHT_FOR_APP_ICON = 860;
+const HEADER_GAP = space.four;
 const FOOTER_GAP = space.three;
 const CARD_BORDER_ROOM = stroke.strong;
 
@@ -85,6 +93,8 @@ function SelectStartingModelScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
   const { styles } = useThemedStyles(createStyles);
+  const { height: screenHeight } = useWindowDimensions();
+  const showsAppIcon = screenHeight >= MIN_SCREEN_HEIGHT_FOR_APP_ICON;
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [started, setStarted] = useState(false);
   const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<
@@ -299,11 +309,13 @@ function SelectStartingModelScreen() {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Image
-            source={require('../../assets/icons/icon.png')}
-            style={styles.appIcon}
-            testID="starting-model-app-icon"
-          />
+          {showsAppIcon && (
+            <Image
+              source={require('../../assets/icons/icon.png')}
+              style={styles.appIcon}
+              testID="starting-model-app-icon"
+            />
+          )}
           <Text style={styles.title}>Choose a starting model</Text>
           <Text style={styles.description}>
             Download your first model to get started with Private Mind.
@@ -389,7 +401,7 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
-      gap: SECTION_GAP,
+      gap: HEADER_GAP,
       paddingTop: space.two,
     },
     header: {

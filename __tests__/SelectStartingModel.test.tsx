@@ -7,6 +7,19 @@ import {
   act,
 } from '@testing-library/react-native';
 
+const TALL_SCREEN_HEIGHT = 1334;
+const SHORT_SCREEN_HEIGHT = 844;
+let mockScreenHeight = TALL_SCREEN_HEIGHT;
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({
+    width: 402,
+    height: mockScreenHeight,
+    scale: 3,
+    fontScale: 1,
+  }),
+}));
+
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
 }));
@@ -232,6 +245,21 @@ const startDownload = async (label: string, count: number) => {
 };
 
 describe('select starting model', () => {
+  it('leaves the app icon out on a short screen, so the features show above the bottom bar', async () => {
+    mockScreenHeight = SHORT_SCREEN_HEIGHT;
+    try {
+      await renderScreen();
+      expect(screen.queryByTestId('starting-model-app-icon')).toBeNull();
+    } finally {
+      mockScreenHeight = TALL_SCREEN_HEIGHT;
+    }
+  });
+
+  it('shows the app icon on a tall screen', async () => {
+    await renderScreen();
+    expect(screen.getByTestId('starting-model-app-icon')).toBeTruthy();
+  });
+
   it('asks for a selection before anything is picked', async () => {
     await renderScreen();
     expect(screen.getByText('Select a model')).toBeTruthy();
