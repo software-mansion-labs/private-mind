@@ -750,9 +750,11 @@ const sanitizeProduct = (
 export const extractArticle = async (
   url: string,
   timeoutMs?: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onExtractMs?: (ms: number) => void
 ): Promise<ExtractedArticle> => {
   const fetched = await fetchHtml(url, timeoutMs, signal);
+  const extractStartedAt = Date.now();
   const html =
     fetched.length > URL_PARSE_MAX_CHARS
       ? fetched.slice(0, URL_PARSE_MAX_CHARS)
@@ -777,6 +779,7 @@ export const extractArticle = async (
     if (structured.length > text.length) text = structured;
   }
   text = sanitizeUntrustedText(text);
+  onExtractMs?.(Date.now() - extractStartedAt);
 
   if (hasChallengeMarkers(html) && text.length < BOT_WALL_MAX_TEXT_CHARS) {
     return { url, title, text: '', siteName: hostname(url) };
