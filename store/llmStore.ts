@@ -8,8 +8,8 @@ import {
   conversationWindowFor,
 } from '../utils/conversationWindow';
 import {
-  dropStrayThinkClose,
-  hasUnclosedThink,
+  createStrayThinkCloseFilter,
+  cutAtStrayThinkClose,
   mapOutsideThink,
   stripThinkBlocks,
   unclosedThinkAsAnswer,
@@ -271,6 +271,8 @@ let streamedSoFar = '';
 let thinkOpenedByTemplate = false;
 let thinkClosedByTemplate = false;
 let generationSawToken = false;
+let strayThinkClose = createStrayThinkCloseFilter();
+let flushStreamNow = () => {};
 
 const resetStreamState = () => {
   streamBuffer = '';
@@ -279,6 +281,16 @@ const resetStreamState = () => {
   streamStopRequested = false;
   streamFlushScheduled = false;
   streamedSoFar = '';
+};
+
+const streamedTextOf = (token: string): string => {
+  if (!thinkClosedByTemplate || benchmarkTokenBudget !== null) return token;
+  const endedBefore = strayThinkClose.answerEnded();
+  const text = strayThinkClose.push(token);
+  if (!endedBefore && strayThinkClose.answerEnded() && llmInstance) {
+    interruptQuietly(llmInstance);
+  }
+  return text;
 };
 
 let benchmarkTokenBudget: number | null = null;
@@ -575,9 +587,7 @@ const loadModelInstance = async (
       return;
     }
     if (!streamBuffer) return;
-    const chunk = thinkClosedByTemplate
-      ? dropStrayThinkClose(streamBuffer, hasUnclosedThink(streamedSoFar))
-      : streamBuffer;
+    const chunk = streamBuffer;
     streamBuffer = '';
     const text =
       !streamedSoFar && thinkOpenedByTemplate
@@ -605,6 +615,8 @@ const loadModelInstance = async (
         : state.activeChatMessages,
     }));
   };
+
+  flushStreamNow = flushStream;
 
   const fromDisk = (path: string) =>
     model.isDownloaded ? preferDownloadedCopy(path) : path;
@@ -663,7 +675,7 @@ const loadModelInstance = async (
         ) {
           llmInstance?.interrupt();
         }
-        streamBuffer += token;
+        streamBuffer += streamedTextOf(token);
         if (!streamFlushScheduled) {
           streamFlushScheduled = true;
           requestAnimationFrame(flushStream);
@@ -1041,6 +1053,9 @@ const generateLLMResponse = (
     instance.setChatTemplateFlags(chatTemplateFlags);
     thinkOpenedByTemplate = chatTemplateFlags.enable_thinking === true;
     thinkClosedByTemplate = chatTemplateFlags.enable_thinking === false;
+    streamBuffer = '';
+    const generationFilter = createStrayThinkCloseFilter();
+    strayThinkClose = generationFilter;
 
     generationSawToken = false;
     let firstTokenTimedOut = false;
@@ -1058,6 +1073,10 @@ const generateLLMResponse = (
       });
     } finally {
       clearTimeout(firstTokenWatchdog);
+    }
+    if (strayThinkClose === generationFilter) {
+      streamBuffer += generationFilter.finish();
+      flushStreamNow();
     }
     if (firstTokenTimedOut) return NO_LLM_RESPONSE;
     const endTime = performance.now();
@@ -1077,7 +1096,7 @@ const generateLLMResponse = (
         response: thinkOpenedByTemplate
           ? withTemplateThinkOpener(finalResponse)
           : thinkClosedByTemplate
-            ? dropStrayThinkClose(finalResponse)
+            ? cutAtStrayThinkClose(finalResponse).text
             : finalResponse,
         performance: { timeToFirstToken, tokensPerSecond },
         stalled,

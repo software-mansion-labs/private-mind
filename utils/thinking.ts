@@ -1,4 +1,10 @@
 import { THINK_CLOSE, THINK_OPEN } from '../constants/citations';
+import {
+  extractQueryTerms,
+  foldForMatching,
+  segmentUnsegmentedScripts,
+  stemPrefix,
+} from './queryTerms';
 
 export interface ThinkingParts {
   normalContent: string;
@@ -24,30 +30,149 @@ export const withTemplateThinkOpener = (text: string): string =>
 export const hasUnclosedThink = (text: string): boolean =>
   text.split(THINK_OPEN).length > text.split(THINK_CLOSE).length;
 
-export const dropStrayThinkClose = (
-  text: string,
-  openBefore = false
-): string => {
-  let out = '';
-  let cursor = 0;
-  let open = openBefore;
-  for (;;) {
-    const nextOpen = text.indexOf(THINK_OPEN, cursor);
-    const nextClose = text.indexOf(THINK_CLOSE, cursor);
-    if (nextClose === -1) return out + text.slice(cursor);
-    if (nextOpen !== -1 && nextOpen < nextClose) {
-      const afterOpen = nextOpen + THINK_OPEN.length;
-      out += text.slice(cursor, afterOpen);
-      cursor = afterOpen;
-      open = true;
-      continue;
+export interface StrayThinkCloseCut {
+  text: string;
+  answerEnded: boolean;
+}
+
+export interface StrayThinkCloseFilter {
+  push: (chunk: string) => string;
+  finish: () => string;
+  answerEnded: () => boolean;
+}
+
+interface HeldTail {
+  headTerms: Set<string>;
+  windowWords: number;
+}
+
+const SENTENCE_END = /[.!?…。！？।॥۔؟]["'”’»)\]*_`]*$/u;
+const WORD = /[\p{L}\p{M}\p{N}]+/gu;
+const TAIL_WINDOW_MIN_WORDS = 12;
+const TAIL_WINDOW_MAX_WORDS = 48;
+const RESTATED_HEAD_TERMS_MIN_PERCENT = 60;
+const TAIL_TERMS_FROM_HEAD_MIN_PERCENT = 60;
+
+const endsASentence = (visible: string): boolean =>
+  SENTENCE_END.test(visible.trimEnd());
+
+const wordsOf = (text: string): string[] =>
+  segmentUnsegmentedScripts(stripThinkMarkers(text).toLowerCase()).match(
+    WORD
+  ) ?? [];
+
+const termsOf = (text: string): Set<string> =>
+  new Set(
+    [...extractQueryTerms(text)].map((term) =>
+      stemPrefix(foldForMatching(term))
+    )
+  );
+
+const isAtLeastPercent = (part: number, whole: number, percent: number) =>
+  whole > 0 && part * 100 >= whole * percent;
+
+const restatesHead = (headTerms: Set<string>, tailWords: string[]): boolean => {
+  const tailTerms = termsOf(tailWords.join(' '));
+  const shared = [...tailTerms].filter((term) => headTerms.has(term)).length;
+  return (
+    shared > 0 &&
+    isAtLeastPercent(shared, headTerms.size, RESTATED_HEAD_TERMS_MIN_PERCENT) &&
+    isAtLeastPercent(shared, tailTerms.size, TAIL_TERMS_FROM_HEAD_MIN_PERCENT)
+  );
+};
+
+const tailAfter = (head: string): HeldTail => ({
+  headTerms: termsOf(head),
+  windowWords: Math.min(
+    TAIL_WINDOW_MAX_WORDS,
+    Math.max(TAIL_WINDOW_MIN_WORDS, wordsOf(head).length)
+  ),
+});
+
+const unfinishedTagStart = (text: string): number => {
+  const earliest = Math.max(0, text.length - THINK_CLOSE.length + 1);
+  for (let start = earliest; start < text.length; start += 1) {
+    const rest = text.slice(start);
+    if (THINK_CLOSE.startsWith(rest) || THINK_OPEN.startsWith(rest)) {
+      return start;
     }
-    out += open
-      ? text.slice(cursor, nextClose + THINK_CLOSE.length)
-      : text.slice(cursor, nextClose);
-    open = false;
-    cursor = nextClose + THINK_CLOSE.length;
   }
+  return text.length;
+};
+
+export const createStrayThinkCloseFilter = (): StrayThinkCloseFilter => {
+  let pending = '';
+  let said = '';
+  let open = false;
+  let held: HeldTail | null = null;
+  let ended = false;
+
+  const take = (length: number): string => {
+    const taken = pending.slice(0, length);
+    pending = pending.slice(length);
+    return taken;
+  };
+
+  const sayOutsideThink = (text: string) => {
+    if (!open) said += text;
+  };
+
+  const drain = (finished: boolean): string => {
+    let out = '';
+    for (;;) {
+      if (held) {
+        const words = wordsOf(pending);
+        if (!finished && words.length <= held.windowWords) return out;
+        ended = restatesHead(held.headTerms, words.slice(0, held.windowWords));
+        held = null;
+        if (ended) {
+          pending = '';
+          return out;
+        }
+      }
+      const nextOpen = pending.indexOf(THINK_OPEN);
+      const nextClose = pending.indexOf(THINK_CLOSE);
+      if (nextOpen === -1 && nextClose === -1) {
+        const text = take(
+          finished ? pending.length : unfinishedTagStart(pending)
+        );
+        sayOutsideThink(text);
+        return out + text;
+      }
+      if (nextOpen !== -1 && (nextClose === -1 || nextOpen < nextClose)) {
+        sayOutsideThink(pending.slice(0, nextOpen));
+        out += take(nextOpen + THINK_OPEN.length);
+        open = true;
+        continue;
+      }
+      if (open) {
+        out += take(nextClose + THINK_CLOSE.length);
+        open = false;
+        continue;
+      }
+      const beforeClose = take(nextClose);
+      take(THINK_CLOSE.length);
+      said += beforeClose;
+      out += beforeClose;
+      if (endsASentence(said)) held = tailAfter(said);
+    }
+  };
+
+  return {
+    push: (chunk) => {
+      if (ended) return '';
+      pending += chunk;
+      return drain(false);
+    },
+    finish: () => (ended ? '' : drain(true)),
+    answerEnded: () => ended,
+  };
+};
+
+export const cutAtStrayThinkClose = (text: string): StrayThinkCloseCut => {
+  const filter = createStrayThinkCloseFilter();
+  const shown = filter.push(text) + filter.finish();
+  return { text: shown, answerEnded: filter.answerEnded() };
 };
 
 export const stripThinkMarkers = (text: string): string =>
