@@ -1,112 +1,11 @@
 import { anchorTokens } from './anchorTokens';
 import { foldForMatching } from '../queryTerms';
 import { detectQuestionLanguage } from '../questionLanguage';
-
-const CONJUNCTIONS = new Set([
-  'and',
-  'or',
-  'oraz',
-  'lub',
-  'und',
-  'oder',
-  'et',
-  'ou',
-  'y',
-  'e',
-]);
-
-const QUESTION_WORDS = new Set([
-  'who',
-  'what',
-  'when',
-  'where',
-  'which',
-  'how',
-  'kto',
-  'co',
-  'kiedy',
-  'gdzie',
-  'który',
-  'która',
-  'które',
-  'jaki',
-  'jaka',
-  'jakie',
-  'ile',
-  'wer',
-  'wann',
-  'wo',
-  'welche',
-  'welcher',
-  'quién',
-  'qué',
-  'cuándo',
-  'dónde',
-  'cuál',
-  'qui',
-  'que',
-  'quand',
-  'où',
-  'quel',
-  'quelle',
-]);
-
-const PREPOSITIONS = new Set([
-  'in',
-  'for',
-  'at',
-  'on',
-  'of',
-  'by',
-  'w',
-  'we',
-  'na',
-  'dla',
-  'für',
-  'bei',
-  'auf',
-  'en',
-  'para',
-  'de',
-  'pour',
-  'à',
-]);
-
-const FUNCTION_WORDS = new Set([
-  ...PREPOSITIONS,
-  ...QUESTION_WORDS,
-  'the',
-  'a',
-  'an',
-  'my',
-  'your',
-  'his',
-  'her',
-  'its',
-  'our',
-  'their',
-  'with',
-  'to',
-  'is',
-  'are',
-  'was',
-  'did',
-  'does',
-  'do',
-  'z',
-  'o',
-  'mit',
-  'con',
-  'avec',
-]);
-
-const CONJUNCTIONS_BY_LANGUAGE: Record<string, Set<string>> = {
-  pl: new Set(['i']),
-};
-
-const QUESTION_WORDS_BY_LANGUAGE: Record<string, Set<string>> = {
-  de: new Set(['was']),
-};
+import {
+  COORDINATION_LEXICONS,
+  DEFAULT_COORDINATION_LANGUAGE,
+  type CoordinationLexicon,
+} from './coordinationLexicon';
 
 const FIXED_PAIRS = new Set([
   'antigua and barbuda',
@@ -130,12 +29,42 @@ const FIXED_PAIRS = new Set([
   'war and peace',
 ]);
 
-const OBJECT_PRONOUNS = new Set(['it', 'them', 'this', 'that', 'him', 'her']);
-
 const MAX_QUESTION_PARTS = 2;
+const MIN_SHARED_CONTEXT_WORDS = 2;
+
+interface Lexicon {
+  conjunctions: Set<string>;
+  questionWords: Set<string>;
+  adpositions: Set<string>;
+  functionWords: Set<string>;
+  objectPronouns: Set<string>;
+  questionWordLeadsClause: boolean;
+}
+
+const toLexicon = (source: CoordinationLexicon): Lexicon => ({
+  conjunctions: new Set(source.conjunctions),
+  questionWords: new Set(source.questionWords),
+  adpositions: new Set(source.adpositions),
+  functionWords: new Set([
+    ...source.adpositions,
+    ...source.questionWords,
+    ...source.functionWords,
+  ]),
+  objectPronouns: new Set(source.objectPronouns),
+  questionWordLeadsClause: source.questionWordLeadsClause,
+});
+
+const LEXICONS = new Map(
+  Object.entries(COORDINATION_LEXICONS).map(([code, source]) => [
+    code,
+    toLexicon(source),
+  ])
+);
 
 const bare = (word: string): string =>
-  word.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}'’]+$/gu, '');
+  word
+    .toLowerCase()
+    .replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}'’]+$/gu, '');
 
 const isCapitalised = (word: string): boolean => /^[\p{Lu}\p{Lt}]/u.test(word);
 
@@ -159,9 +88,15 @@ const join = (...groups: string[][]): string =>
     .replace(/[,;:]+$/, '')
     .trim();
 
-const skipFunctionWords = (words: string[], from: number): number => {
+const skipFunctionWords = (
+  words: string[],
+  from: number,
+  lexicon: Lexicon
+): number => {
   let at = from;
-  while (at < words.length && FUNCTION_WORDS.has(bare(words[at]!))) at += 1;
+  while (at < words.length && lexicon.functionWords.has(bare(words[at]!))) {
+    at += 1;
+  }
   return at;
 };
 
@@ -170,17 +105,36 @@ const stripTrailingPunctuation = (words: string[]): string[] =>
     index === words.length - 1 ? word.replace(/[,;:]+$/, '') : word
   );
 
-const stripLeadingQuestionPhrase = (words: string[]): string[] => {
-  let start = skipFunctionWords(words, 0);
+const stripLeadingQuestionPhrase = (
+  words: string[],
+  lexicon: Lexicon
+): string[] => {
+  let start = skipFunctionWords(words, 0, lexicon);
   if (start > 0 && start < words.length && !isCapitalised(words[start]!)) {
-    start = skipFunctionWords(words, start + 1);
+    start = skipFunctionWords(words, start + 1, lexicon);
   }
   return stripTrailingPunctuation(words.slice(start));
 };
 
-const askAboutSubject = (clause: string[], subject: string[]): string[] => {
+const contentWordsOf = (words: string[], lexicon: Lexicon): string[] =>
+  stripTrailingPunctuation(
+    words.filter((word) => !lexicon.functionWords.has(bare(word)))
+  );
+
+const subjectOf = (left: string[], lexicon: Lexicon): string[] =>
+  lexicon.questionWordLeadsClause
+    ? stripLeadingQuestionPhrase(left, lexicon)
+    : contentWordsOf(left, lexicon);
+
+const askAboutSubject = (
+  clause: string[],
+  subject: string[],
+  lexicon: Lexicon
+): string[] => {
   const pronounAt = clause.findIndex(
-    (word, index) => index > 0 && OBJECT_PRONOUNS.has(bare(word))
+    (word, index) =>
+      (index > 0 || !lexicon.questionWordLeadsClause) &&
+      lexicon.objectPronouns.has(bare(word))
   );
   if (pronounAt < 0) return [...clause, ...subject];
   return [
@@ -190,32 +144,87 @@ const askAboutSubject = (clause: string[], subject: string[]): string[] => {
   ];
 };
 
-const clauseParts = (left: string[], right: string[]): string[] => {
-  const subject = stripLeadingQuestionPhrase(left);
+const clauseParts = (
+  left: string[],
+  right: string[],
+  lexicon: Lexicon
+): string[] => {
+  const subject = subjectOf(left, lexicon);
   if (subject.length === 0 || right.length < 2) return [];
-  return [join(left), join(askAboutSubject(right, subject))];
+  return [join(left), join(askAboutSubject(right, subject, lexicon))];
 };
 
-const coordinatedParts = (left: string[], right: string[]): string[] => {
-  const lastLeft = left.length - 1;
-  const firstRight = bare(right[0]!);
+const partsAround = (
+  shared: string[],
+  x: string[],
+  y: string[],
+  tail: string[]
+): string[] =>
+  shared.length + tail.length >= MIN_SHARED_CONTEXT_WORDS
+    ? [join(shared, x, tail), join(shared, y, tail)]
+    : [];
 
-  if (
-    PREPOSITIONS.has(firstRight) &&
-    left.length >= 2 &&
-    bare(left[lastLeft - 1]!) === firstRight &&
-    right.length >= 2
-  ) {
-    const shared = left.slice(0, lastLeft - 1);
-    const x = left.slice(lastLeft - 1);
-    const y = right.slice(0, 2);
-    const tail = right.slice(2);
-    return [join(shared, x, tail), join(shared, y, tail)];
+const MAX_ADPOSITION_PHRASE_WORDS = 3;
+
+const repeatedPrepositionLength = (
+  left: string[],
+  right: string[],
+  lexicon: Lexicon
+): number => {
+  const opening = bare(right[0]!);
+  if (!lexicon.adpositions.has(opening)) return 0;
+  for (let length = 2; length <= MAX_ADPOSITION_PHRASE_WORDS; length += 1) {
+    if (left.length >= length && bare(left.at(-length)!) === opening) {
+      return right.length >= length ? length : 0;
+    }
   }
+  return 0;
+};
+
+const repeatsPostposition = (
+  left: string[],
+  right: string[],
+  lexicon: Lexicon
+): boolean => {
+  const closing = bare(left.at(-1)!);
+  return (
+    left.length >= 2 &&
+    right.length >= 2 &&
+    lexicon.adpositions.has(closing) &&
+    bare(right[1]!) === closing
+  );
+};
+
+const repeatedAdpositionParts = (
+  left: string[],
+  right: string[],
+  lexicon: Lexicon
+): string[] | null => {
+  const length = repeatsPostposition(left, right, lexicon)
+    ? 2
+    : repeatedPrepositionLength(left, right, lexicon);
+  if (length === 0) return null;
+  return partsAround(
+    left.slice(0, -length),
+    left.slice(-length),
+    right.slice(0, length),
+    right.slice(length)
+  );
+};
+
+const coordinatedParts = (
+  left: string[],
+  right: string[],
+  lexicon: Lexicon
+): string[] => {
+  const lastLeft = left.length - 1;
+
+  const aroundAdposition = repeatedAdpositionParts(left, right, lexicon);
+  if (aroundAdposition) return aroundAdposition;
 
   if (
-    FUNCTION_WORDS.has(firstRight) ||
-    FUNCTION_WORDS.has(bare(left[lastLeft]!))
+    lexicon.functionWords.has(bare(right[0]!)) ||
+    lexicon.functionWords.has(bare(left[lastLeft]!))
   ) {
     return [];
   }
@@ -225,55 +234,68 @@ const coordinatedParts = (left: string[], right: string[]): string[] => {
     const yEnd = capitalisedRunStartingAt(right, 0);
     const bothSingleWords = xStart === lastLeft && yEnd === 0;
     const afterPreposition =
-      xStart > 0 && PREPOSITIONS.has(bare(left[xStart - 1]!));
+      xStart > 0 && lexicon.adpositions.has(bare(left[xStart - 1]!));
     if (bothSingleWords && !afterPreposition) return [];
-    const shared = left.slice(0, xStart);
-    const x = left.slice(xStart);
-    const y = right.slice(0, yEnd + 1);
-    const tail = right.slice(yEnd + 1);
-    return [join(shared, x, tail), join(shared, y, tail)];
+    return partsAround(
+      left.slice(0, xStart),
+      left.slice(xStart),
+      right.slice(0, yEnd + 1),
+      right.slice(yEnd + 1)
+    );
   }
 
-  const shared = left.slice(0, lastLeft);
-  const x = left.slice(lastLeft);
-  const y = right.slice(0, 1);
   const tail = right.slice(1);
-  if (shared.length === 0 || tail.length === 0) return [];
-  return [join(shared, x, tail), join(shared, y, tail)];
+  if (tail.length === 0) return [];
+  return partsAround(
+    left.slice(0, lastLeft),
+    left.slice(lastLeft),
+    right.slice(0, 1),
+    tail
+  );
 };
 
 interface Coordination {
   left: string[];
   conjunction: string;
   right: string[];
-  questionWords: Set<string>;
+  lexicon: Lexicon;
 }
 
+const QUESTION_MARKS = /[?¿!؟;]+/g;
+
 const findCoordination = (question: string): Coordination | null => {
-  const words = question
-    .replace(/[?¿!]+/g, ' ')
-    .trim()
-    .split(/\s+/);
-  const language = detectQuestionLanguage(question)?.code ?? '';
-  const languageConjunctions = CONJUNCTIONS_BY_LANGUAGE[language];
-  const isConjunction = (word: string) =>
-    CONJUNCTIONS.has(word) || (languageConjunctions?.has(word) ?? false);
-  const at = words.findIndex((word, index) => index > 0 && isConjunction(word));
+  const language =
+    detectQuestionLanguage(question)?.code ?? DEFAULT_COORDINATION_LANGUAGE;
+  const lexicon = LEXICONS.get(language);
+  if (!lexicon) return null;
+  const words = question.replace(QUESTION_MARKS, ' ').trim().split(/\s+/);
+  const at = words.findIndex(
+    (word, index) => index > 0 && lexicon.conjunctions.has(bare(word))
+  );
   if (at <= 0 || at >= words.length - 1) return null;
   return {
     left: words.slice(0, at),
     conjunction: words[at]!,
     right: words.slice(at + 1),
-    questionWords: new Set([
-      ...QUESTION_WORDS,
-      ...(QUESTION_WORDS_BY_LANGUAGE[language] ?? []),
-    ]),
+    lexicon,
   };
 };
 
+const asksSomething = (words: string[], lexicon: Lexicon): boolean =>
+  words.some((word) => lexicon.questionWords.has(bare(word)));
+
+const opensClause = (
+  left: string[],
+  right: string[],
+  lexicon: Lexicon
+): boolean =>
+  lexicon.questionWordLeadsClause
+    ? lexicon.questionWords.has(bare(right[0]!))
+    : asksSomething(left, lexicon) && asksSomething(right, lexicon);
+
 const matchableWords = (text: string): string =>
   foldForMatching(text)
-    .split(/[^\p{L}\p{N}'’]+/u)
+    .split(/[^\p{L}\p{M}\p{N}'’]+/u)
     .filter(Boolean)
     .join(' ');
 
@@ -286,10 +308,10 @@ const namesOneThing = (coordination: Coordination): boolean =>
 export const splitQuestionParts = (question: string): string[] => {
   const coordination = findCoordination(question);
   if (!coordination || namesOneThing(coordination)) return [];
-  const { left, right, questionWords } = coordination;
-  const parts = questionWords.has(bare(right[0]!))
-    ? clauseParts(left, right)
-    : coordinatedParts(left, right);
+  const { left, right, lexicon } = coordination;
+  const parts = opensClause(left, right, lexicon)
+    ? clauseParts(left, right, lexicon)
+    : coordinatedParts(left, right, lexicon);
   const distinct = [...new Set(parts.filter(Boolean))];
   return distinct.length >= 2 ? distinct.slice(0, MAX_QUESTION_PARTS) : [];
 };
@@ -314,7 +336,9 @@ export const partQueriesFor = (
 ): string[] => {
   if (plannerKeptPhraseTogether(question, plannedQuery, toKeywords)) return [];
   const asked = new Set(
-    question.split(/[^\p{L}\p{N}'’-]+/u).map((word) => foldForMatching(word))
+    question
+      .split(/[^\p{L}\p{M}\p{N}'’-]+/u)
+      .map((word) => foldForMatching(word))
   );
   const fromContext = anchorTokens(plannedQuery).filter(
     (anchor) => !asked.has(foldForMatching(anchor))
