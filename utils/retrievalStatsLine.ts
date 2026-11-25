@@ -23,9 +23,5 @@ export const retrievalStatsLines = (stats?: RetrievalStats): string[] => {
     );
   }
 
-  if (stats?.window) {
-    lines.push(`window: ${stats.window.tokens} tokens, ${stats.window.reason}`);
-  }
-
   return lines;
 };

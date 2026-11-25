@@ -424,12 +424,12 @@ describe('the window planned for each turn of a chat', () => {
 });
 
 describe('window in the per-turn stats', () => {
-  it('prints the window and the reason beside the retrieval stats', () => {
+  it('keeps the window out of the stats shown under an answer', () => {
     expect(
       retrievalStatsLines({
         window: { tokens: 8192, reason: 'whole-document' },
       })
-    ).toEqual(['window: 8192 tokens, whole-document']);
+    ).toEqual([]);
   });
 });
 
