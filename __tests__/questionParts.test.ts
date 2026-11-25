@@ -73,6 +73,94 @@ describe('splitQuestionParts', () => {
   });
 });
 
+describe('splitQuestionParts in other languages', () => {
+  it.each([
+    [
+      'भौतिकी और रसायन में नोबेल पुरस्कार किसने जीता?',
+      [
+        'भौतिकी में नोबेल पुरस्कार किसने जीता',
+        'रसायन में नोबेल पुरस्कार किसने जीता',
+      ],
+    ],
+    [
+      'भौतिकी में और रसायन में 2025 का नोबेल पुरस्कार किसने जीता?',
+      [
+        'भौतिकी में 2025 का नोबेल पुरस्कार किसने जीता',
+        'रसायन में 2025 का नोबेल पुरस्कार किसने जीता',
+      ],
+    ],
+    [
+      'पिछला चैंपियंस लीग फाइनल किसने जीता और वह कहाँ खेला गया?',
+      [
+        'पिछला चैंपियंस लीग फाइनल किसने जीता',
+        'पिछला चैंपियंस लीग फाइनल जीता कहाँ खेला गया',
+      ],
+    ],
+    [
+      'لاہور اور کراچی کی آبادی کتنی ہے؟',
+      ['لاہور کی آبادی کتنی ہے', 'کراچی کی آبادی کتنی ہے'],
+    ],
+    [
+      'Wer hat 2025 den Nobelpreis für Physik und für Chemie gewonnen?',
+      [
+        'Wer hat 2025 den Nobelpreis für Physik gewonnen',
+        'Wer hat 2025 den Nobelpreis für Chemie gewonnen',
+      ],
+    ],
+    [
+      'Кто получил Нобелевскую премию 2025 по физике и по химии?',
+      [
+        'Кто получил Нобелевскую премию 2025 по физике',
+        'Кто получил Нобелевскую премию 2025 по химии',
+      ],
+    ],
+    [
+      'Fizik ve kimya Nobel ödülünü 2025 kim kazandı?',
+      [
+        'Fizik Nobel ödülünü 2025 kim kazandı',
+        'kimya Nobel ödülünü 2025 kim kazandı',
+      ],
+    ],
+    [
+      'Quem ganhou o Nobel de 2025 de física e de química?',
+      [
+        'Quem ganhou o Nobel de 2025 de física',
+        'Quem ganhou o Nobel de 2025 de química',
+      ],
+    ],
+    [
+      'Chi ha vinto il Nobel 2025 per la fisica e per la chimica?',
+      [
+        'Chi ha vinto il Nobel 2025 per la fisica',
+        'Chi ha vinto il Nobel 2025 per la chimica',
+      ],
+    ],
+    [
+      'من فاز بجائزة نوبل في الفيزياء و في الكيمياء؟',
+      ['من فاز بجائزة نوبل في الفيزياء', 'من فاز بجائزة نوبل في الكيمياء'],
+    ],
+    [
+      'چه کسی جایزه نوبل فیزیک و شیمی را برد؟',
+      ['چه کسی جایزه نوبل فیزیک را برد', 'چه کسی جایزه نوبل شیمی را برد'],
+    ],
+    [
+      '물리학 및 화학 노벨상 수상자는 누구인가요?',
+      ['물리학 노벨상 수상자는 누구인가요', '화학 노벨상 수상자는 누구인가요'],
+    ],
+  ])('splits "%s" into one search per part', (question, expected) => {
+    expect(splitQuestionParts(question)).toEqual(expected);
+  });
+
+  it.each([
+    'फ्रांस की राजधानी क्या है?',
+    'Wer hat das Spiel gewonnen und warum?',
+    '谁获得了物理和化学诺贝尔奖？',
+    'Czy jest otwarte i do której?',
+  ])('leaves "%s" as one search', (question) => {
+    expect(splitQuestionParts(question)).toEqual([]);
+  });
+});
+
 describe('partQueriesFor', () => {
   const keep = (text: string) => text;
 
