@@ -16,4 +16,4 @@ export const RECALL_SPECIFIC_TERM_WEIGHT = 2;
 export const RECALL_EMBED_PER_TURN_CAP = 24;
 export const RECALL_EMBEDDING_CACHE_MAX = 512;
 export const RECALL_BLOCK_HEADER =
-  '\n\nEarlier in this conversation (recalled word for word, oldest first):\n';
+  '\n\nQuoted from earlier in this conversation, oldest first:\n';
