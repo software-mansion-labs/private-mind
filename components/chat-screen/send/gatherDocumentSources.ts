@@ -3,7 +3,7 @@ import type { Message } from '../../../database/chatRepository';
 import type { Model } from '../../../database/modelRepository';
 import type { ConversationMemory } from '../../../constants/context-window';
 import type { LLMStore } from '../../../store/llmStore';
-import { embedConversationForRecall } from '../../../utils/conversationRecall';
+import { embedConversationForRecall } from '../../../utils/recall/recallEmbeddings';
 import type { LFMEmbeddings } from '../../../utils/lfmEmbeddings';
 import {
   buildMessageSources,
