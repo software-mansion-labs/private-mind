@@ -73,7 +73,7 @@ import AttachmentThumbnail from './AttachmentThumbnail';
 import { AudioManager } from 'react-native-audio-api';
 import Toast from 'react-native-toast-message';
 import { useEmbeddingDownloadPrompt } from './useEmbeddingDownloadPrompt';
-import type { SendRefusal } from './useSendChatMessage';
+import type { SendRefusal } from './send/sendRefusal';
 import { UNSUPPORTED_CPU_REFUSAL } from '../../constants/cpu-support';
 import {
   BAR_GROW_DURATION,
