@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Theme, isDarkTheme } from '../../styles/colors';
 import LoadingBorder from './LoadingBorder';
-import ClosingBorder from './ClosingBorder';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { fontSizes, lineHeights } from '../../styles/fontStyles';
 import {
@@ -299,8 +298,8 @@ const ChatSpeechInput: React.FC<Props> = ({
   };
 
   return (
-    <View>
-      <View style={styles.container}>
+    <View style={styles.fill}>
+      <View style={[styles.fill, styles.container]}>
         <LoadingBorder
           active={isPreparing && !cancelling}
           radius={COMPOSER_CARD_RADIUS}
@@ -309,11 +308,6 @@ const ChatSpeechInput: React.FC<Props> = ({
               ? LOADING_BORDER_ON_DARK
               : LOADING_BORDER_ON_LIGHT
           }
-        />
-        <ClosingBorder
-          active={cancelling}
-          radius={COMPOSER_CARD_RADIUS}
-          color={theme.bg.errorPrimary}
         />
         <View pointerEvents="none" style={styles.dome}>
           <VoiceDome
@@ -344,11 +338,7 @@ const ChatSpeechInput: React.FC<Props> = ({
             testID="speech-cancel"
           />
           <View style={styles.actionNote}>
-            {cancelling ? (
-              <Text style={[styles.secondaryNote, styles.cancelledNote]}>
-                Cancelled
-              </Text>
-            ) : phase === 'listening' ? (
+            {cancelling ? null : phase === 'listening' ? (
               <RecordingInfo duration={recordingDuration} />
             ) : (
               <Text style={styles.secondaryNote}>{ACTION_NOTES[phase]}</Text>
@@ -408,7 +398,11 @@ const ScrollableTranscript: React.FC<{ text: string }> = ({ text }) => {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    fill: {
+      flexGrow: 1,
+    },
     container: {
+      justifyContent: 'space-between',
       borderRadius: COMPOSER_CARD_RADIUS,
       padding: space.four,
       gap: space.three,
@@ -431,9 +425,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xs,
       lineHeight: lineHeights.xs,
       color: theme.text.onChatBarMuted,
-    },
-    cancelledNote: {
-      color: theme.bg.errorPrimary,
     },
 
     recordingInfo: {

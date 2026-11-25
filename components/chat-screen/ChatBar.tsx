@@ -694,8 +694,14 @@ const ChatBar = ({
     if (from === 0 || to === 0) return {};
     return { height: from + (to - from) * speechShown.get() };
   });
-  const measureComposer = (event: LayoutChangeEvent) =>
-    composerHeight.set(event.nativeEvent.layout.height);
+  const [emptyComposerHeight, setEmptyComposerHeight] = useState<number>();
+  const measureComposer = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    composerHeight.set(height);
+    if (!userInput && !attachments.length && !showIndexChip) {
+      setEmptyComposerHeight(height);
+    }
+  };
   const measureSpeech = (event: LayoutChangeEvent) =>
     speechHeight.set(event.nativeEvent.layout.height);
 
@@ -916,6 +922,7 @@ const ChatBar = ({
             <Animated.View
               style={[
                 model?.isDownloaded && styles.speechLayer,
+                { minHeight: emptyComposerHeight },
                 speechSwapStyle,
               ]}
               onLayout={measureSpeech}
