@@ -1,6 +1,7 @@
 import type { LFMEmbeddings } from '../lfmEmbeddings';
 import { foldForMatching } from '../queryTerms';
 import type {
+  ExtractedArticle,
   WebSearchProvider,
   WebSearchResult,
   WebSourceDocument,
@@ -15,6 +16,8 @@ import {
   type QueryRewriteFn,
 } from './buildSearchQuery';
 import { partQueriesFor } from './questionParts';
+import { fastPlanWebSearch } from './fastPlan';
+import { capWebSources, isShortHistory } from './firstTurnSourceCap';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
   resolveCurrencyQuote,
@@ -71,6 +74,7 @@ import {
   WEB_MIN_SAME_SCRIPT_RESULTS,
   WEB_VERBATIM_MIN_RESULTS,
   WEB_QUERY_GATE,
+  WEB_QUERY_REWRITE,
   WEB_RECOVERY_ENABLED,
   WEB_RECOVERY_MAX_RESULTS,
   WEB_RETRIEVAL_FETCH_TOP_N,
@@ -80,6 +84,7 @@ import {
 } from '../../constants/web';
 import { detectQuestionLanguage } from '../questionLanguage';
 import { sourceBlock } from '../contextUtils';
+import type { WebPageTiming, WebTimings } from '../../database/chatRepository';
 import { neutralizeDelimiters } from './security/untrustedContent';
 
 export interface WebSearchProgressEvent {
@@ -126,6 +131,7 @@ export interface RunWebSearchInput {
   fetchArticle?: ArticleFetcher;
   useCache?: boolean;
   searchTimeoutMs?: number;
+  answersFromDocument?: boolean;
   resolveQuote?: (
     query: string,
     options: QuoteResolverOptions
@@ -161,6 +167,8 @@ export interface WebSearchTelemetry {
   agreement: SourceAgreement;
   fetchFailures: FetchFailure[];
   recovery: RecoveryStrategy[];
+  timings?: WebTimings;
+  droppedByCap?: number;
 }
 
 export interface RunWebSearchResult {
@@ -218,21 +226,49 @@ const searchWithCleanup = async (
 
   const useCache = input.useCache ?? false;
   const baseFetchArticle = input.fetchArticle ?? extractArticle;
-  const fetchArticle: ArticleFetcher = useCache
-    ? async (url, timeoutMs, abort) => {
-        const hit = pageCache.get(url);
-        if (hit) return hit;
-        const article = await baseFetchArticle(url, timeoutMs, abort);
-        if (article.text.trim()) {
-          pageCache.set(
-            url,
-            article,
-            Math.max(article.text.length, WEB_PAGE_CACHE_MIN_COST)
-          );
-        }
-        return article;
-      }
-    : baseFetchArticle;
+  const timings: WebTimings = { searches: [], pages: [], embedRankMs: 0 };
+  const fetchTimed = async (
+    url: string,
+    timeoutMs: number,
+    abort: AbortSignal | undefined,
+    page: WebPageTiming
+  ): Promise<ExtractedArticle> => {
+    const recordExtract = (ms: number): void => {
+      page.extractMs = ms;
+    };
+    if (!useCache) {
+      return baseFetchArticle(url, timeoutMs, abort, recordExtract);
+    }
+    const hit = pageCache.get(url);
+    if (hit) {
+      page.cached = true;
+      return hit;
+    }
+    const article = await baseFetchArticle(
+      url,
+      timeoutMs,
+      abort,
+      recordExtract
+    );
+    if (article.text.trim()) {
+      pageCache.set(
+        url,
+        article,
+        Math.max(article.text.length, WEB_PAGE_CACHE_MIN_COST)
+      );
+    }
+    return article;
+  };
+  const fetchArticle: ArticleFetcher = async (url, timeoutMs, abort) => {
+    const page: WebPageTiming = { host: hostname(url), ms: 0 };
+    const fetchStartedAt = Date.now();
+    try {
+      return await fetchTimed(url, timeoutMs, abort, page);
+    } finally {
+      page.ms = Date.now() - fetchStartedAt;
+      timings.pages.push(page);
+    }
+  };
 
   const telemetry: WebSearchTelemetry = {
     needsSearch: true,
@@ -246,6 +282,7 @@ const searchWithCleanup = async (
     agreement: NO_AGREEMENT,
     fetchFailures: [],
     recovery: [],
+    timings,
   };
   const empty = (reason: WebSearchTelemetry['skippedReason']) => ({
     context: [] as string[],
@@ -303,11 +340,22 @@ const searchWithCleanup = async (
   const asksAboutThePresent = !namesATimePeriod(query);
   const presentYear = (input.today ?? '').slice(0, 4);
 
-  const plan = await planWebSearch(query, history, generate, {
-    ...(input.today ? { today: input.today } : {}),
-    ...(input.profile ? { rewrite: input.profile.webPlanner === 'llm' } : {}),
-    ...(input.digest ? { digest: input.digest } : {}),
-  });
+  const plannerStartedAt = Date.now();
+  const plannerRewrites = input.profile
+    ? input.profile.webPlanner === 'llm'
+    : WEB_QUERY_REWRITE;
+  const fastPlan = plannerRewrites
+    ? fastPlanWebSearch(query, history, { digest: input.digest })
+    : null;
+  const plan =
+    fastPlan ??
+    (await planWebSearch(query, history, generate, {
+      ...(input.today ? { today: input.today } : {}),
+      ...(input.profile ? { rewrite: input.profile.webPlanner === 'llm' } : {}),
+      ...(input.digest ? { digest: input.digest } : {}),
+    }));
+  timings.plannerMs = Date.now() - plannerStartedAt;
+  if (plannerRewrites) timings.planner = fastPlan ? 'fast' : 'llm';
   const candidatePages =
     input.profile?.webCandidatePages ?? WEB_SEARCH_MAX_RESULTS;
   let baseQueries = dedupeQueries(plan.queries);
@@ -378,8 +426,10 @@ const searchWithCleanup = async (
       try {
         const cached = useCache ? serpCache.get(q) : undefined;
         let found: WebSearchResult[];
+        const searchStartedAt = Date.now();
         if (cached) {
           found = cached;
+          timings.searches.push({ query: q, ms: 0, cached: true });
         } else {
           providerCalls += 1;
           const region =
@@ -394,6 +444,7 @@ const searchWithCleanup = async (
               }
             },
           });
+          timings.searches.push({ query: q, ms: Date.now() - searchStartedAt });
           if (useCache && found.length > 0) serpCache.set(q, found);
         }
         for (const item of found) {
@@ -457,6 +508,7 @@ const searchWithCleanup = async (
     contentCount: number;
     agreement: SourceAgreement;
   }> => {
+    const scoreStartedAt = Date.now();
     let grounded = enriched;
     let signals: WebRetrievalSignals | null = null;
     emit({ type: 'ranking' });
@@ -497,6 +549,7 @@ const searchWithCleanup = async (
       retrieval: signals,
       agreement: WEB_AGREEMENT_ENABLED ? agreement : null,
     });
+    timings.embedRankMs += Date.now() - scoreStartedAt;
     return { grounded, evaluation, contentCount, agreement };
   };
 
@@ -781,7 +834,7 @@ const searchWithCleanup = async (
 
   const label =
     baseQueries.length > 1 ? baseQueries.join(' + ') : baseQueries[0];
-  const web = webResultsToContext(
+  const builtWeb = webResultsToContext(
     finalResults,
     label,
     input.contextOffset ?? 0,
@@ -793,6 +846,12 @@ const searchWithCleanup = async (
       intent: plan.kind,
     }
   );
+  const capped =
+    !input.answersFromDocument && isShortHistory(history)
+      ? capWebSources(builtWeb)
+      : null;
+  const web = capped ?? builtWeb;
+  if (capped) telemetry.droppedByCap = capped.dropped;
   recordWebSearchTrace({
     question: query,
     expects: plan.expects,

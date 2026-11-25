@@ -29,6 +29,10 @@ import {
   loadModelPinnedToChat,
 } from './loadModelPinnedToChat';
 import { buildMessageSources } from '../../utils/messageSources';
+import {
+  embedConversationForRecall,
+  recallEmbeddingPool,
+} from '../../utils/conversationRecall';
 import { isDeviceOnline } from '../../utils/network';
 import { requiresUpdate } from '../../utils/modelUpdate';
 import { runWebSearch } from '../../utils/web/runWebSearch';
@@ -40,8 +44,9 @@ import {
   chosenConversationMemory,
   conversationWindowFor,
 } from '../../utils/conversationWindow';
-import { planTurnWindow } from '../../utils/planTurnWindow';
+import { planTurnWindow, type TurnWindow } from '../../utils/planTurnWindow';
 import {
+  getConversationCharBudget,
   getSourceTokenBudget,
   sourceRoomFor,
 } from '../../constants/context-window';
@@ -224,6 +229,26 @@ export const useSendChatMessage = ({
         : []
     );
 
+    const recallEmbeddingPoolFor = (
+      readyModel: Model | null,
+      turnWindow: TurnWindow | undefined
+    ) => {
+      if (!readyModel) return [];
+      const historyText = messageHistory
+        .map((message) => message.content)
+        .join(' ');
+      const conversationBudgetChars = getConversationCharBudget(
+        readyModel,
+        conversationWindowFor(readyModel, {
+          memory: conversationMemory,
+          thinkingEnabled: chatSettings.thinkingEnabled,
+          ceilingTokens: turnWindow?.ceilingTokens,
+        }),
+        historyText
+      );
+      return recallEmbeddingPool(messageHistory, conversationBudgetChars);
+    };
+
     const digestOfThisChat = (): string | null => {
       const llmState = useLLMStore.getState();
       return llmState.activeChatDigestChatId === targetChatId
@@ -290,11 +315,12 @@ export const useSendChatMessage = ({
       const retrievalStats: RetrievalStats = turnWindow
         ? { window: turnWindow.stats }
         : {};
+      let recallSimilarities = null as Map<number, number> | null;
       const hasRagSources =
         enabledSources.length > 0 || attachmentSourceIds.length > 0;
       if (vectorStore && hasRagSources) {
-        const prepareSources = () =>
-          buildMessageSources({
+        const prepareSources = async () => {
+          const gathered = await buildMessageSources({
             userInput,
             attachmentSourceIds,
             enabledSources,
@@ -314,6 +340,19 @@ export const useSendChatMessage = ({
             history: messageHistory,
             digest: digestOfThisChat() ?? undefined,
           });
+          const recallPool =
+            gathered.sourceDocuments.length === 0
+              ? recallEmbeddingPoolFor(modelForSources, turnWindow)
+              : [];
+          if (recallPool.length > 0) {
+            recallSimilarities = await embedConversationForRecall({
+              messages: recallPool,
+              question: userInput,
+              embedder: embeddings,
+            });
+          }
+          return gathered;
+        };
         const ragStartedAt = Date.now();
         ({ context, sourceDocuments, preferredSourceDocuments } = embeddings
           ? await runWithModelOffloaded(
@@ -327,6 +366,7 @@ export const useSendChatMessage = ({
         };
       }
 
+      const answersFromDocument = sourceDocuments.length > 0;
       const documentAttachedHere = attachmentSourceIds.length > 0;
       const skippedForAttachmentPriority =
         RAG_PRIORITY_OVER_WEB_SEARCH && (documentAttachedHere || !!imagePath);
@@ -410,6 +450,7 @@ export const useSendChatMessage = ({
                 }
               : undefined,
             isOnline: isDeviceOnline,
+            answersFromDocument,
             generate: (messages) =>
               useLLMStore.getState().generateUtility(messages),
             onProgress: (event) =>
@@ -422,6 +463,7 @@ export const useSendChatMessage = ({
             sources: webSources.length,
             read: webSources.filter((source) => source.read).length,
             queries: webTelemetry.plannedQueries.length,
+            ...(webTelemetry.timings ? { timings: webTelemetry.timings } : {}),
           };
           if (webSources.length > 0) {
             webIntent = webTelemetry.intent || undefined;
@@ -477,6 +519,8 @@ export const useSendChatMessage = ({
         webWeak,
         webSearchFailed,
         retrievalStats,
+        recallSimilarities,
+        answersFromDocument,
         ceilingTokens: turnWindow?.ceilingTokens,
         conversationMemory,
       };

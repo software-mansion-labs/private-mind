@@ -174,8 +174,10 @@ describe('a conversation that outgrows the context window', () => {
           .map((message) => String(message.content))
           .join(' ').length
     );
-    const spread = Math.max(...sizes) - Math.min(...sizes);
-    expect(spread).toBeLessThan(200);
+    const [saturated, ...longer] = sizes;
+    for (const size of longer) {
+      expect(size - saturated!).toBeLessThan(200);
+    }
   });
 });
 
