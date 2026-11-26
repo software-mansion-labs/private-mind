@@ -7,6 +7,10 @@ import { useSourceStore } from '../store/sourceStore';
 import { initSourceLinkingBoundary } from '../utils/sourceLinkingBoundary';
 import { migrateLegacyVectorStore } from './vectorStoreMigration';
 import { restoreTruncatedChatTitles } from './chatTitleMigration';
+import {
+  ensureUsageBackfilled,
+  migrateUsageStats,
+} from './usageStatsRepository';
 import { resolveModelCatalog } from '../utils/fetchModelCatalog';
 import {
   applyCatalogWhenItArrives,
@@ -208,6 +212,8 @@ export const runMigrations = async (db: SQLiteDatabase) => {
   await migrateLegacyVectorStore(db);
 
   await restoreTruncatedChatTitles(db);
+
+  await migrateUsageStats(db);
 
   // One-time cleanup of orphan rows from before FK enforcement was enabled.
   await db.runAsync(
@@ -470,4 +476,5 @@ export const initDatabase = async (db: SQLiteDatabase) => {
   await useModelStore.getState().loadModels();
 
   applyCatalogWhenItArrives(db, resolved);
+  ensureUsageBackfilled(db);
 };
