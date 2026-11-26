@@ -205,7 +205,6 @@ const CustomDrawer = ({
         searchProgress={iconMorph}
         searchExpansion={searchExpansion}
         footerOpacity={footerOpacity}
-        resetScrollPosition={status === 'closed'}
         newChatCollapse={newChatCollapse}
         onListScroll={trackScroll}
       />

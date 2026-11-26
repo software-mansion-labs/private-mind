@@ -72,11 +72,12 @@ const noTurnRunning = () => {
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 const mockNow = new Date('2026-03-10T12:00:00Z').getTime();
-const mockChats = [
+const initialChats = [
   { id: 1, modelId: 1, title: 'Pizza recipe', lastUsed: mockNow - HOUR },
   { id: 2, modelId: 1, title: 'Meeting notes', lastUsed: mockNow - 2 * HOUR },
   { id: 3, modelId: 1, title: 'Trip to Rome', lastUsed: mockNow - DAY },
 ];
+let mockChats = initialChats;
 
 const mockRenameChat = jest.fn();
 const mockDeleteChat = jest.fn();
@@ -133,6 +134,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = '/';
   mockPhantomChat = null;
+  mockChats = initialChats;
   noTurnRunning();
   setPlatform('ios');
 });
@@ -287,6 +289,59 @@ describe('DrawerMenu — collapsed', () => {
     fireEvent.press(screen.getByTestId('drawer-chat-1'));
 
     expect(mockReplace).toHaveBeenCalledWith('/chat/1');
+  });
+});
+
+describe('DrawerMenu — scroll position', () => {
+  const rerenderOnStoreUpdate = (
+    rerender: (element: React.ReactElement) => void,
+    scrollOffsetRef: { current: number }
+  ) =>
+    rerender(
+      <DrawerMenu
+        {...defaultProps}
+        onChangeSearch={jest.fn()}
+        scrollOffsetRef={scrollOffsetRef}
+      />
+    );
+
+  const sendIn = (chatId: number) => {
+    mockChats = mockChats.map((chat) =>
+      chat.id === chatId ? { ...chat, lastUsed: mockNow } : chat
+    );
+  };
+
+  it('returns to the top after a message moves the open chat up the list', () => {
+    mockPathname = '/chat/3';
+    const scrollOffsetRef = { current: 400 };
+    const { rerender } = renderMenu({ scrollOffsetRef });
+
+    sendIn(3);
+    rerenderOnStoreUpdate(rerender, scrollOffsetRef);
+
+    expect(scrollOffsetRef.current).toBe(0);
+  });
+
+  it('keeps the position when only opening another chat', () => {
+    mockPathname = '/chat/3';
+    const scrollOffsetRef = { current: 400 };
+    const { rerender } = renderMenu({ scrollOffsetRef });
+
+    mockPathname = '/chat/2';
+    rerenderOnStoreUpdate(rerender, scrollOffsetRef);
+
+    expect(scrollOffsetRef.current).toBe(400);
+  });
+
+  it('keeps the position when a chat other than the open one is used', () => {
+    mockPathname = '/chat/3';
+    const scrollOffsetRef = { current: 400 };
+    const { rerender } = renderMenu({ scrollOffsetRef });
+
+    sendIn(2);
+    rerenderOnStoreUpdate(rerender, scrollOffsetRef);
+
+    expect(scrollOffsetRef.current).toBe(400);
   });
 });
 
