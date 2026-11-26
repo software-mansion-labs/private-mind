@@ -126,7 +126,6 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
 
   const leaveSheetFor = (navigate: () => void) => {
     bottomSheetModalRef.current?.dismiss();
-    if (router.canDismiss()) router.dismissAll();
     navigate();
   };
 
@@ -140,7 +139,7 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         icon: ChatIcon,
         tone: 'accent',
         onPress: () =>
-          leaveSheetFor(() => startPhantomChat(db, 'replace', model)),
+          leaveSheetFor(() => startPhantomChat(db, 'dismiss-to', model)),
       });
       actions.push({
         key: 'benchmark',
@@ -148,7 +147,9 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         icon: BenchmarkIcon,
         tone: 'neutral',
         onPress: () =>
-          leaveSheetFor(() => router.replace(`/benchmark?modelId=${model.id}`)),
+          leaveSheetFor(() =>
+            router.push(`/model-hub/benchmark?modelId=${model.id}`)
+          ),
       });
     }
     if (model.source !== 'built-in') {
@@ -160,8 +161,8 @@ const ModelManagementSheet = ({ bottomSheetModalRef }: Props) => {
         onPress: () => {
           router.push(
             model.source === 'remote'
-              ? `edit-remote-model/${model.id}`
-              : `edit-local-model/${model.id}`
+              ? `/edit-remote-model/${model.id}`
+              : `/edit-local-model/${model.id}`
           );
           bottomSheetModalRef.current?.dismiss();
         },

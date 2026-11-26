@@ -22,7 +22,7 @@ export interface WindowRect {
 
 interface Props {
   label: string;
-  active: boolean;
+  active?: boolean;
   onPress: () => void;
   onLongPress?: (rect: WindowRect) => void;
   highlighted?: boolean;
@@ -36,7 +36,7 @@ interface Props {
 export const DrawerItem = memo(
   ({
     label,
-    active,
+    active = false,
     onPress,
     onLongPress,
     highlighted,

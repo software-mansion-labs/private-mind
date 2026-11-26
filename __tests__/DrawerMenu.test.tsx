@@ -107,6 +107,11 @@ jest.mock('../database/exportImportRepository', () => ({
 
 import DrawerMenu from '../components/drawer/DrawerMenu';
 import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
+import { Feedback } from '../utils/Feedback';
+
+const navigateFeedback = jest
+  .spyOn(Feedback, 'navigate')
+  .mockImplementation(() => {});
 
 const setPlatform = (os: string) => {
   Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
@@ -150,12 +155,33 @@ describe('DrawerMenu — collapsed', () => {
     expect(screen.getByLabelText('Settings')).toBeTruthy();
   });
 
-  it('opens Settings from the footer', () => {
-    renderMenu();
+  it('opens Settings over the open drawer without stopping a running reply', () => {
+    mockPathname = '/chat/3';
+    startTurnInChat(3);
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
 
     fireEvent.press(screen.getByTestId('drawer-settings'));
 
-    expect(mockReplace).toHaveBeenCalledWith('/settings');
+    expect(mockPush).toHaveBeenCalledWith('/settings');
+    expect(navigateFeedback).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockInterrupt).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('opens Manage models over the open drawer', () => {
+    mockPathname = '/chat/3';
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
+
+    fireEvent.press(screen.getByText('Manage models'));
+
+    expect(mockPush).toHaveBeenCalledWith('/model-hub');
+    expect(navigateFeedback).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockInterrupt).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 
   it('renders a search field look-alike instead of the app name', () => {

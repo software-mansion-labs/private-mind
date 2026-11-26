@@ -2,33 +2,36 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useModelStore } from '../../store/modelStore';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
+import {
+  BottomSheetModal,
+  BottomSheetModalProvider,
+} from '@gorhom/bottom-sheet';
+import { useModelStore } from '../../../store/modelStore';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
 import {
   BenchmarkResult,
   deleteBenchmark,
   getAllBenchmarks,
   getBenchmarkById,
-} from '../../database/benchmarkRepository';
-import { Model } from '../../database/modelRepository';
-import { ModelSelector } from '../../components/benchmark/ModelSelector';
-import PrimaryButton from '../../components/PrimaryButton';
-import { BenchmarkModal } from '../../components/benchmark/BenchmarkModal';
+} from '../../../database/benchmarkRepository';
+import { Model } from '../../../database/modelRepository';
+import { ModelSelector } from '../../../components/benchmark/ModelSelector';
+import PrimaryButton from '../../../components/PrimaryButton';
+import { BenchmarkModal } from '../../../components/benchmark/BenchmarkModal';
 import BenchmarkResultSheet, {
   BenchmarkResultSheetData,
-} from '../../components/bottomSheets/BenchmarkResultSheet';
-import BenchmarkHistory from '../../components/benchmark/BenchmarkHistory';
-import { SettingsSection } from '../../components/settings/SettingsSection';
-import useBenchmarkRunner from '../../hooks/useBenchmarkRunner';
-import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { space } from '../../constants/design-system';
+} from '../../../components/bottomSheets/BenchmarkResultSheet';
+import BenchmarkHistory from '../../../components/benchmark/BenchmarkHistory';
+import { SettingsSection } from '../../../components/settings/SettingsSection';
+import useBenchmarkRunner from '../../../hooks/useBenchmarkRunner';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../../components/GlassScreenHeader';
+import { space } from '../../../constants/design-system';
 
 const BenchmarkScreen = () => {
-  useDefaultHeader({ glass: true });
-  const headerHeight = useHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
   const bottomSheetModalRef =
     useRef<BottomSheetModal<BenchmarkResultSheetData>>(null);
   const { styles } = useThemedStyles(createStyles, headerHeight);
@@ -76,7 +79,7 @@ const BenchmarkScreen = () => {
   };
 
   return (
-    <>
+    <BottomSheetModalProvider>
       <View style={styles.container}>
         <SettingsSection title="Model">
           <ModelSelector model={selectedModel} onSelect={selectModel} />
@@ -95,6 +98,8 @@ const BenchmarkScreen = () => {
         </SettingsSection>
       </View>
 
+      <GlassScreenHeader title="Benchmark" onBack={() => router.back()} sheet />
+
       <BenchmarkModal
         isVisible={isRunning}
         timer={timer}
@@ -107,7 +112,7 @@ const BenchmarkScreen = () => {
         bottomSheetModalRef={bottomSheetModalRef}
         handleDelete={handleDelete}
       />
-    </>
+    </BottomSheetModalProvider>
   );
 };
 

@@ -6,25 +6,25 @@ import {
 import { StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useActiveDownloads } from '../../hooks/useActiveDownloads';
-import { Theme } from '../../styles/colors';
-import { useModelStore } from '../../store/modelStore';
-import { Model } from '../../database/modelRepository';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { useActiveDownloads } from '../../../hooks/useActiveDownloads';
+import { Theme } from '../../../styles/colors';
+import { useModelStore } from '../../../store/modelStore';
+import { Model } from '../../../database/modelRepository';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
-} from '../../components/GlassScreenHeader';
-import RowGroup from '../../components/model-hub/RowGroup';
-import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
-import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
-import SectionHeader from '../../components/model-hub/SectionHeader';
-import { scrollIndicatorProps } from '../../constants/scroll-indicator';
+} from '../../../components/GlassScreenHeader';
+import RowGroup from '../../../components/model-hub/RowGroup';
+import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
+import ModelDownloadRow from '../../../components/model-hub/ModelDownloadRow';
+import SectionHeader from '../../../components/model-hub/SectionHeader';
+import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
 import {
   radius,
   space,
   stroke,
   textStyles,
-} from '../../constants/design-system';
+} from '../../../constants/design-system';
 
 const DownloadsScreen = () => {
   const router = useRouter();

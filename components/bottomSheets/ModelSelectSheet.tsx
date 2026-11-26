@@ -5,7 +5,7 @@ import {
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -34,6 +34,10 @@ import { familyTileSize } from '../model-hub/ModelFamilyTile';
 
 const LIST_SNAP_POINTS = ['50%', '90%'];
 const UPDATE_SECTION_KEY = 'needs-update';
+const MODEL_HUB = '/model-hub';
+
+const isInsideModelHub = (pathname: string) =>
+  pathname === MODEL_HUB || pathname.startsWith(`${MODEL_HUB}/`);
 
 type SheetItem = { kind: 'model'; model: Model } | { kind: 'updateSection' };
 
@@ -67,6 +71,7 @@ const ModelSelectSheet = ({
   currentModelId,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const pathname = usePathname();
   const downloadedModels = useModelStore((state) => state.downloadedModels);
   const { updateModel, ConfirmElement } = useModelUpdate();
   const [search, setSearch] = useState('');
@@ -84,7 +89,8 @@ const ModelSelectSheet = ({
 
   const goToModelHub = () => {
     bottomSheetModalRef.current?.dismiss();
-    router.replace('/model-hub');
+    if (isInsideModelHub(pathname)) router.dismissTo(MODEL_HUB);
+    else router.push(MODEL_HUB);
   };
 
   return (

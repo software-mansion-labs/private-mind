@@ -1,17 +1,17 @@
-import { isNewChatCollapsed } from '../components/drawer/newChatCollapse';
+import { isScrolledPastTop } from '../utils/scrollCollapse';
 
 const CONTENT_HEIGHT = 2000;
 const VIEWPORT_HEIGHT = 800;
 const MAX_OFFSET = CONTENT_HEIGHT - VIEWPORT_HEIGHT;
 
 const collapsedAt = (offset: number) =>
-  isNewChatCollapsed({
+  isScrolledPastTop({
     offset,
     contentHeight: CONTENT_HEIGHT,
     viewportHeight: VIEWPORT_HEIGHT,
   });
 
-describe('isNewChatCollapsed', () => {
+describe('isScrolledPastTop', () => {
   it('stays expanded at the top', () => {
     expect(collapsedAt(0)).toBe(false);
   });
@@ -39,7 +39,7 @@ describe('isNewChatCollapsed', () => {
 
   it('stays expanded when a list too short to scroll bounces', () => {
     expect(
-      isNewChatCollapsed({
+      isScrolledPastTop({
         offset: 30,
         contentHeight: 400,
         viewportHeight: VIEWPORT_HEIGHT,
