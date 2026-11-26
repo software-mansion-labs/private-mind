@@ -32,7 +32,7 @@ import {
   type RecallCandidate,
   type RecallSelection,
   type RecallRole,
-} from './conversationRecall';
+} from './recall/recallSelection';
 import { RECALL_MIN_KEPT_SHARE } from '../constants/conversation-memory';
 import { conversationWindowFor } from './conversationWindow';
 import { calendarFacts, mentionsTime, namesAnotherDay } from './calendarFacts';

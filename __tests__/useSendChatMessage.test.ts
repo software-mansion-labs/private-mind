@@ -14,7 +14,7 @@ import type { Attachment } from '../hooks/useAttachment';
 import { WEB_SKIP_COPY } from '../constants/web-copy';
 import { useCpuSupportStore } from '../store/cpuSupportStore';
 import { useSettingsStore } from '../store/settingsStore';
-import * as conversationRecall from '../utils/conversationRecall';
+import * as conversationRecall from '../utils/recall/recallEmbeddings';
 
 jest.mock('../utils/afterUiUpdates', () => ({
   runAfterUiUpdates: (callback: () => void) => callback(),
