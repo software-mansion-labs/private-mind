@@ -50,8 +50,10 @@ jest.mock('../hooks/useModelUpdate', () => ({
   }),
 }));
 
+let mockPathname = '/chat/3';
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
+  usePathname: () => mockPathname,
 }));
 
 jest.mock('../components/model-hub/ModelFamilyTile', () => () => null);
@@ -173,6 +175,7 @@ const makeModel = (
 
 beforeEach(() => {
   withDownloadedModels([]);
+  mockPathname = '/chat/3';
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -208,10 +211,19 @@ describe('empty state', () => {
     expect(screen.getByText('Download a Model')).toBeTruthy();
   });
 
-  it('navigates to model-hub when "Download a Model" pressed', () => {
+  it('opens model-hub over the chat when "Download a Model" pressed', () => {
+    mockPathname = '/chat/3';
     renderSheet();
     fireEvent.press(screen.getByText('Download a Model'));
-    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).toHaveBeenCalledWith('/model-hub');
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+
+  it('goes back to model-hub instead of opening a second one from inside it', () => {
+    mockPathname = '/model-hub/benchmark';
+    renderSheet();
+    fireEvent.press(screen.getByText('Download a Model'));
+    expect(router.dismissTo).toHaveBeenCalledWith('/model-hub');
     expect(router.push).not.toHaveBeenCalled();
   });
 });
@@ -418,7 +430,7 @@ describe('search filtering', () => {
     renderSheet({ onSheetStateChange });
     fireEvent.changeText(screen.getByTestId('search-input'), 'mistral');
     fireEvent.press(screen.getByTestId('model-select-empty-manage-models'));
-    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).toHaveBeenCalledWith('/model-hub');
     expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 });

@@ -162,6 +162,19 @@ describe('DrawerMenu — collapsed', () => {
     expect(onNavigate).not.toHaveBeenCalled();
   });
 
+  it('opens Manage models over the open drawer', () => {
+    mockPathname = '/chat/3';
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
+
+    fireEvent.press(screen.getByText('Manage models'));
+
+    expect(mockPush).toHaveBeenCalledWith('/model-hub');
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockInterrupt).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it('renders a search field look-alike instead of the app name', () => {
     renderMenu();
 

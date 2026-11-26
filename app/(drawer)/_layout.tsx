@@ -140,22 +140,6 @@ const DrawerLayout = () => {
           }}
         />
         <Drawer.Screen
-          name="model-hub"
-          options={{
-            title: 'Manage models',
-            headerTransparent: true,
-            headerStyle: { backgroundColor: 'transparent' },
-          }}
-        />
-        <Drawer.Screen
-          name="benchmark"
-          options={{
-            title: 'Benchmark',
-            headerTransparent: true,
-            headerStyle: { backgroundColor: 'transparent' },
-          }}
-        />
-        <Drawer.Screen
           name="chat/[id]"
           options={{
             headerTransparent: true,

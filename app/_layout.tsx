@@ -84,21 +84,14 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="(modals)/model-hub"
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
         name="(modals)/settings"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-        }}
-      />
-      <Stack.Screen
-        name="(modals)/model-family/[family]"
-        options={{
-          headerShown: false,
-          presentation: 'modal',
-        }}
-      />
-      <Stack.Screen
-        name="(modals)/downloads"
         options={{
           headerShown: false,
           presentation: 'modal',

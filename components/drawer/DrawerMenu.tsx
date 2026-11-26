@@ -212,7 +212,6 @@ const DrawerMenu = ({
             collapsed={isFiltering}
             height={navHeight}
             onMeasured={onNavMeasured}
-            onNavigate={onNavigate}
           />
 
           {sections.map(([sectionTitle, sectionChats]) => (
