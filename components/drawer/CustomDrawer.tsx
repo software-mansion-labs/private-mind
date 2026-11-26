@@ -17,7 +17,7 @@ import { useHoldKeyboardWhileOpen } from '../../hooks/useHoldKeyboardWhileOpen';
 import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
 import { Theme } from '../../styles/colors';
 import DrawerMenu from './DrawerMenu';
-import { useNewChatCollapse } from './useNewChatCollapse';
+import { useCollapseOnScroll } from '../../hooks/useCollapseOnScroll';
 import { useSearchExpansion } from './useSearchExpansion';
 import { Feedback } from '../../utils/Feedback';
 import {
@@ -58,7 +58,7 @@ const CustomDrawer = ({
   const reshowKeyboardTimer = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const { newChatCollapse, trackScroll } = useNewChatCollapse();
+  const { collapse: newChatCollapse, trackScroll } = useCollapseOnScroll();
   const setDrawerSearchOwnsKeyboard = useKeyboardOwnerStore(
     (state) => state.setDrawerSearchOwnsKeyboard
   );

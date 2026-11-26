@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -21,10 +21,10 @@ import {
   getDrawerFooterBottomPadding,
 } from '../../constants/drawer-layout';
 import { radius, space } from '../../constants/design-system';
-import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import { useStartNewChat } from './useStartNewChat';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
+import CollapsibleLabel from '../CollapsibleLabel';
 
 const NEW_CHAT_ICON_SIZE = 18;
 const NEW_CHAT_PADDING_LEFT = 14;
@@ -33,7 +33,6 @@ const NEW_CHAT_COLLAPSED_PADDING =
   (DRAWER_FOOTER_BUTTON_HEIGHT - NEW_CHAT_ICON_SIZE) / 2;
 const NEW_CHAT_LABEL_GAP = space.two;
 const ESTIMATED_LABEL_WIDTH = 71;
-const LABEL_MEASURING_ROOM = 400;
 
 interface Props {
   onNavigate?: () => void;
@@ -45,10 +44,6 @@ export const DrawerFooter = ({ onNavigate, newChatCollapse }: Props) => {
 
   const fallbackCollapse = useSharedValue(0);
   const collapse = newChatCollapse ?? fallbackCollapse;
-  const labelWidth = useSharedValue(ESTIMATED_LABEL_WIDTH);
-
-  const handleLabelLayout = (event: LayoutChangeEvent) =>
-    labelWidth.set(event.nativeEvent.layout.width);
 
   const newChatContentStyle = useAnimatedStyle(() => ({
     paddingLeft: interpolate(
@@ -61,12 +56,6 @@ export const DrawerFooter = ({ onNavigate, newChatCollapse }: Props) => {
       [0, 1],
       [NEW_CHAT_PADDING_RIGHT, NEW_CHAT_COLLAPSED_PADDING]
     ),
-  }));
-
-  const labelSlotStyle = useAnimatedStyle(() => ({
-    width: interpolate(collapse.get(), [0, 1], [labelWidth.get(), 0]),
-    marginLeft: interpolate(collapse.get(), [0, 1], [NEW_CHAT_LABEL_GAP, 0]),
-    opacity: interpolate(collapse.get(), [0, 0.6], [1, 0], 'clamp'),
   }));
 
   const router = useRouter();
@@ -110,18 +99,13 @@ export const DrawerFooter = ({ onNavigate, newChatCollapse }: Props) => {
             height={NEW_CHAT_ICON_SIZE}
             style={styles.newChatIcon}
           />
-          <Animated.View style={[styles.labelSlot, labelSlotStyle]}>
-            <View style={styles.labelRoom}>
-              <Text
-                style={styles.newChatLabel}
-                numberOfLines={1}
-                maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-                onLayout={handleLabelLayout}
-              >
-                New chat
-              </Text>
-            </View>
-          </Animated.View>
+          <CollapsibleLabel
+            text="New chat"
+            collapse={collapse}
+            gap={NEW_CHAT_LABEL_GAP}
+            estimatedWidth={ESTIMATED_LABEL_WIDTH}
+            textStyle={styles.newChatLabel}
+          />
         </Animated.View>
       </Pressable>
     </View>
@@ -147,19 +131,6 @@ const createStyles = (theme: Theme) =>
     },
     newChatContent: {
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    labelSlot: {
-      alignSelf: 'stretch',
-      overflow: 'hidden',
-    },
-    labelRoom: {
-      position: 'absolute',
-      top: 0,
-      bottom: 0,
-      left: 0,
-      width: LABEL_MEASURING_ROOM,
       flexDirection: 'row',
       alignItems: 'center',
     },

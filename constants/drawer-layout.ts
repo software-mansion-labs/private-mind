@@ -40,8 +40,6 @@ export const DRAWER_FOOTER_BUTTON_HEIGHT = 44;
 
 export const DRAWER_FOOTER_TOP_PADDING = 12;
 
-export const NEW_CHAT_COLLAPSE_DURATION = 220;
-
 export const getDrawerWidth = (screenWidth: number) =>
   Math.max(screenWidth - DRAWER_EDGE_INSET, 0);
 

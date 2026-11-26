@@ -41,12 +41,14 @@ import GlassScreenHeader, {
 } from '../../../components/GlassScreenHeader';
 import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useCollapseOnScroll } from '../../../hooks/useCollapseOnScroll';
 import DownloadsHeaderButton from '../../../components/model-hub/DownloadsHeaderButton';
 
 const HEADER_INSET = space.four;
 
 const ModelHubScreen = () => {
   const headerHeight = useGlassScreenHeaderHeight(true);
+  const { collapse: addButtonCollapse, trackScroll } = useCollapseOnScroll();
   const router = useRouter();
   const { styles, theme } = useThemedStyles(createStyles, headerHeight);
 
@@ -180,6 +182,8 @@ const ModelHubScreen = () => {
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            onScroll={trackScroll}
+            scrollEventThrottle={16}
             {...scrollIndicatorProps(headerHeight)}
           >
             <View style={styles.header}>
@@ -265,6 +269,9 @@ const ModelHubScreen = () => {
           />
 
           <FloatingActionButton
+            label="Add model"
+            collapse={addButtonCollapse}
+            testID="model-hub-add-model"
             onPress={() => {
               Keyboard.dismiss();
               addModelSheetRef.current?.present();
