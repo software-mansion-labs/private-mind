@@ -652,7 +652,12 @@ const isBareGreeting = (message: Message): boolean =>
   !message.documentName &&
   isGreetingOnly(message.content);
 
-const withoutAnsweredOpeningGreeting = <T extends Message>(
+const FIRST_SENTENCE = /[^.!?\n。！？।॥۔؟]+[.!?。！？।॥۔؟]*[^\p{L}\p{N}\n]*/u;
+
+const firstSentenceOf = (text: string): string =>
+  text.trim().match(FIRST_SENTENCE)?.[0].trim() || text.trim();
+
+const withOpeningWelcomeCutToFirstSentence = <T extends Message>(
   messages: T[]
 ): T[] => {
   const [opening, welcome, ...later] = messages;
@@ -661,7 +666,12 @@ const withoutAnsweredOpeningGreeting = <T extends Message>(
     isBareGreeting(opening) &&
     welcome?.role === 'assistant' &&
     later.some((message) => message.role === 'user');
-  return chatMovedOn ? later : messages;
+  if (!chatMovedOn) return messages;
+  return [
+    opening,
+    { ...welcome, content: firstSentenceOf(welcome.content) },
+    ...later,
+  ];
 };
 
 const withoutReasoning = <T extends Message>(message: T): T =>
@@ -784,15 +794,13 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = withoutAnsweredOpeningGreeting(
-    activeChatMessages.filter(
-      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-        msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
-    )
+  const nonEventMessages = activeChatMessages.filter(
+    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+      msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
   );
-  const messagesForLLM = nonEventMessages
-    .map(withoutReasoning)
-    .filter((msg) => msg.role !== 'assistant' || msg.content.trim() !== '');
+  const messagesForLLM = withOpeningWelcomeCutToFirstSentence(
+    nonEventMessages.map(withoutReasoning)
+  ).filter((msg) => msg.role !== 'assistant' || msg.content.trim() !== '');
 
   const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
     role: msg.role,

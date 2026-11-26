@@ -19,6 +19,8 @@ import {
   getPromptCharBudget,
   getPromptTokenBudget,
 } from '../constants/context-window';
+import { DEFAULT_MODELS } from '../constants/default-models';
+import { OPENING_WELCOMES } from '../constants/opening-greetings';
 
 const baseSettings = {
   systemPrompt: 'You are a helpful assistant.',
@@ -3428,5 +3430,298 @@ describe('a greeting sent after a real question', () => {
       'user',
       'system',
     ]);
+  });
+});
+
+describe('an opening greeting keeps its place in the history, its welcome only the first sentence', () => {
+  type Turn = [Message['role'], string];
+
+  const chat = (...turns: Turn[]): Message[] => [
+    ...turns.map(([role, content], index) => ({
+      id: index + 1,
+      chatId: 1,
+      role,
+      content,
+      timestamp: index,
+    })),
+    {
+      id: turns.length + 1,
+      chatId: 1,
+      role: 'assistant' as const,
+      content: '',
+      timestamp: turns.length,
+    },
+  ];
+
+  const historyOf = (prepared: { role: string; content: unknown }[]) =>
+    prepared.slice(1);
+
+  const promptText = (prepared: { content: unknown }[]): string =>
+    prepared.map((message) => String(message.content)).join('\n');
+
+  it('lets "What did I just say?" after "Hi" see the greeting and the first sentence of the welcome', () => {
+    const prepared = prepareMessagesForLLM(
+      chat(
+        ['user', 'Hi'],
+        ['assistant', OPENING_WELCOMES.en],
+        ['user', 'What did I just say?']
+      ),
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(historyOf(prepared)).toEqual([
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hi! 👋' },
+      { role: 'user', content: 'What did I just say?' },
+      { role: 'system', content: '(Answer in English.)' },
+    ]);
+  });
+
+  it('keeps the list of what the assistant can do out of every later turn', () => {
+    const prepared = prepareMessagesForLLM(
+      chat(
+        ['user', 'Hi'],
+        ['assistant', OPENING_WELCOMES.en],
+        ['user', 'Why do leaves change colour in autumn?'],
+        ['assistant', 'Because chlorophyll breaks down.'],
+        ['user', 'And why does that happen?']
+      ),
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(promptText(prepared)).not.toContain('Explain a topic step by step');
+    expect(promptText(prepared)).not.toContain('Here are a few things');
+    expect(promptText(prepared)).not.toContain(
+      'What would you like to start with?'
+    );
+    expect(prepared[1]).toEqual({ role: 'user', content: 'Hi' });
+  });
+
+  it.each([
+    [
+      'Polish',
+      'cześć',
+      OPENING_WELCOMES.pl,
+      'Cześć! 👋',
+      'Możesz mnie poprosić',
+    ],
+    ['Hindi', 'नमस्ते', OPENING_WELCOMES.hi, 'नमस्ते! 👋', 'आप मुझसे ये काम'],
+    ['Arabic', 'مرحبا', OPENING_WELCOMES.ar, 'مرحبًا! 👋', 'يمكنك أن تطلب'],
+  ])(
+    'cuts the prepared %s welcome to its greeting and the emoji that closes it',
+    (_language, greeting, welcome, firstSentence, listLead) => {
+      const prepared = prepareMessagesForLLM(
+        chat(
+          ['user', greeting],
+          ['assistant', welcome],
+          ['user', 'What did I just say?']
+        ),
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(historyOf(prepared).slice(0, 2)).toEqual([
+        { role: 'user', content: greeting },
+        { role: 'assistant', content: firstSentence },
+      ]);
+      expect(promptText(prepared)).not.toContain(listLead);
+    }
+  );
+
+  it.each([
+    [
+      'a Hindi danda',
+      'नमस्ते',
+      'नमस्ते। मैं आपकी कैसे मदद कर सकता हूँ?\n\n- सवाल पूछिए\n- ईमेल लिखिए',
+      'नमस्ते।',
+    ],
+    [
+      'an Urdu full stop',
+      'السلام علیکم',
+      'وعلیکم السلام۔ میں آپ کی کیا مدد کر سکتا ہوں؟',
+      'وعلیکم السلام۔',
+    ],
+    [
+      'an Arabic question mark',
+      'مرحبا',
+      'كيف يمكنني مساعدتك اليوم؟ أستطيع شرح أي موضوع.',
+      'كيف يمكنني مساعدتك اليوم؟',
+    ],
+    [
+      'a full-width exclamation mark',
+      'hi',
+      '你好！我是你的私人助手。',
+      '你好！',
+    ],
+  ])(
+    'ends the first sentence of a welcome the model wrote at %s',
+    (_end, greeting, welcome, firstSentence) => {
+      const prepared = prepareMessagesForLLM(
+        chat(
+          ['user', greeting],
+          ['assistant', welcome],
+          ['user', 'What did I just say?']
+        ),
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(prepared[2]).toEqual({
+        role: 'assistant',
+        content: firstSentence,
+      });
+    }
+  );
+
+  it.each([
+    [
+      'with no sentence end before its list',
+      'Hello there\n\n- one\n- two',
+      'Hello there',
+    ],
+    [
+      'that opens with an emoji',
+      '👋 Hello! I can help with a lot.',
+      '👋 Hello!',
+    ],
+    ['that is only an emoji', '👋', '👋'],
+    [
+      'after its reasoning',
+      '<think>Greet them.</think>Hello! I can help.',
+      'Hello!',
+    ],
+    ['that never ends a sentence', 'Hello there', 'Hello there'],
+    ['that opens with dots', '... Hello! I can help.', 'Hello!'],
+  ])(
+    'never leaves an empty welcome for a reply %s',
+    (_shape, welcome, firstSentence) => {
+      const prepared = prepareMessagesForLLM(
+        chat(
+          ['user', 'hi'],
+          ['assistant', welcome],
+          ['user', 'What did I just say?']
+        ),
+        [],
+        baseSettings,
+        baseModel
+      );
+
+      expect(prepared[2]).toEqual({
+        role: 'assistant',
+        content: firstSentence,
+      });
+    }
+  );
+
+  it('keeps the Polish welcome list away from a later Urdu question on LFM 2.5 VL 450M (dev benchmark 15.10)', () => {
+    const lfmVl450m = DEFAULT_MODELS.find(
+      (model) => model.modelName === 'LFM 2.5 VL - 450M'
+    )!;
+    const prepared = prepareMessagesForLLM(
+      chat(
+        ['user', 'cześć'],
+        ['assistant', OPENING_WELCOMES.pl],
+        ['user', 'Why do leaves change colour in autumn?'],
+        ['assistant', 'Leaves turn because chlorophyll breaks down.'],
+        ['user', 'زمین سورج کے گرد کیوں گھومتی ہے؟']
+      ),
+      [],
+      {
+        systemPrompt: lfmVl450m.systemPrompt,
+        thinkingEnabled: false,
+      } as ChatSettings,
+      { ...baseModel, ...lfmVl450m }
+    );
+
+    expect(prepared.slice(1, 3)).toEqual([
+      { role: 'user', content: 'cześć' },
+      { role: 'assistant', content: 'Cześć! 👋' },
+    ]);
+    expect(promptText(prepared)).not.toContain('Jestem Twoim prywatnym');
+    expect(prepared.at(-1)).toEqual({
+      role: 'system',
+      content: '(Answer in Urdu.)',
+    });
+  });
+
+  it('still hands the opening turn its greeting alone', () => {
+    const prepared = prepareMessagesForLLM(
+      chat(['user', 'cześć']),
+      [],
+      baseSettings,
+      baseModel,
+      { openingWelcome: OPENING_WELCOMES.pl }
+    );
+
+    expect(historyOf(prepared)).toEqual([
+      { role: 'user', content: 'cześć' },
+      { role: 'system', content: '(Answer in Polish.)' },
+    ]);
+  });
+
+  it('keeps a whole opening message that carries a question besides the greeting, and its whole reply', () => {
+    const prepared = prepareMessagesForLLM(
+      chat(
+        ['user', 'hi, what is the capital of France?'],
+        ['assistant', 'Paris. It is also the largest city in France.'],
+        ['user', 'And of Spain?']
+      ),
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(historyOf(prepared).slice(0, 2)).toEqual([
+      { role: 'user', content: 'hi, what is the capital of France?' },
+      {
+        role: 'assistant',
+        content: 'Paris. It is also the largest city in France.',
+      },
+    ]);
+  });
+
+  it('keeps the whole reply to a greeting that came with a picture, since it described the picture', () => {
+    const messages = chat(
+      ['user', 'hi'],
+      ['assistant', 'This is a photo of a red bicycle. It stands by a wall.'],
+      ['user', 'What colour is the seat?']
+    );
+    messages[0] = { ...messages[0]!, imagePath: 'file:///bike.jpg' };
+
+    const prepared = prepareMessagesForLLM(messages, [], baseSettings, {
+      ...baseModel,
+      vision: true,
+    });
+
+    expect(prepared[2]).toEqual({
+      role: 'assistant',
+      content: 'This is a photo of a red bicycle. It stands by a wall.',
+    });
+  });
+
+  it('keeps a whole greeting exchange later in the chat', () => {
+    const prepared = prepareMessagesForLLM(
+      chat(
+        ['user', 'What is the capital of France?'],
+        ['assistant', 'Paris.'],
+        ['user', 'hello'],
+        ['assistant', 'Hello again! Ask me anything.'],
+        ['user', 'And of Spain?']
+      ),
+      [],
+      baseSettings,
+      baseModel
+    );
+
+    expect(prepared[4]).toEqual({
+      role: 'assistant',
+      content: 'Hello again! Ask me anything.',
+    });
   });
 });
