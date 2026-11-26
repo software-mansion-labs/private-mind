@@ -78,6 +78,7 @@ const MilestoneSheet = () => {
               />
             }
             onPress={handleRate}
+            style={styles.rateButton}
           />
           <Pressable
             onPress={handleNotNow}
@@ -127,6 +128,9 @@ const createStyles = (theme: Theme) =>
       color: theme.text.defaultSecondary,
     },
     actions: {
+      gap: space.two,
+    },
+    rateButton: {
       gap: space.two,
     },
     notNow: {

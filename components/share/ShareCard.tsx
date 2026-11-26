@@ -353,7 +353,7 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         x={columnLeft + HALF_COLUMN_WIDTH}
         top={secondRowTop}
         value={content.bestSpeed}
-        label="Best speed on this phone"
+        label="Best speed"
         palette={palette}
       />
       <Rect
