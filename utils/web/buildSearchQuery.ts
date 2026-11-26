@@ -13,6 +13,7 @@ import { conversationSubject, namedEntitiesIn } from './conversationSubject';
 import { parseIntentKind, type WebIntentKind } from './intentKind';
 import { sharesLanguageWith } from './queryLanguage';
 import { anchorTokens } from './anchorTokens';
+import { asksForConversationRecap } from './noSearchSignal';
 import { topicAnchorer } from './topicAnchors';
 
 export interface QueryRewriteMessage {
@@ -631,11 +632,8 @@ const buildConversation = (
   return [digestLine, turns].filter(Boolean).join('\n');
 };
 
-const ABOUT_THE_CONVERSATION =
-  /(?<![\p{L}])(?:podsumuj\w*|streszcz\w*|czego\s+si[eę]\s+dowiedzia\w*|co\s+ustalili[sś]my|powt[oó]rz\s+co|summari[sz]e|summar(?:y|ise)|recap|what\s+(?:have\s+)?(?:we|i)\s+(?:just\s+)?(?:learn|discussed|covered|said)\w*|to\s+sum\s+up)(?![\p{L}])/iu;
-
 export const isAboutTheConversation = (query: string): boolean =>
-  ABOUT_THE_CONVERSATION.test(query);
+  asksForConversationRecap(query);
 
 const LANGUAGE_CORRECTION =
   'Every query must be written in the same language and script as the latest user message, not translated. Output only the corrected JSON plan.';

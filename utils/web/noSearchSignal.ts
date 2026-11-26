@@ -7,6 +7,7 @@ import {
   type NoSearchLexicon,
   type RequestVerbPosition,
 } from './noSearchLexicon';
+import { RECAP_LEXICONS } from './recapLexicon';
 
 type Phrase = string[];
 
@@ -26,7 +27,11 @@ interface Lexicon {
   questionWords: Set<string>;
   arithmeticWords: RegExp | null;
   lookupCues: Cue[];
+  lookupVerbCues: Cue[];
   requestVerbPosition: RequestVerbPosition;
+  summaryCues: Cue[];
+  conversationReferents: Cue[];
+  recapFillers: Phrase[];
 }
 
 interface Clause {
@@ -104,21 +109,33 @@ const arithmeticWordsPattern = (words: string[]): RegExp | null => {
   return new RegExp(`\\p{N}\\s+(?:${alternatives})\\s+\\p{N}`, 'u');
 };
 
-const toLexicon = (code: string, source: NoSearchLexicon): Lexicon => ({
-  politeWords: phrasesOf(source.politeWords),
-  taskVerbs: phrasesOf(source.taskVerbs),
-  makeVerbs: phrasesOf(source.makeVerbs),
-  writtenWorks: new Set(source.writtenWorks.map(normalise)),
-  opinionOpeners: phrasesOf(source.opinionOpeners),
-  opinionPhrases: phrasesOf(source.opinionPhrases),
-  howWords: new Set(source.howWords.map(normalise)),
-  questionWords: new Set(
-    (COORDINATION_LEXICONS[code]?.questionWords ?? []).map(normalise)
-  ),
-  arithmeticWords: arithmeticWordsPattern(source.arithmeticWords),
-  lookupCues: cuesOf([...source.freshnessWords, ...source.lookupVerbs]),
-  requestVerbPosition: source.requestVerbPosition,
-});
+const toLexicon = (code: string, source: NoSearchLexicon): Lexicon => {
+  const recap = RECAP_LEXICONS[code];
+  return {
+    politeWords: phrasesOf(source.politeWords),
+    taskVerbs: phrasesOf(source.taskVerbs),
+    makeVerbs: phrasesOf(source.makeVerbs),
+    writtenWorks: new Set(source.writtenWorks.map(normalise)),
+    opinionOpeners: phrasesOf(source.opinionOpeners),
+    opinionPhrases: phrasesOf(source.opinionPhrases),
+    howWords: new Set(source.howWords.map(normalise)),
+    questionWords: new Set(
+      (COORDINATION_LEXICONS[code]?.questionWords ?? []).map(normalise)
+    ),
+    arithmeticWords: arithmeticWordsPattern(source.arithmeticWords),
+    lookupCues: cuesOf([...source.freshnessWords, ...source.lookupVerbs]),
+    lookupVerbCues: cuesOf(source.lookupVerbs),
+    requestVerbPosition: source.requestVerbPosition,
+    summaryCues: cuesOf(recap?.summaryVerbs ?? []),
+    conversationReferents: cuesOf(recap?.conversationReferents ?? []),
+    recapFillers: phrasesOf([
+      ...source.politeWords,
+      ...source.taskVerbs,
+      ...source.makeVerbs,
+      ...(recap?.recapObjects ?? []),
+    ]),
+  };
+};
 
 const LEXICONS = new Map(
   Object.entries(NO_SEARCH_LEXICONS).map(([code, source]) => [
@@ -279,4 +296,54 @@ export const namesFreshnessOrLookup = (
   return lexiconsFor(language).some((lexicon) =>
     lexicon.lookupCues.some((cue) => containsCue(words, cue))
   );
+};
+
+const summaryCueAt = (
+  words: string[],
+  start: number,
+  lexicon: Lexicon
+): Cue | undefined =>
+  lexicon.summaryCues.find((cue) => cueAt(words, start, cue));
+
+const summarisesWithoutObject = (
+  words: string[],
+  lexicon: Lexicon
+): boolean => {
+  let start = 0;
+  let summarised = false;
+  while (start < words.length) {
+    const cue = summaryCueAt(words, start, lexicon);
+    if (cue) {
+      summarised = true;
+      start += cue.phrase.length;
+      continue;
+    }
+    const rest = words.slice(start);
+    const filler = lexicon.recapFillers.find((phrase) =>
+      startsWith(rest, phrase)
+    );
+    if (!filler) return false;
+    start += filler.length;
+  }
+  return summarised;
+};
+
+const namesTheConversation = (words: string[], lexicon: Lexicon): boolean =>
+  lexicon.conversationReferents.some((cue) => containsCue(words, cue));
+
+const namesASummary = (words: string[], lexicon: Lexicon): boolean =>
+  lexicon.summaryCues.some((cue) => containsCue(words, cue));
+
+const namesALookupVerb = (words: string[], lexicon: Lexicon): boolean =>
+  lexicon.lookupVerbCues.some((cue) => containsCue(words, cue));
+
+const asksForRecap = (words: string[], lexicon: Lexicon): boolean => {
+  if (summarisesWithoutObject(words, lexicon)) return true;
+  if (!namesTheConversation(words, lexicon)) return false;
+  return namesASummary(words, lexicon) || !namesALookupVerb(words, lexicon);
+};
+
+export const asksForConversationRecap = (query: string): boolean => {
+  const words = wordsOf(normalise(query));
+  return [...LEXICONS.values()].some((lexicon) => asksForRecap(words, lexicon));
 };
