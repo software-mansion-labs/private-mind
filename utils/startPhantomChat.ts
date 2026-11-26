@@ -8,7 +8,7 @@ import { getNextChatId } from '../database/chatRepository';
 import { getLastUsedModelId, setLastUsedModelId } from './lastUsedModel';
 import type { ChatEntryAction } from '../constants/chat-route-params';
 
-type NavMode = 'push' | 'replace' | 'replace-immediately';
+type NavMode = 'push' | 'replace' | 'replace-immediately' | 'dismiss-to';
 
 type NavTarget = {
   readonly pathname: string;
@@ -90,6 +90,8 @@ export const startPhantomChat = async (
       target,
       () => useChatStore.getState().phantomChat?.id === nextChatId
     );
+  } else if (mode === 'dismiss-to') {
+    router.dismissTo(target);
   } else {
     router.push(target);
   }

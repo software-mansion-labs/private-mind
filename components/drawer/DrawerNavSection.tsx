@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import Animated, {
   Easing,
   interpolate,
@@ -10,10 +10,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useLLMStore } from '../../store/llmStore';
 import { Theme } from '../../styles/colors';
 import CubeIcon from '../../assets/icons/cube.svg';
 import { DrawerItem } from './DrawerItem';
+import { Feedback } from '../../utils/Feedback';
 import {
   NAV_COLLAPSE_DURATION,
   SECTION_GAP,
@@ -26,20 +26,12 @@ interface Props {
   collapsed: boolean;
   height: number;
   onMeasured: (height: number) => void;
-  onNavigate?: () => void;
 }
 
-export const DrawerNavSection = ({
-  collapsed,
-  height,
-  onMeasured,
-  onNavigate,
-}: Props) => {
+export const DrawerNavSection = ({ collapsed, height, onMeasured }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   const router = useRouter();
-  const pathname = usePathname();
-  const interrupt = useLLMStore((state) => state.interrupt);
 
   const [rendered, setRendered] = useState(!collapsed);
   const progress = useSharedValue(collapsed ? 0 : 1);
@@ -88,10 +80,9 @@ export const DrawerNavSection = ({
     if (measured > 0) onMeasured(measured);
   };
 
-  const goToModelHub = () => {
-    interrupt();
-    router.replace('/model-hub');
-    onNavigate?.();
+  const openModelHub = () => {
+    Feedback.navigate();
+    router.push('/model-hub');
   };
 
   if (!rendered) return null;
@@ -105,8 +96,7 @@ export const DrawerNavSection = ({
         <DrawerItem
           icon={<CubeIcon width={20} height={20} style={styles.icon} />}
           label="Manage models"
-          active={pathname === '/model-hub'}
-          onPress={goToModelHub}
+          onPress={openModelHub}
         />
       </View>
     </Animated.View>

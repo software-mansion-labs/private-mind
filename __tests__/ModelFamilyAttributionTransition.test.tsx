@@ -58,7 +58,7 @@ jest.mock('../components/GlassScreenHeader', () => {
   };
 });
 
-import FamilyScreen from '../app/(modals)/model-family/[family]';
+import FamilyScreen from '../app/(modals)/model-hub/model-family/[family]';
 
 const CARD_NAME =
   'Optimized by Software Mansion AI Labs. Original model by Google';

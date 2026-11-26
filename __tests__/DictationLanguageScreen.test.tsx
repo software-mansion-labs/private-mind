@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { getLocales } from 'expo-localization';
-import DictationLanguageScreen from '../app/(modals)/dictation-language';
+import DictationLanguageScreen from '../app/(modals)/settings/dictation-language';
 import { useSettingsStore } from '../store/settingsStore';
 import { useSTTStore } from '../store/sttStore';
 

@@ -17,7 +17,7 @@ export const DictationLanguageSettingRow = () => {
   const preference = useSettingsStore((state) => state.dictationLanguage);
   const value = dictationPreferenceLabel(preference);
 
-  const handlePress = () => router.push('/dictation-language');
+  const handlePress = () => router.push('/settings/dictation-language');
 
   return (
     <SettingsRow

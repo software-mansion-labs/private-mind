@@ -50,11 +50,17 @@ jest.mock('../hooks/useModelUpdate', () => ({
   }),
 }));
 
+let mockPathname = '/chat/3';
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
+  usePathname: () => mockPathname,
 }));
 
-jest.mock('../components/model-hub/ModelFamilyTile', () => () => null);
+jest.mock('../components/model-hub/ModelFamilyTile', () => ({
+  __esModule: true,
+  default: () => null,
+  familyTileSize: () => 40,
+}));
 
 jest.mock('react-native-gesture-handler', () => {
   const RN = require('react-native');
@@ -107,15 +113,18 @@ jest.mock('@gorhom/bottom-sheet', () => {
     data,
     renderItem,
     ListEmptyComponent,
+    ListFooterComponent,
   }: {
     data: Model[];
     renderItem: (info: { item: Model }) => React.ReactNode;
     ListEmptyComponent?: React.ReactNode;
+    ListFooterComponent?: React.ReactNode;
   }) => (
     <View>
       {data.length === 0
         ? ListEmptyComponent
         : data.map((item, i) => <View key={i}>{renderItem({ item })}</View>)}
+      {ListFooterComponent}
     </View>
   );
   const BottomSheetView = ({
@@ -173,6 +182,7 @@ const makeModel = (
 
 beforeEach(() => {
   withDownloadedModels([]);
+  mockPathname = '/chat/3';
   jest.clearAllMocks();
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -208,10 +218,19 @@ describe('empty state', () => {
     expect(screen.getByText('Download a Model')).toBeTruthy();
   });
 
-  it('navigates to model-hub when "Download a Model" pressed', () => {
+  it('opens model-hub over the chat when "Download a Model" pressed', () => {
+    mockPathname = '/chat/3';
     renderSheet();
     fireEvent.press(screen.getByText('Download a Model'));
-    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).toHaveBeenCalledWith('/model-hub');
+    expect(router.dismissTo).not.toHaveBeenCalled();
+  });
+
+  it('goes back to model-hub instead of opening a second one from inside it', () => {
+    mockPathname = '/model-hub/benchmark';
+    renderSheet();
+    fireEvent.press(screen.getByText('Download a Model'));
+    expect(router.dismissTo).toHaveBeenCalledWith('/model-hub');
     expect(router.push).not.toHaveBeenCalled();
   });
 });
@@ -249,6 +268,16 @@ describe('with downloaded models', () => {
     act(() => ref.current!.dismiss());
 
     expect(screen.getByTestId('sheet-modal').props.index).toBe(0);
+  });
+
+  it('opens the models screen from the link under the list and dismisses', () => {
+    const onSheetStateChange = jest.fn();
+    renderSheet({ onSheetStateChange });
+
+    fireEvent.press(screen.getByTestId('model-select-see-all'));
+
+    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 
   it('reports the pick and dismisses, leaving the load to the caller', () => {
@@ -413,12 +442,18 @@ describe('search filtering', () => {
     expect(screen.getByText('Manage models')).toBeTruthy();
   });
 
+  it('drops the see-all link when nothing matches, leaving the no-match action', () => {
+    renderSheet();
+    fireEvent.changeText(screen.getByTestId('search-input'), 'mistral');
+    expect(screen.queryByTestId('model-select-see-all')).toBeNull();
+  });
+
   it('opens model hub from the no-match state', () => {
     const onSheetStateChange = jest.fn();
     renderSheet({ onSheetStateChange });
     fireEvent.changeText(screen.getByTestId('search-input'), 'mistral');
     fireEvent.press(screen.getByTestId('model-select-empty-manage-models'));
-    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).toHaveBeenCalledWith('/model-hub');
     expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 });

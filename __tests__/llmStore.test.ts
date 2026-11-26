@@ -1057,6 +1057,120 @@ describe('sendChatMessage', () => {
     });
   });
 
+  describe('a think block LFM 3 writes on its own, with thinking off', () => {
+    const lfm3 = {
+      ...baseModel,
+      modelName: 'LFM 3 - 1.7B',
+      family: 'LFM 3',
+      thinking: true,
+    };
+    const plan =
+      'The user wants to learn about quantum computing. I will cover qubits, then applications.';
+    const answer =
+      'Quantum computing uses qubits, which can hold a superposition of states.';
+
+    const ask = (thinkingEnabled: boolean) =>
+      useLLMStore
+        .getState()
+        .sendChatMessage(
+          'Teach me about quantum computing and its potential applications.',
+          1,
+          noSources,
+          { ...settings, thinkingEnabled }
+        );
+
+    const shownAnswer = () =>
+      useLLMStore.getState().activeChatMessages.at(-1)?.content;
+
+    const storedAnswer = () =>
+      mockPersistMessage.mock.calls
+        .map(([, message]) => message as Message)
+        .findLast((message) => message.role === 'assistant')?.content;
+
+    const streamChunks = (chunks: string[], seen: (string | undefined)[]) =>
+      mockInstance.generate.mockImplementationOnce(async () => {
+        for (const chunk of chunks) {
+          capturedTokenCallback!(chunk);
+          await flushFrame();
+          seen.push(shownAnswer());
+        }
+        return chunks.join('');
+      });
+
+    beforeEach(() => {
+      useLLMStore.setState({
+        model: lfm3,
+        activeChatId: 1,
+        activeChatMessages: [],
+      });
+    });
+
+    it('shows and stores only the answer after the block it closed', async () => {
+      const seen: (string | undefined)[] = [];
+      streamChunks(['<think>', plan, '</think>', '\n\n', answer], seen);
+
+      await ask(false);
+
+      expect(seen.filter((text) => text?.includes('think'))).toEqual([]);
+      expect(seen.filter((text) => text?.includes('qubits, then'))).toEqual([]);
+      expect(shownAnswer()).toBe(answer);
+      expect(storedAnswer()).toBe(answer);
+    });
+
+    it('holds a block it never closed while it streams, then shows it as the answer', async () => {
+      const seen: (string | undefined)[] = [];
+      streamChunks(['<think>', '\n\n', answer], seen);
+
+      await ask(false);
+
+      expect(seen).toEqual(['', '', '']);
+      expect(shownAnswer()).toBe(answer);
+      expect(storedAnswer()).toBe(answer);
+    });
+
+    it('never shows a tag or the plan when the tags are split across tokens', async () => {
+      const seen: (string | undefined)[] = [];
+      streamChunks(['<thi', `nk>${plan}</th`, 'ink>', answer], seen);
+
+      await ask(false);
+
+      expect(seen).toEqual(['', '', '', answer]);
+      expect(storedAnswer()).toBe(answer);
+    });
+
+    it('drops the bubble when the block it never closed only loops', async () => {
+      const looped = '<think>cząstek cząstek cząstek cząstek cząstek';
+      mockInstance.generate.mockImplementationOnce(async () => {
+        capturedTokenCallback!(looped);
+        await flushFrame();
+        return looped;
+      });
+
+      await ask(false);
+
+      expect(
+        useLLMStore.getState().activeChatMessages.map((m) => m.role)
+      ).toEqual(['user']);
+      expect(useLLMStore.getState().generationError?.message).toBe(
+        'Failed to generate a response.'
+      );
+    });
+
+    it('keeps the reasoning in its block when thinking is on', async () => {
+      const seen: (string | undefined)[] = [];
+      streamChunks([plan, '</think>', answer], seen);
+
+      await ask(true);
+
+      expect(seen).toEqual([
+        `<think>${plan}`,
+        `<think>${plan}</think>`,
+        `<think>${plan}</think>${answer}`,
+      ]);
+      expect(storedAnswer()).toBe(`<think>${plan}</think>${answer}`);
+    });
+  });
+
   it('runs a nudge retry of a suffix-thinking model with /no_think', async () => {
     (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
       { role: 'system', content: 'You are helpful.' },

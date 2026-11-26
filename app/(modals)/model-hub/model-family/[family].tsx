@@ -12,37 +12,41 @@ import {
   BottomSheetModal,
   BottomSheetModalProvider,
 } from '@gorhom/bottom-sheet';
-import { useThemedStyles } from '../../../hooks/useThemedStyles';
-import { Theme } from '../../../styles/colors';
-import { fontFamily, fontSizes, lineHeights } from '../../../styles/fontStyles';
-import { useModelStore } from '../../../store/modelStore';
-import { Model } from '../../../database/modelRepository';
-import { getModelFamily } from '../../../utils/modelFamily';
-import { huggingFaceRepoUrl } from '../../../utils/huggingFaceRepoUrl';
-import ModelDownloadRow from '../../../components/model-hub/ModelDownloadRow';
-import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
+import { useThemedStyles } from '../../../../hooks/useThemedStyles';
+import { Theme } from '../../../../styles/colors';
+import {
+  fontFamily,
+  fontSizes,
+  lineHeights,
+} from '../../../../styles/fontStyles';
+import { useModelStore } from '../../../../store/modelStore';
+import { Model } from '../../../../database/modelRepository';
+import { getModelFamily } from '../../../../utils/modelFamily';
+import { huggingFaceRepoUrl } from '../../../../utils/huggingFaceRepoUrl';
+import ModelDownloadRow from '../../../../components/model-hub/ModelDownloadRow';
+import ModelManagementSheet from '../../../../components/bottomSheets/ModelManagementSheet';
 import WarningSheet, {
   WarningSheetData,
-} from '../../../components/bottomSheets/WarningSheet';
+} from '../../../../components/bottomSheets/WarningSheet';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
-} from '../../../components/GlassScreenHeader';
-import ModelFamilyTile from '../../../components/model-hub/ModelFamilyTile';
-import RowGroup from '../../../components/model-hub/RowGroup';
-import FamilyProviderRow from '../../../components/model-hub/FamilyProviderRow';
-import SwmAttributionCard from '../../../components/model-hub/SwmAttributionCard';
-import SwmAttributionContent from '../../../components/model-hub/SwmAttributionContent';
-import PushTransition from '../../../components/model-hub/PushTransition';
-import SectionHeader from '../../../components/model-hub/SectionHeader';
+} from '../../../../components/GlassScreenHeader';
+import ModelFamilyTile from '../../../../components/model-hub/ModelFamilyTile';
+import RowGroup from '../../../../components/model-hub/RowGroup';
+import FamilyProviderRow from '../../../../components/model-hub/FamilyProviderRow';
+import SwmAttributionCard from '../../../../components/model-hub/SwmAttributionCard';
+import SwmAttributionContent from '../../../../components/model-hub/SwmAttributionContent';
+import PushTransition from '../../../../components/model-hub/PushTransition';
+import SectionHeader from '../../../../components/model-hub/SectionHeader';
 import {
   FAMILY_DESCRIPTIONS,
   FAMILY_PROVIDERS,
   FAMILY_SWM_ROLES,
-} from '../../../constants/family-descriptions';
-import { PUSH_TRANSITION_MS } from '../../../constants/push-transition';
-import { useBackToDismiss } from '../../../hooks/useBackToDismiss';
-import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
-import { space } from '../../../constants/design-system';
+} from '../../../../constants/family-descriptions';
+import { PUSH_TRANSITION_MS } from '../../../../constants/push-transition';
+import { useBackToDismiss } from '../../../../hooks/useBackToDismiss';
+import { scrollIndicatorProps } from '../../../../constants/scroll-indicator';
+import { space } from '../../../../constants/design-system';
 
 const HEADER_ICON_SIZE = 16;
 

@@ -4,17 +4,17 @@ import { useRouter } from 'expo-router';
 import { ScrollView } from 'react-native-gesture-handler';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
-} from '../../components/GlassScreenHeader';
-import { DictationLanguageSelector } from '../../components/settings/DictationLanguageSelector';
-import { DictationModelList } from '../../components/settings/DictationModelList';
-import { DICTATION_LANGUAGE_LABEL } from '../../constants/dictation-languages';
-import { space } from '../../constants/design-system';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
+} from '../../../components/GlassScreenHeader';
+import { DictationLanguageSelector } from '../../../components/settings/DictationLanguageSelector';
+import { DictationModelList } from '../../../components/settings/DictationModelList';
+import { DICTATION_LANGUAGE_LABEL } from '../../../constants/dictation-languages';
+import { space } from '../../../constants/design-system';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
 
 export default function DictationLanguageScreen() {
   const router = useRouter();
-  const headerHeight = useGlassScreenHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
   const { styles } = useThemedStyles(createStyles, headerHeight);
 
   const handleBack = () => router.back();
@@ -29,7 +29,11 @@ export default function DictationLanguageScreen() {
         <DictationModelList />
         <DictationLanguageSelector />
       </ScrollView>
-      <GlassScreenHeader title={DICTATION_LANGUAGE_LABEL} onBack={handleBack} />
+      <GlassScreenHeader
+        title={DICTATION_LANGUAGE_LABEL}
+        onBack={handleBack}
+        sheet
+      />
     </View>
   );
 }

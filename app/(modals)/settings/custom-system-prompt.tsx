@@ -5,21 +5,21 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
-} from '../../components/GlassScreenHeader';
-import PrimaryButton from '../../components/PrimaryButton';
-import TextAreaField from '../../components/TextAreaField';
-import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
-import { fontSizes, fontFamily } from '../../styles/fontStyles';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
-import { useSettingsStore } from '../../store/settingsStore';
-import { Feedback } from '../../utils/Feedback';
-import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../../constants/settings';
-import { space } from '../../constants/design-system';
+} from '../../../components/GlassScreenHeader';
+import PrimaryButton from '../../../components/PrimaryButton';
+import TextAreaField from '../../../components/TextAreaField';
+import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
+import { fontSizes, fontFamily } from '../../../styles/fontStyles';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
+import { useSettingsStore } from '../../../store/settingsStore';
+import { Feedback } from '../../../utils/Feedback';
+import { MAX_CUSTOM_SYSTEM_PROMPT_LENGTH } from '../../../constants/settings';
+import { space } from '../../../constants/design-system';
 
 export default function CustomSystemPromptScreen() {
   const router = useRouter();
-  const headerHeight = useGlassScreenHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
   const { styles } = useThemedStyles(createStyles, headerHeight);
 
   const customSystemPrompt = useSettingsStore((s) => s.customSystemPrompt);
@@ -97,6 +97,7 @@ export default function CustomSystemPromptScreen() {
       <GlassScreenHeader
         title="Custom instructions"
         onBack={() => router.back()}
+        sheet
       />
     </CustomKeyboardAvoidingView>
   );
