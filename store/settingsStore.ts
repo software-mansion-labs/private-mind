@@ -8,6 +8,11 @@ import {
   DEFAULT_CONVERSATION_MEMORY,
   sanitizeConversationMemory,
 } from '../constants/context-window';
+import {
+  DEFAULT_DICTATION_LANGUAGE,
+  type DictationLanguagePreference,
+  sanitizeDictationLanguage,
+} from '../utils/dictationLanguage';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
@@ -24,6 +29,8 @@ export interface SettingsStore {
   setHapticsEnabled: (enabled: boolean) => void;
   conversationMemory: ConversationMemory;
   setConversationMemory: (memory: ConversationMemory) => void;
+  dictationLanguage: DictationLanguagePreference;
+  setDictationLanguage: (language: DictationLanguagePreference) => void;
   hasHydrated: boolean;
 }
 
@@ -53,6 +60,8 @@ export const useSettingsStore = create<SettingsStore>()(
       conversationMemory: DEFAULT_CONVERSATION_MEMORY,
       setConversationMemory: (conversationMemory) =>
         set({ conversationMemory }),
+      dictationLanguage: DEFAULT_DICTATION_LANGUAGE,
+      setDictationLanguage: (dictationLanguage) => set({ dictationLanguage }),
       hasHydrated: false,
     }),
     {
@@ -65,12 +74,16 @@ export const useSettingsStore = create<SettingsStore>()(
         themePreference: state.themePreference,
         hapticsEnabled: state.hapticsEnabled,
         conversationMemory: state.conversationMemory,
+        dictationLanguage: state.dictationLanguage,
       }),
       merge: (persisted, current) => ({
         ...current,
         ...(persisted as Partial<SettingsStore> | undefined),
         conversationMemory: sanitizeConversationMemory(
           (persisted as Partial<SettingsStore> | undefined)?.conversationMemory
+        ),
+        dictationLanguage: sanitizeDictationLanguage(
+          (persisted as Partial<SettingsStore> | undefined)?.dictationLanguage
         ),
       }),
       onRehydrateStorage: () => (state) => {
