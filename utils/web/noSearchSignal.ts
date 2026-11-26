@@ -10,6 +10,11 @@ import {
 
 type Phrase = string[];
 
+interface Cue {
+  phrase: Phrase;
+  stem: boolean;
+}
+
 interface Lexicon {
   politeWords: Phrase[];
   taskVerbs: Phrase[];
@@ -20,6 +25,7 @@ interface Lexicon {
   howWords: Set<string>;
   questionWords: Set<string>;
   arithmeticWords: RegExp | null;
+  lookupCues: Cue[];
   requestVerbPosition: RequestVerbPosition;
 }
 
@@ -29,6 +35,8 @@ interface Clause {
 }
 
 const WRITTEN_WORK_REACH = 4;
+
+const STEM_MARK = '*';
 
 const LETTER_VARIANTS = new Map([
   ['\u064A', '\u06CC'],
@@ -77,6 +85,14 @@ const phrasesOf = (entries: string[]): Phrase[] =>
     .filter((phrase) => phrase.length > 0)
     .sort((a, b) => b.length - a.length);
 
+const cuesOf = (entries: string[]): Cue[] =>
+  entries
+    .map((entry) => ({
+      phrase: wordsOf(normalise(entry)),
+      stem: entry.endsWith(STEM_MARK),
+    }))
+    .filter(({ phrase }) => phrase.length > 0);
+
 const escapeRegExp = (text: string): string =>
   text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -100,6 +116,7 @@ const toLexicon = (code: string, source: NoSearchLexicon): Lexicon => ({
     (COORDINATION_LEXICONS[code]?.questionWords ?? []).map(normalise)
   ),
   arithmeticWords: arithmeticWordsPattern(source.arithmeticWords),
+  lookupCues: cuesOf([...source.freshnessWords, ...source.lookupVerbs]),
   requestVerbPosition: source.requestVerbPosition,
 });
 
@@ -123,6 +140,30 @@ const endsWith = (words: string[], phrase: Phrase): boolean => {
 
 const containsPhrase = (words: string[], phrase: Phrase): boolean =>
   words.some((_, start) => startsWith(words.slice(start), phrase));
+
+const ELISION = "'";
+
+const withoutElidedArticle = (word: string): string =>
+  word.slice(word.indexOf(ELISION) + 1);
+
+const matchesCueWord = (
+  word: string,
+  cueWord: string,
+  stemmed: boolean
+): boolean =>
+  [word, withoutElidedArticle(word)].some((form) =>
+    stemmed ? form.startsWith(cueWord) : form === cueWord
+  );
+
+const cueAt = (words: string[], start: number, cue: Cue): boolean =>
+  cue.phrase.every((cueWord, index) => {
+    const word = words[start + index];
+    const stemmed = cue.stem && index === cue.phrase.length - 1;
+    return word !== undefined && matchesCueWord(word, cueWord, stemmed);
+  });
+
+const containsCue = (words: string[], cue: Cue): boolean =>
+  words.some((_, start) => cueAt(words, start, cue));
 
 const withoutLeading = (words: string[], phrases: Phrase[]): string[] => {
   let rest = words;
@@ -227,5 +268,15 @@ export const lacksSearchSignal = (query: string, language: string): boolean => {
   const normalised = normalise(query);
   return lexiconsFor(language).some((lexicon) =>
     asksForNoSearch(normalised, lexicon)
+  );
+};
+
+export const namesFreshnessOrLookup = (
+  query: string,
+  language: string
+): boolean => {
+  const words = wordsOf(normalise(query));
+  return lexiconsFor(language).some((lexicon) =>
+    lexicon.lookupCues.some((cue) => containsCue(words, cue))
   );
 };

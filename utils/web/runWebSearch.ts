@@ -16,7 +16,7 @@ import {
   type QueryRewriteFn,
 } from './buildSearchQuery';
 import { partQueriesFor } from './questionParts';
-import { fastPlanWebSearch } from './fastPlan';
+import { fastPlanWebSearch, isNoSearchRequest } from './fastPlan';
 import { capWebSources, isShortHistory } from './firstTurnSourceCap';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
@@ -154,7 +154,8 @@ export interface WebRoundTelemetry {
 export interface WebSearchTelemetry {
   needsSearch: boolean;
   unnamedSubjects?: string[];
-  skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
+  skippedReason?:
+    'gated' | 'no-search-request' | 'provider-not-ready' | 'offline';
   aborted?: 'timeout' | 'stopped';
   intent: string;
   intentKind?: WebIntentKind;
@@ -333,6 +334,12 @@ const searchWithCleanup = async (
         finalLabel: 'correct',
       },
     };
+  }
+
+  if (isNoSearchRequest(query)) {
+    telemetry.needsSearch = false;
+    emit({ type: 'skipped' });
+    return empty('no-search-request');
   }
 
   emit({ type: 'objectives' });
