@@ -433,3 +433,20 @@ describe('detectQuestionLanguage — cases found while checking #508 for regress
     expect(codeOf('Explique a fotossíntese de forma simples')).not.toBe('fr');
   });
 });
+
+describe('detectQuestionLanguage — short requests carried by a request verb or the work asked for', () => {
+  it.each([
+    ['Напиши стихотворение о дожде', 'ru'],
+    ['Сочини сказку про кота', 'ru'],
+    ['Co si myslíš o práci z domova?', 'cs'],
+    ['Napiš mi pohádku o drakovi', 'cs'],
+    ['Beritahu aku lelucon', 'id'],
+    ['Напиши вірш про дощ', 'uk'],
+  ])('names %s as %s', (question, code) => {
+    expect(codeOf(question)).toBe(code);
+  });
+
+  it('does not guess between Russian and Ukrainian when nothing in the request tells them apart', () => {
+    expect(codeOf('Напиши про дождь')).toBeNull();
+  });
+});
