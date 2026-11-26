@@ -5,7 +5,7 @@ import {
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import BackDismissibleSheetModal from './BackDismissibleSheetModal';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { useModelStore } from '../../store/modelStore';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
@@ -28,9 +28,16 @@ import { Feedback } from '../../utils/Feedback';
 import { DrawerItem } from '../drawer/DrawerItem';
 import CubeIcon from '../../assets/icons/cube.svg';
 import SearchOffIcon from '../../assets/icons/search-off.svg';
+import ChevronRightIcon from '../../assets/icons/chevron-right.svg';
+import PopoverRow from '../menu/PopoverRow';
+import { familyTileSize } from '../model-hub/ModelFamilyTile';
 
 const LIST_SNAP_POINTS = ['50%', '90%'];
 const UPDATE_SECTION_KEY = 'needs-update';
+const MODEL_HUB = '/model-hub';
+
+const isInsideModelHub = (pathname: string) =>
+  pathname === MODEL_HUB || pathname.startsWith(`${MODEL_HUB}/`);
 
 type SheetItem = { kind: 'model'; model: Model } | { kind: 'updateSection' };
 
@@ -47,6 +54,8 @@ const groupForPicker = (models: Model[]): SheetItem[] => {
   ];
 };
 const ICON_CIRCLE_SIZE = 56;
+const SEE_ALL_CHEVRON_SIZE = 16;
+const SEE_ALL_ICON_SIZE = 22;
 
 interface Props {
   bottomSheetModalRef: RefObject<BottomSheetModal | null>;
@@ -62,6 +71,7 @@ const ModelSelectSheet = ({
   currentModelId,
 }: Props) => {
   const { styles, theme } = useThemedStyles(createStyles);
+  const pathname = usePathname();
   const downloadedModels = useModelStore((state) => state.downloadedModels);
   const { updateModel, ConfirmElement } = useModelUpdate();
   const [search, setSearch] = useState('');
@@ -79,7 +89,8 @@ const ModelSelectSheet = ({
 
   const goToModelHub = () => {
     bottomSheetModalRef.current?.dismiss();
-    router.replace('/model-hub');
+    if (isInsideModelHub(pathname)) router.dismissTo(MODEL_HUB);
+    else router.push(MODEL_HUB);
   };
 
   return (
@@ -151,6 +162,31 @@ const ModelSelectSheet = ({
                   />
                 </View>
               </View>
+            }
+            ListFooterComponent={
+              items.length > 0 ? (
+                <PopoverRow
+                  onPress={goToModelHub}
+                  testID="model-select-see-all"
+                  accessibilityRole="link"
+                >
+                  <View style={styles.seeAllLeading}>
+                    <CubeIcon
+                      width={SEE_ALL_ICON_SIZE}
+                      height={SEE_ALL_ICON_SIZE}
+                      style={styles.seeAllIcon}
+                    />
+                  </View>
+                  <View style={styles.seeAllLabel}>
+                    <Text style={styles.seeAllText}>See all models</Text>
+                    <ChevronRightIcon
+                      width={SEE_ALL_CHEVRON_SIZE}
+                      height={SEE_ALL_CHEVRON_SIZE}
+                      style={styles.seeAllIcon}
+                    />
+                  </View>
+                </PopoverRow>
+              ) : null
             }
             renderItem={({ item }) =>
               item.kind === 'updateSection' ? (
@@ -238,6 +274,26 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.md,
       lineHeight: 22,
       color: theme.text.primary,
+    },
+    seeAllLeading: {
+      width: familyTileSize('list'),
+      height: familyTileSize('list'),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    seeAllLabel: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.one,
+    },
+    seeAllText: {
+      fontFamily: fontFamily.medium,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
+      color: theme.text.accent,
+    },
+    seeAllIcon: {
+      color: theme.text.accent,
     },
     searchEmptyAction: {
       alignSelf: 'center',

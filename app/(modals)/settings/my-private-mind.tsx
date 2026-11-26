@@ -7,23 +7,26 @@ import type Svg from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
-} from '../../components/GlassScreenHeader';
-import PrimaryButton from '../../components/PrimaryButton';
-import SecondaryButton from '../../components/SecondaryButton';
-import { SHARE_CARD_RADIUS, ShareCard } from '../../components/share/ShareCard';
-import ShareIcon from '../../assets/icons/upload.svg';
-import { space, textStyles } from '../../constants/design-system';
-import { loadUsageTotals } from '../../database/usageStatsRepository';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
-import { type UsageSummary, summarizeUsage } from '../../utils/usageStats';
+} from '../../../components/GlassScreenHeader';
+import PrimaryButton from '../../../components/PrimaryButton';
+import SecondaryButton from '../../../components/SecondaryButton';
+import {
+  SHARE_CARD_RADIUS,
+  ShareCard,
+} from '../../../components/share/ShareCard';
+import ShareIcon from '../../../assets/icons/upload.svg';
+import { space, textStyles } from '../../../constants/design-system';
+import { loadUsageTotals } from '../../../database/usageStatsRepository';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
+import { type UsageSummary, summarizeUsage } from '../../../utils/usageStats';
 import {
   buildUsageShareMessage,
   shareCardContent,
   shareUsageCard,
   thisPhoneName,
-} from '../../utils/shareUsageCard';
-import { type SocialNetwork, postToNetwork } from '../../utils/socialShare';
+} from '../../../utils/shareUsageCard';
+import { type SocialNetwork, postToNetwork } from '../../../utils/socialShare';
 
 const MY_PRIVATE_MIND_TITLE = 'My Private Mind';
 const MAX_CARD_WIDTH = 400;
@@ -36,7 +39,7 @@ const EMPTY_NOTE =
 export default function MyPrivateMindScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
-  const headerHeight = useGlassScreenHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
   const { styles, theme } = useThemedStyles(createStyles, headerHeight);
   const { width: windowWidth } = useWindowDimensions();
   const cardRef = useRef<Svg>(null);
@@ -141,7 +144,11 @@ export default function MyPrivateMindScreen() {
           />
         </View>
       </ScrollView>
-      <GlassScreenHeader title={MY_PRIVATE_MIND_TITLE} onBack={handleBack} />
+      <GlassScreenHeader
+        title={MY_PRIVATE_MIND_TITLE}
+        onBack={handleBack}
+        sheet
+      />
     </View>
   );
 }

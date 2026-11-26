@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Keyboard,
   StyleSheet,
@@ -36,6 +42,7 @@ import NewChatHero from './NewChatHero';
 import { useHeadingAnchor } from './useHeadingAnchor';
 import NewChatSwarm, {
   SWARM_CLEARANCE_WITH_PROMPTS,
+  useNewChatStartedWhileAway,
   useSwarmOncePerNewChat,
 } from './NewChatSwarm';
 import { TopFade, topFadeHeight } from './TopFade';
@@ -379,6 +386,20 @@ export default function ChatScreen({
   const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
   const ownBadgeReveal = useSharedValue(heroOpacityBeforeSwarm);
   const badgeReveal = heroReveal ?? ownBadgeReveal;
+  const swarmQueuedForReturn = useNewChatStartedWhileAway(
+    showHero && isFocused,
+    phantomChatOpens
+  );
+  useLayoutEffect(() => {
+    if (!swarmQueuedForReturn) return;
+    headingReveal.set(heroOpacityBeforeSwarm);
+    badgeReveal.set(heroOpacityBeforeSwarm);
+  }, [
+    badgeReveal,
+    headingReveal,
+    heroOpacityBeforeSwarm,
+    swarmQueuedForReturn,
+  ]);
 
   return (
     <View

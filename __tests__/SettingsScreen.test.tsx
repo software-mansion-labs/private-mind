@@ -1,33 +1,34 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import SettingsRowGroup from '../components/settings/SettingsRowGroup';
-import SettingsScreen from '../app/(drawer)/settings';
+import SettingsScreen from '../app/(modals)/settings/index';
 import { useSettingsStore } from '../store/settingsStore';
 
 const mockPush = jest.fn();
+const mockBack = jest.fn();
 const mockImportChat = jest.fn();
 
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn() },
-  useRouter: () => ({ push: mockPush }),
+  router: { dismissTo: jest.fn() },
+  useRouter: () => ({ push: mockPush, back: mockBack }),
 }));
-jest.mock(
-  'expo-router/react-navigation',
-  () => ({ useHeaderHeight: () => 0 }),
-  { virtual: true }
-);
-jest.mock('../hooks/useDefaultHeader', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}));
+jest.mock('../components/GlassScreenHeader', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ title, onBack }: { title: string; onBack: () => void }) => (
+      <Pressable onPress={onBack} testID="header-close">
+        <Text>{title}</Text>
+      </Pressable>
+    ),
+    useGlassScreenHeaderHeight: () => 0,
+  };
+});
 jest.mock('../hooks/useImportChat', () => ({
   useImportChat: () => mockImportChat,
 }));
 jest.mock('../context/VectorStoreContext', () => ({
   useVectorStore: () => ({ vectorStore: null }),
-}));
-jest.mock('../components/chat-screen/GlassScrollEdge', () => ({
-  GlassScrollEdge: () => null,
 }));
 jest.mock('../utils/Feedback', () => ({
   Feedback: {
@@ -84,7 +85,7 @@ describe('the settings screen', () => {
       'Low'
     );
     fireEvent.press(screen.getByTestId('settings-context-size'));
-    expect(mockPush).toHaveBeenCalledWith('/context-size');
+    expect(mockPush).toHaveBeenCalledWith('/settings/context-size');
   });
 
   it('keeps the response speed stats switch working', () => {
@@ -102,9 +103,17 @@ describe('the settings screen', () => {
   it('opens custom instructions and app info', () => {
     render(<SettingsScreen />);
     fireEvent.press(screen.getByText('Custom instructions'));
-    expect(mockPush).toHaveBeenCalledWith('/custom-system-prompt');
+    expect(mockPush).toHaveBeenCalledWith('/settings/custom-system-prompt');
     fireEvent.press(screen.getByText('App info'));
-    expect(mockPush).toHaveBeenCalledWith('/app-info');
+    expect(mockPush).toHaveBeenCalledWith('/settings/app-info');
+  });
+
+  it('closes the sheet from its header', () => {
+    render(<SettingsScreen />);
+
+    fireEvent.press(screen.getByTestId('header-close'));
+
+    expect(mockBack).toHaveBeenCalled();
   });
 
   it('imports a chat from its row', () => {
@@ -150,7 +159,7 @@ describe('the settings screen', () => {
   it('opens the share card from its row', () => {
     render(<SettingsScreen />);
     fireEvent.press(screen.getByText('Share my Private Mind'));
-    expect(mockPush).toHaveBeenCalledWith('/my-private-mind');
+    expect(mockPush).toHaveBeenCalledWith('/settings/my-private-mind');
   });
 
   it('shows no note about when a context size change applies', () => {

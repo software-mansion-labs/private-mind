@@ -43,7 +43,7 @@ const MilestoneSheet = () => {
   const handleNotNow = () => sheetRef.current?.dismiss();
   const handleShare = () => {
     sheetRef.current?.dismiss();
-    router.push('/my-private-mind');
+    router.push('/settings/my-private-mind');
   };
   const handleRate = () => {
     sheetRef.current?.dismiss();

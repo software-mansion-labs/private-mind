@@ -1,30 +1,30 @@
 import { useCallback, useRef } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
-import { NEW_CHAT_COLLAPSE_DURATION } from '../../constants/drawer-layout';
-import { isNewChatCollapsed } from './newChatCollapse';
+import { SCROLL_COLLAPSE_DURATION } from '../constants/motion';
+import { isScrolledPastTop } from '../utils/scrollCollapse';
 
-export const useNewChatCollapse = () => {
-  const newChatCollapse = useSharedValue(0);
+export const useCollapseOnScroll = () => {
+  const collapse = useSharedValue(0);
   const collapsedRef = useRef(false);
 
   const trackScroll = useCallback(
     ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const collapsed = isNewChatCollapsed({
+      const collapsed = isScrolledPastTop({
         offset: nativeEvent.contentOffset.y,
         contentHeight: nativeEvent.contentSize.height,
         viewportHeight: nativeEvent.layoutMeasurement.height,
       });
       if (collapsed === collapsedRef.current) return;
       collapsedRef.current = collapsed;
-      newChatCollapse.set(
+      collapse.set(
         withTiming(collapsed ? 1 : 0, {
-          duration: NEW_CHAT_COLLAPSE_DURATION,
+          duration: SCROLL_COLLAPSE_DURATION,
         })
       );
     },
-    [newChatCollapse]
+    [collapse]
   );
 
-  return { newChatCollapse, trackScroll };
+  return { collapse, trackScroll };
 };

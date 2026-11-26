@@ -13,5 +13,5 @@ const clampToScrollRange = ({
 }: ScrollMetrics) =>
   Math.min(offset, Math.max(contentHeight - viewportHeight, 0));
 
-export const isNewChatCollapsed = (metrics: ScrollMetrics) =>
+export const isScrolledPastTop = (metrics: ScrollMetrics) =>
   clampToScrollRange(metrics) > TOP_ZONE;
