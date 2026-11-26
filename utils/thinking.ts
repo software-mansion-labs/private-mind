@@ -1,4 +1,5 @@
 import { THINK_CLOSE, THINK_OPEN } from '../constants/citations';
+import { isRepetitionFromTheStart } from './loopDetection';
 import {
   extractQueryTerms,
   foldForMatching,
@@ -169,11 +170,80 @@ export const createStrayThinkCloseFilter = (): StrayThinkCloseFilter => {
   };
 };
 
-export const cutAtStrayThinkClose = (text: string): StrayThinkCloseCut => {
-  const filter = createStrayThinkCloseFilter();
+const unclosedBlockAsAnswer = (held: string): string =>
+  isRepetitionFromTheStart(held.trim()) ? '' : held;
+
+export const createThinkingOffFilter = (): StrayThinkCloseFilter => {
+  const strayClose = createStrayThinkCloseFilter();
+  let pending = '';
+  let inBlock = false;
+  let shownAnything = false;
+  let trimBeforeAnswer = false;
+
+  const take = (length: number): string => {
+    const taken = pending.slice(0, length);
+    pending = pending.slice(length);
+    return taken;
+  };
+
+  const show = (text: string): string => {
+    const shown = trimBeforeAnswer ? text.trimStart() : text;
+    if (!shown) return '';
+    trimBeforeAnswer = false;
+    shownAnything = shownAnything || shown.trim() !== '';
+    return shown;
+  };
+
+  const drain = (finished: boolean): string => {
+    let out = '';
+    for (;;) {
+      if (inBlock) {
+        const close = pending.indexOf(THINK_CLOSE);
+        if (close === -1) {
+          if (!finished) return out;
+          inBlock = false;
+          return out + show(unclosedBlockAsAnswer(take(pending.length)));
+        }
+        take(close + THINK_CLOSE.length);
+        inBlock = false;
+        continue;
+      }
+      const open = pending.indexOf(THINK_OPEN);
+      if (open === -1) {
+        const length = finished ? pending.length : unfinishedTagStart(pending);
+        return out + show(take(length));
+      }
+      out += show(take(open));
+      take(THINK_OPEN.length);
+      inBlock = true;
+      trimBeforeAnswer = !shownAnything;
+    }
+  };
+
+  return {
+    push: (chunk) => {
+      if (strayClose.answerEnded()) return '';
+      pending += chunk;
+      return strayClose.push(drain(false));
+    },
+    finish: () => strayClose.push(drain(true)) + strayClose.finish(),
+    answerEnded: strayClose.answerEnded,
+  };
+};
+
+const cutWith = (
+  filter: StrayThinkCloseFilter,
+  text: string
+): StrayThinkCloseCut => {
   const shown = filter.push(text) + filter.finish();
   return { text: shown, answerEnded: filter.answerEnded() };
 };
+
+export const cutAtStrayThinkClose = (text: string): StrayThinkCloseCut =>
+  cutWith(createStrayThinkCloseFilter(), text);
+
+export const cutThinkingOffAnswer = (text: string): StrayThinkCloseCut =>
+  cutWith(createThinkingOffFilter(), text);
 
 export const stripThinkMarkers = (text: string): string =>
   text.split(THINK_OPEN).join('').split(THINK_CLOSE).join('');
