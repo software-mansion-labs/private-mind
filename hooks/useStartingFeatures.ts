@@ -4,12 +4,17 @@ import { useVectorStore } from '../context/VectorStoreContext';
 import { useEmbeddingModelStore } from '../store/embeddingModelStore';
 import { useLLMStore } from '../store/llmStore';
 import { useSTTStore } from '../store/sttStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { showNotEnoughStorage } from '../utils/storageSpace';
 import { LFM_2_5_EMBEDDING_DOWNLOAD_SIZE_BYTES } from '../constants/embedding-model';
 import {
-  WHISPER_DOWNLOAD_SIZE_BYTES,
   isWhisperDownloaded,
+  whisperDownloadSizeBytes,
 } from '../utils/sttModelFiles';
+import {
+  resolveDictationLanguage,
+  sttModelKindFor,
+} from '../utils/dictationLanguage';
 
 const BYTES_PER_GB = 1_000_000_000;
 const STORE_READY_TIMEOUT_MS = 15_000;
@@ -52,20 +57,31 @@ export const useStartingFeatures = () => {
 
   const embeddingStatus = useEmbeddingModelStore((state) => state.status);
   const embeddingProgress = useEmbeddingModelStore((state) => state.progress);
-  const speechReady = useSTTStore((state) => state.isReady);
-  const fetchingSpeech = useSTTStore((state) => state.isFetchingFiles);
+  const dictationLanguage = useSettingsStore(
+    (state) => state.dictationLanguage
+  );
+  const speechKind = sttModelKindFor(
+    resolveDictationLanguage(dictationLanguage)
+  );
+  const speechReady = useSTTStore(
+    (state) => state.isReady && state.moduleKind === speechKind
+  );
+  const fetchingSpeech = useSTTStore(
+    (state) => state.isFetchingFiles && state.fetchingKind === speechKind
+  );
   const speechProgress = useSTTStore((state) => state.filesProgress);
   const [speechOnDisk, setSpeechOnDisk] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    isWhisperDownloaded().then((downloaded) => {
+    setSpeechOnDisk(false);
+    isWhisperDownloaded(speechKind).then((downloaded) => {
       if (mounted && downloaded) setSpeechOnDisk(true);
     });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [speechKind]);
 
   const speechDownloaded = speechReady || speechOnDisk;
 
@@ -87,7 +103,7 @@ export const useStartingFeatures = () => {
       key: 'dictation',
       name: 'Voice dictation',
       description: 'Speak instead of typing',
-      sizeGb: WHISPER_DOWNLOAD_SIZE_BYTES / BYTES_PER_GB,
+      sizeGb: whisperDownloadSizeBytes(speechKind) / BYTES_PER_GB,
       status: speechDownloaded
         ? 'downloaded'
         : fetchingSpeech
@@ -122,7 +138,7 @@ export const useStartingFeatures = () => {
   };
 
   const downloadDictation = async () => {
-    const fetched = await useSTTStore.getState().fetchFiles();
+    const fetched = await useSTTStore.getState().fetchFiles(speechKind);
     if (fetched) setSpeechOnDisk(true);
     return fetched;
   };

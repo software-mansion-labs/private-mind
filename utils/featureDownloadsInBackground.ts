@@ -1,6 +1,6 @@
 import { ExpoResourceFetcher } from 'react-native-executorch-expo-resource-fetcher/legacy';
 import { LFM_2_5_EMBEDDING_SOURCES } from '../constants/embedding-model';
-import { whisperSources } from './sttModelFiles';
+import { STT_MODEL_KINDS, whisperSources } from './sttModelFiles';
 
 const embeddingSources = (): string[] =>
   [
@@ -8,7 +8,10 @@ const embeddingSources = (): string[] =>
     LFM_2_5_EMBEDDING_SOURCES.tokenizerSource,
   ].filter((source): source is string => typeof source === 'string');
 
-const featureSourceGroups = () => [embeddingSources(), whisperSources()];
+const featureSourceGroups = () => [
+  embeddingSources(),
+  ...STT_MODEL_KINDS.map(whisperSources),
+];
 
 const pausedGroups: string[][] = [];
 

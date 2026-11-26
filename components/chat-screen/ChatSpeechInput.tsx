@@ -21,7 +21,8 @@ import {
   shortfallBehind,
   showNotEnoughStorage,
 } from '../../utils/storageSpace';
-import { WHISPER_DOWNLOAD_SIZE_BYTES } from '../../utils/sttModelFiles';
+import { whisperDownloadSizeBytes } from '../../utils/sttModelFiles';
+import { useSTTStore } from '../../store/sttStore';
 import { useStableCallback } from '../../hooks/useStableCallback';
 import { DIMMED_OPACITY, dimmedOpacity } from '../../styles/pressable';
 import { radius, space } from '../../constants/design-system';
@@ -139,7 +140,10 @@ const ChatSpeechInput: React.FC<Props> = ({
         if (isOutOfSpaceError(error)) {
           showNotEnoughStorage(
             'Voice dictation',
-            shortfallBehind(error, WHISPER_DOWNLOAD_SIZE_BYTES)
+            shortfallBehind(
+              error,
+              whisperDownloadSizeBytes(useSTTStore.getState().requestedKind)
+            )
           );
         } else {
           Toast.show({
