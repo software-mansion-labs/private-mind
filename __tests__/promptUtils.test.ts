@@ -3,6 +3,7 @@ import {
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
+import { questionTurnOf } from '../utils/answerLanguageTurn';
 import { looksLikeNoAnswer } from '../utils/messageSources';
 import { sourceBlock } from '../utils/contextUtils';
 import {
@@ -403,9 +404,10 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result.at(-1)!.content).toContain(
-        '(Answer in the same language as this message.)'
-      );
+      expect(result.at(-1)).toEqual({
+        role: 'system',
+        content: "(Answer in the same language as the user's latest message.)",
+      });
     });
 
     it('tells the model to answer the question rather than summarize the pages', () => {
@@ -490,7 +492,7 @@ describe('prepareMessagesForLLM', () => {
           ],
         }
       );
-      expect(withWeb.at(-1)!.content).toContain(
+      expect(questionTurnOf(withWeb)!.content).toContain(
         'the one reporting the newest change'
       );
 
@@ -1032,7 +1034,7 @@ describe('prepareMessagesForLLM', () => {
       );
       const roles = result.map((m) => m.role);
       expect(roles).not.toContain('event');
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
     });
   });
 
@@ -1045,7 +1047,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result).toHaveLength(21);
+      expect(result).toHaveLength(22);
       expect(result[0].role).toBe('system');
     });
 
@@ -1061,7 +1063,7 @@ describe('prepareMessagesForLLM', () => {
       const messages = makeMessages(3);
       const settings = { ...baseSettings, thinkingEnabled: true };
       const result = prepareMessagesForLLM(messages, [], settings, baseModel);
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('/think');
     });
 
@@ -1074,7 +1076,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         thinkingModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('/no_think');
     });
 
@@ -1086,7 +1088,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).not.toContain('/think');
       expect(last.content).not.toContain('/no_think');
     });
@@ -1101,7 +1103,7 @@ describe('prepareMessagesForLLM', () => {
         settings,
         thinkingModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('/think');
       expect(last.content).not.toContain('/no_think');
     });
@@ -1116,7 +1118,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.role).toBe('user');
       expect(last.content).toContain('<sources>chunk one chunk two</sources>');
       expect(last.content).toContain('message 3');
@@ -1153,8 +1155,8 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = result[result.length - 1];
-      expect(result).toHaveLength(4);
+      const last = questionTurnOf(result)!;
+      expect(result).toHaveLength(5);
       expect(last.role).toBe('user');
       expect(last.content).toContain('Tell me more');
       expect(last.content).toContain('<sources>some context</sources>');
@@ -1172,7 +1174,7 @@ describe('prepareMessagesForLLM', () => {
           preferredSourceDocuments: [{ documentId: 2, name: 'current.pdf' }],
         }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toMatch(/about the just-attached document/i);
     });
 
@@ -1184,7 +1186,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).not.toMatch(/about the just-attached document/i);
     });
 
@@ -1201,7 +1203,7 @@ describe('prepareMessagesForLLM', () => {
           webIntent: 'current Kraków weather',
         }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain(
         'Question intent: current Kraków weather.'
       );
@@ -1221,7 +1223,7 @@ describe('prepareMessagesForLLM', () => {
           webSubQueries: ['iPhone 16 price', 'Galaxy S24 price'],
         }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('answer every one of them');
       expect(last.content).toContain('(1) iPhone 16 price');
       expect(last.content).toContain('(2) Galaxy S24 price');
@@ -1235,7 +1237,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).not.toContain('Question intent:');
     });
 
@@ -1805,7 +1807,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain("Answer in Polish, not the sources'");
     });
 
@@ -1830,7 +1832,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain(
         "Answer in the user's language, not the sources'"
       );
@@ -1857,7 +1859,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('Figures found in the sources: $1,901.25');
       expect(last.content).toContain('never one from memory');
     });
@@ -1885,7 +1887,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const whitelistLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
@@ -1917,7 +1919,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const whitelistLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
@@ -1946,7 +1948,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const whitelistLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
@@ -1974,7 +1976,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const whitelistLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
@@ -2007,7 +2009,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const figuresLine = last.content
         .split('\n')
         .find(
@@ -2050,7 +2052,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { sourceDocuments: webSources }
       );
-      const last = String(result.at(-1)!.content);
+      const last = String(questionTurnOf(result)!.content);
       const headers = last.match(/--- Source \d+:/g) ?? [];
       expect(headers.length).toBeGreaterThan(0);
       expect(headers.length).toBeLessThan(blocks.length);
@@ -2094,7 +2096,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('price=3199 PLN');
     });
 
@@ -2121,7 +2123,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const figuresLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
@@ -2154,7 +2156,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       const whitelistLine = last.content
         .split('\n')
         .find((line) => line.startsWith('Figures found in the sources'));
@@ -2237,7 +2239,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).not.toContain('Figures found in the sources');
     });
 
@@ -2266,7 +2268,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('Figures found per entity');
       expect(last.content).toContain('bitcoin price today → $64,146.36');
       expect(last.content).toContain('ethereum price today → $1,898.04');
@@ -2299,7 +2301,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel,
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('no entry in this list');
     });
 
@@ -2335,7 +2337,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).not.toContain("not the sources'");
     });
 
@@ -2348,7 +2350,7 @@ describe('prepareMessagesForLLM', () => {
         settings,
         baseModel
       );
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.role).toBe('user');
       expect(last.content).toContain('/think');
       expect(last.content).toContain('<sources>');
@@ -2388,7 +2390,7 @@ describe('prepareMessagesForLLM', () => {
       );
 
       expect(result[0].role).toBe('system');
-      expect(result[result.length - 1].content).toContain('latest question');
+      expect(questionTurnOf(result)!.content).toContain('latest question');
       expect(result.length).toBeLessThan(messages.length);
       expect(result.length).toBeGreaterThanOrEqual(2);
     });
@@ -2411,7 +2413,7 @@ describe('prepareMessagesForLLM', () => {
       );
 
       expect(result[0].role).toBe('system');
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.role).toBe('user');
       expect(last.content).toContain('keep me');
     });
@@ -2469,7 +2471,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
 
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('question');
       expect(last.content).toContain('<sources>');
       expect(last.content.length).toBeLessThan(hugeContext.length);
@@ -2491,7 +2493,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
 
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('NEEDLE_ANSWER_XYZ');
       expect(last.content).not.toContain('FILLERBLOCK');
     });
@@ -2521,7 +2523,7 @@ describe('prepareMessagesForLLM', () => {
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
 
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).not.toContain('FILLERBLOCK');
       const whitelistLine = last.content
         .split('\n')
@@ -2560,7 +2562,7 @@ describe('prepareMessagesForLLM', () => {
         { customSystemPrompt: '', sourceDocuments: webSources }
       );
 
-      const last = result[result.length - 1];
+      const last = questionTurnOf(result)!;
       expect(last.content).toContain('5 099');
       expect(last.content).toContain('--- Source 1:');
       expect(last.content).toContain('--- End of Source 1 ---');
@@ -2574,7 +2576,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(result).toHaveLength(7);
+      expect(result).toHaveLength(8);
     });
 
     it('drops a leading assistant reply when trimming splits a pair', () => {
@@ -2610,8 +2612,8 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
 
-      expect(result.slice(1).map((m) => m.role)).toEqual(['user']);
-      expect(result.at(-1)!.content).toContain('final question');
+      expect(result.slice(1).map((m) => m.role)).toEqual(['user', 'system']);
+      expect(questionTurnOf(result)!.content).toContain('final question');
     });
 
     it('closes the last source block when truncation cuts inside it', () => {
@@ -2628,7 +2630,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
 
-      const last = String(result.at(-1)!.content);
+      const last = String(questionTurnOf(result)!.content);
       expect(last).toContain('--- Source 1: big.pdf ---');
       expect(last).toContain('--- End of Source 1 ---');
       expect(last.length).toBeLessThan(block.length);
@@ -2648,7 +2650,7 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
 
-      const last = String(result.at(-1)!.content);
+      const last = String(questionTurnOf(result)!.content);
       expect(last).toContain('--- Current Attachment Source: a.pdf');
       expect(last).toContain('--- End of Current Attachment Source ---');
     });
@@ -2664,7 +2666,7 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      const last = String(result.at(-1)!.content);
+      const last = String(questionTurnOf(result)!.content);
       expect(last.match(/<[^>]*context[^>]*>/gi)).toBeNull();
       expect(last).toContain(
         '<sources>before injected and this after</sources>'
@@ -2678,8 +2680,8 @@ describe('prepareMessagesForLLM', () => {
         baseSettings,
         baseModel
       );
-      expect(String(result.at(-1)!.content)).toBe(
-        '<sources>ctx</sources>\nmessage 2 (Answer in the same language as this message.)'
+      expect(String(questionTurnOf(result)!.content)).toBe(
+        '<sources>ctx</sources>\nmessage 2'
       );
     });
 
@@ -2691,7 +2693,9 @@ describe('prepareMessagesForLLM', () => {
         baseModel
       );
       expect(result[0].content).not.toContain('IMPORTANT SOURCE INFORMATION');
-      expect(String(result.at(-1)!.content)).not.toContain('<sources>');
+      expect(String(questionTurnOf(result)!.content)).not.toContain(
+        '<sources>'
+      );
     });
   });
 });
@@ -2732,15 +2736,14 @@ describe('prepareMessagesForLLM — images in the history', () => {
     },
   ];
 
-  it('asks what is in a photo sent without any text, ahead of the language anchor', () => {
+  it('asks what is in a photo sent without any text, with the language anchor after it', () => {
     const result = prepareMessagesForLLM(photoAlone, [], baseSettings, {
       ...baseModel,
       vision: true,
     });
 
-    expect(result.at(-1)!.content).toMatch(
-      /^What is in this picture\? \(Answer in English\.\)/
-    );
+    expect(questionTurnOf(result)!.content).toBe('What is in this picture?');
+    expect(result.at(-1)!.content).toBe('(Answer in English.)');
   });
 
   const frenchThenPhoto: Message[] = [
@@ -2767,9 +2770,8 @@ describe('prepareMessagesForLLM — images in the history', () => {
       vision: true,
     });
 
-    expect(result.at(-1)!.content).toMatch(
-      /^What is in this picture\? \(Answer in French\.\)/
-    );
+    expect(questionTurnOf(result)!.content).toBe('What is in this picture?');
+    expect(result.at(-1)!.content).toBe('(Answer in French.)');
   });
 
   it('gives retries the same answer language as the prompt for a photo sent without text', () => {
@@ -2824,7 +2826,7 @@ describe('prepareMessagesForLLM — images in the history', () => {
 
     it('leaves a longer message it cannot read to its own language rather than the phone', () => {
       expect(latestAnchor(typed('Gdansk Sopot Gdynia 2026 itinerary'))).toBe(
-        '(Answer in the same language as this message.)'
+        "(Answer in the same language as the user's latest message.)"
       );
     });
 
@@ -2842,7 +2844,7 @@ describe('prepareMessagesForLLM — images in the history', () => {
       { ...baseModel, vision: true }
     );
 
-    expect(result.at(-1)!.content).toMatch(/^what is this\?/);
+    expect(questionTurnOf(result)!.content).toMatch(/^what is this\?/);
   });
 
   it('keeps the photo away from a text model the chat was switched to, so the chat keeps working', () => {
@@ -2967,7 +2969,7 @@ describe('prepareMessagesForLLM — conversation digest replaces dropped turns',
       digest: 'rowery gorskie dla poczatkujacych',
     });
     expect(systemOf(result)).not.toContain('Conversation so far');
-    expect(result).toHaveLength(short.length + 1);
+    expect(result).toHaveLength(short.length + 2);
   });
 
   it('changes nothing when there is no digest to add', () => {
@@ -3368,7 +3370,7 @@ describe('prepareMessagesForLLM and earlier reasoning', () => {
     );
 
     expect(result.filter((m) => m.role === 'assistant')).toHaveLength(0);
-    expect(result.at(-1)?.content).toContain('And at sunset?');
+    expect(questionTurnOf(result)?.content).toContain('And at sunset?');
   });
 });
 
@@ -3401,7 +3403,11 @@ describe('a greeting sent after a real question', () => {
       baseModel
     );
 
-    expect(result.map((message) => message.role)).toEqual(['system', 'user']);
+    expect(result.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'system',
+    ]);
     expect(result[1].content).toMatch(/^hi/);
     expect(result[0].content).toContain('only a greeting');
   });
@@ -3420,6 +3426,7 @@ describe('a greeting sent after a real question', () => {
       'user',
       'assistant',
       'user',
+      'system',
     ]);
   });
 });

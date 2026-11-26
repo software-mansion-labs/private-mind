@@ -7,6 +7,7 @@ import {
 } from '../database/chatRepository';
 import { isGreetingOnly } from './openingGreeting';
 import { questionForImage } from './imageQuestion';
+import { answerLanguageTurn } from './answerLanguageTurn';
 import { deviceLanguage } from './deviceLanguage';
 import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
@@ -272,13 +273,6 @@ export const focusedRetrySystemPrompt = (
     'The user message quotes lines taken from the sources retrieved for the question. They are the only material to answer from; do not add anything from memory.',
     languageInstruction(language),
   ].join('\n');
-
-export const answerLanguageAnchor = (
-  language: QuestionLanguage | null
-): string =>
-  language
-    ? ` (Answer in ${language.name}.)`
-    : ' (Answer in the same language as this message.)';
 
 const getDateInstruction = (
   sources?: SourceDocument[],
@@ -816,8 +810,7 @@ export const prepareMessagesForLLM = (
   }
 
   const lastMessage = messagesWithSystemPrompt.at(-1)!;
-
-  lastMessage.content += answerLanguageAnchor(language);
+  const languageTurn = answerLanguageTurn(language);
 
   if (!usesTemplateThinkingSwitch(model)) {
     if (settings.thinkingEnabled) {
@@ -829,7 +822,7 @@ export const prepareMessagesForLLM = (
 
   const budgetSample = `${messagesWithSystemPrompt[0].content}${context.join(
     ' '
-  )}${lastMessage.content}`;
+  )}${lastMessage.content}${languageTurn.content}`;
   const conversationWindow = conversationWindowFor(model, {
     memory: conversationMemory,
     thinkingEnabled: settings.thinkingEnabled,
@@ -939,7 +932,10 @@ export const prepareMessagesForLLM = (
     ? `${CONVERSATION_DIGEST_PREFIX}${digest.trim()}`
     : '';
   const mandatoryChars =
-    systemChars + lastMessage.content.length + digestLine.length;
+    systemChars +
+    lastMessage.content.length +
+    languageTurn.content.length +
+    digestLine.length;
   const remainingChars = conversationBudgetChars - mandatoryChars;
   const greetingTurn =
     lastMessage.role === 'user' && !!question && isGreetingOnly(question);
@@ -1025,7 +1021,7 @@ export const prepareMessagesForLLM = (
       return { block, next, nextStart };
     };
     const baselineTokens = estimatePromptTokens(
-      [messagesWithSystemPrompt[0]!, ...baselineKept, lastMessage]
+      [messagesWithSystemPrompt[0]!, ...baselineKept, lastMessage, languageTurn]
         .map((msg) => msg.content)
         .join(' ')
     );
@@ -1041,6 +1037,7 @@ export const prepareMessagesForLLM = (
         },
         ...attempt.next,
         lastMessage,
+        languageTurn,
       ]
         .map((msg) => msg.content)
         .join(' ');
@@ -1066,7 +1063,7 @@ export const prepareMessagesForLLM = (
         }
       : messagesWithSystemPrompt[0];
 
-  const finalMessages = [systemMessage, ...kept, lastMessage];
+  const finalMessages = [systemMessage, ...kept, lastMessage, languageTurn];
 
   if (recallEnabled) {
     onConversationMemory?.({

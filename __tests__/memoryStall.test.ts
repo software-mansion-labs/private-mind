@@ -22,7 +22,6 @@ jest.mock('../utils/promptUtils', () => ({
     { role: 'system', content: 'You are helpful.' },
     { role: 'user', content: 'hello' },
   ]),
-  answerLanguageAnchor: jest.fn(() => ''),
   focusedRetrySystemPrompt: jest.fn(() => ''),
   answerLanguageOf: jest.requireActual('../utils/promptUtils').answerLanguageOf,
 }));

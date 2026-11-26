@@ -1,4 +1,5 @@
 import DeviceInfo from 'react-native-device-info';
+import { questionTurnOf } from '../utils/answerLanguageTurn';
 import {
   EXTENDED_CONTEXT_WINDOW_TOKENS,
   GROUNDED_ANSWER_TOKEN_LIMIT,
@@ -320,7 +321,7 @@ describe('prepareMessagesForLLM with a larger conversation window', () => {
 
   it('gives a long document more room and still keeps more of the conversation', () => {
     const sourcesOf = (messages: ReturnType<typeof promptOf>) =>
-      messages.at(-1)!.content;
+      questionTurnOf(messages)!.content;
     const before = promptOf(false, guideContext);
     rememberModelContextCapacity(model.id, 8192);
     const after = promptOf(false, guideContext);
@@ -344,8 +345,8 @@ describe('prepareMessagesForLLM with a larger conversation window', () => {
     const auto = promptOf();
 
     expect(promptOf(false, [], 'low').length).toBeLessThan(auto.length);
-    expect(promptOf(false, guideContext, 'low').at(-1)!.content).toBe(
-      standardWithDocument.at(-1)!.content
+    expect(questionTurnOf(promptOf(false, guideContext, 'low'))!.content).toBe(
+      questionTurnOf(standardWithDocument)!.content
     );
   });
 });
