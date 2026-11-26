@@ -79,6 +79,7 @@ module.exports = {
     callback?.(true);
     return val;
   },
+  useAnimatedProps: (fn: () => any) => fn(),
   withRepeat: (val: any) => val,
   withDelay: (_d: any, val: any) => val,
   withSequence: (val: any) => val,

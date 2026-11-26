@@ -6,6 +6,7 @@ import {
   TextLayoutEventData,
 } from 'react-native';
 import Animated, {
+  FadeIn,
   FadeOut,
   useAnimatedStyle,
   type SharedValue,
@@ -23,6 +24,7 @@ import { GUTTER } from './attachments/constants';
 import { EMPTY_STATE_CONTENT_EXIT_MS } from './gradientHandoff';
 
 const GAP_ABOVE_BAR = space.four;
+const HERO_RETURN_MS = 220;
 
 export const heroPushUp = (barTop: number, restBottom: number): number => {
   'worklet';
@@ -74,6 +76,7 @@ const NewChatHero = ({
   return (
     <Animated.View
       style={[styles.container, pushStyle]}
+      entering={FadeIn.duration(HERO_RETURN_MS)}
       exiting={FadeOut.duration(EMPTY_STATE_CONTENT_EXIT_MS)}
       pointerEvents="box-none"
       testID="new-chat-hero"

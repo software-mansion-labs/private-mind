@@ -11,7 +11,7 @@ import CircleButton from '../CircleButton';
 import ComposerActionButton, {
   type ComposerAction,
 } from './ComposerActionButton';
-import SoundwaveIcon from '../../assets/icons/soundwave.svg';
+import MicIcon from '../../assets/icons/mic.svg';
 import PlusIcon from '../../assets/icons/plus.svg';
 import LightBulbIcon from '../../assets/icons/light_bulb.svg';
 import WebIcon from '../../assets/icons/web.svg';
@@ -141,7 +141,7 @@ const ChatBarActions = ({
       <View style={styles.rightActions}>
         {action === 'send' && hasAttachments && !userInput && !sendPending && (
           <CircleButton
-            icon={SoundwaveIcon}
+            icon={MicIcon}
             onPress={onSpeechInput}
             {...composerControlColors(theme)}
             color={theme.text.onChatBar}
