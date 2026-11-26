@@ -1,4 +1,6 @@
 import { Platform, Share } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import Toast from 'react-native-toast-message';
 import { File, Paths } from 'expo-file-system';
 import DeviceInfo from 'react-native-device-info';
 import { nativeShareImage } from '../modules/share-image';
@@ -14,6 +16,7 @@ import {
 
 export const SHARE_CARD_FILE_NAME = 'my-private-mind.png';
 export const SHARE_CARD_DIALOG_TITLE = 'Share my Private Mind';
+export const SHARE_TEXT_COPIED = 'Text copied — paste it into your message';
 const MAX_DEVICE_NAME_LENGTH = 24;
 const MODEL_CODE = /^(SM-|[A-Z]{2,}-?\d)/;
 
@@ -52,6 +55,8 @@ export const shareUsageCard = async (
   message: string
 ): Promise<void> => {
   const imageUri = writeShareCardImage(pngBase64);
+  await Clipboard.setStringAsync(message);
+  Toast.show({ type: 'defaultToast', text1: SHARE_TEXT_COPIED });
   if (Platform.OS === 'android' && nativeShareImage) {
     await nativeShareImage.share(imageUri, message, SHARE_CARD_DIALOG_TITLE);
     return;

@@ -16,9 +16,21 @@ import { fontFamily } from '../../styles/fontStyles';
 import { stroke } from '../../constants/design-system';
 import { isDarkTheme, mixColors, type Theme } from '../../styles/colors';
 import { type ShareCardContent } from '../../utils/shareUsageCard';
+import { APP_SITE_URL } from '../../utils/shareApp';
 
 export const SHARE_CARD_WIDTH = 360;
 export const SHARE_CARD_HEIGHT = 480;
+export const SHARE_CARD_BLEED = 8;
+export const SHARE_CARD_SITE = APP_SITE_URL.replace(/^https:\/\//, '');
+const CARD_WIDTH_STEP = 3;
+const CARD_HEIGHT_STEP = 4;
+
+export const shareCardSize = (
+  availableWidth: number
+): { width: number; height: number } => {
+  const steps = Math.floor(availableWidth / CARD_WIDTH_STEP);
+  return { width: steps * CARD_WIDTH_STEP, height: steps * CARD_HEIGHT_STEP };
+};
 
 export const SHARE_CARD_RADIUS = 28;
 const PADDING = 24;
@@ -77,6 +89,7 @@ const PRIVACY_DETAIL_SIZE = 12;
 
 const FOOTER_BASELINE = 460;
 const FOOTER_SIZE = 11;
+const SITE_SIZE = 12;
 
 const GLOW_TOP_X = 320;
 const GLOW_TOP_Y = 20;
@@ -191,7 +204,7 @@ const Detail = ({ x, top, value, label, palette }: StatProps) => (
 export const ShareCard = ({ ref, content, width }: Props) => {
   const { theme } = useTheme();
   const palette = paletteFor(theme);
-  const height = Math.round((width * SHARE_CARD_HEIGHT) / SHARE_CARD_WIDTH);
+  const size = shareCardSize(width);
   const logoScale = LOGO_HEIGHT / LOGO_VIEWBOX_HEIGHT;
   const panelLeft = PADDING;
   const columnLeft = panelLeft + PANEL_INSET;
@@ -201,8 +214,8 @@ export const ShareCard = ({ ref, content, width }: Props) => {
   return (
     <Svg
       ref={ref}
-      width={width}
-      height={height}
+      width={size.width}
+      height={size.height}
       viewBox={`0 0 ${SHARE_CARD_WIDTH} ${SHARE_CARD_HEIGHT}`}
       accessible
       accessibilityLabel={`${content.owner} ${content.pages} ${content.pagesUnit}. ${content.tokens} tokens, ${content.words} words, ${content.chats} chats. 0 bytes sent to the cloud.`}
@@ -230,8 +243,18 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         </RadialGradient>
       </Defs>
       <Rect
-        width={SHARE_CARD_WIDTH}
-        height={SHARE_CARD_HEIGHT}
+        x={-SHARE_CARD_BLEED}
+        y={-SHARE_CARD_BLEED}
+        width={SHARE_CARD_WIDTH + SHARE_CARD_BLEED * 2}
+        height={SHARE_CARD_HEIGHT + SHARE_CARD_BLEED * 2}
+        fill={palette.backgroundBottom}
+        testID="share-card-base"
+      />
+      <Rect
+        x={-SHARE_CARD_BLEED}
+        y={-SHARE_CARD_BLEED}
+        width={SHARE_CARD_WIDTH + SHARE_CARD_BLEED * 2}
+        height={SHARE_CARD_HEIGHT + SHARE_CARD_BLEED * 2}
         fill="url(#cardBackground)"
       />
       <Circle
@@ -390,11 +413,21 @@ export const ShareCard = ({ ref, content, width }: Props) => {
       <Text
         x={PADDING}
         y={FOOTER_BASELINE}
+        fontFamily={fontFamily.bold}
+        fontSize={SITE_SIZE}
+        fill={palette.accent}
+      >
+        {SHARE_CARD_SITE}
+      </Text>
+      <Text
+        x={SHARE_CARD_WIDTH - PADDING}
+        y={FOOTER_BASELINE}
+        textAnchor="end"
         fontFamily={fontFamily.medium}
         fontSize={FOOTER_SIZE}
         fill={palette.tertiary}
       >
-        Free on the App Store and Google Play
+        App Store · Google Play
       </Text>
     </Svg>
   );

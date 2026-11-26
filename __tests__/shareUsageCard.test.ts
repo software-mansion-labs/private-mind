@@ -1,4 +1,6 @@
 import { Platform, Share } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import Toast from 'react-native-toast-message';
 import { writtenFiles } from '../__mocks__/expo-file-system';
 import {
   EMPTY_USAGE_TOTALS,
@@ -14,6 +16,7 @@ jest.mock('../modules/share-image', () => ({
 
 import {
   SHARE_CARD_DIALOG_TITLE,
+  SHARE_TEXT_COPIED,
   buildUsageShareMessage,
   milestoneHeadline,
   shareCardContent,
@@ -131,6 +134,26 @@ describe('opening the share sheet', () => {
       'message text',
       SHARE_CARD_DIALOG_TITLE
     );
+  });
+
+  it('copies the text and says so first, for apps that drop the text beside an image', async () => {
+    setPlatform('android');
+    const order: string[] = [];
+    (Clipboard.setStringAsync as jest.Mock).mockImplementationOnce(async () => {
+      order.push('copied');
+      return true;
+    });
+    mockNativeShare.mockImplementationOnce(async () => {
+      order.push('shared');
+    });
+
+    await shareUsageCard('iVBORw0KGgo=', 'message text');
+
+    expect(Clipboard.setStringAsync).toHaveBeenCalledWith('message text');
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ text1: SHARE_TEXT_COPIED })
+    );
+    expect(order).toEqual(['copied', 'shared']);
   });
 
   it('hands iOS the image and the text through the system share sheet', async () => {
