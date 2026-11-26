@@ -98,6 +98,13 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
+        name="(modals)/my-private-mind"
+        options={{
+          headerShown: false,
+          animation: 'ios_from_right',
+        }}
+      />
+      <Stack.Screen
         name="(modals)/context-size"
         options={{
           headerShown: false,

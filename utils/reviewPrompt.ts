@@ -95,3 +95,13 @@ export async function promptReviewAfterAnswer(
     console.warn('Review prompt failed:', error);
   }
 }
+
+export async function noteReviewAskedByUser(): Promise<void> {
+  dueAtChatCount = null;
+  try {
+    const totalChats = await AsyncStorage.getItem(TOTAL_CHATS_KEY);
+    await AsyncStorage.setItem(LAST_PROMPT_KEY, totalChats ?? '0');
+  } catch (error) {
+    console.warn('Recording the review request failed:', error);
+  }
+}

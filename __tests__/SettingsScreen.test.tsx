@@ -123,6 +123,36 @@ describe('the settings screen', () => {
     );
   });
 
+  it('gathers the ways to help under Help us grow, ahead of About', () => {
+    render(<SettingsScreen />);
+    const labels = screen
+      .getAllByRole('button')
+      .map((b) => b.props.accessibilityLabel);
+    const helpRows = [
+      'Share my Private Mind',
+      'Rate the app',
+      'Share the app',
+      'Send feedback',
+    ];
+    expect(screen.getByText('Help us grow')).toBeTruthy();
+    const positions = helpRows.map((label) => labels.indexOf(label));
+    expect(
+      positions.every(
+        (position, index) =>
+          position >= 0 && (index === 0 || position > positions[index - 1])
+      )
+    ).toBe(true);
+    expect(labels.indexOf('Send feedback')).toBeLessThan(
+      labels.indexOf('App info')
+    );
+  });
+
+  it('opens the share card from its row', () => {
+    render(<SettingsScreen />);
+    fireEvent.press(screen.getByText('Share my Private Mind'));
+    expect(mockPush).toHaveBeenCalledWith('/my-private-mind');
+  });
+
   it('shows no note about when a context size change applies', () => {
     render(<SettingsScreen />);
     expect(screen.queryByText(/next message/i)).toBeNull();
@@ -131,6 +161,6 @@ describe('the settings screen', () => {
   it('draws every setting group as one grouped surface', () => {
     const view = render(<SettingsScreen />);
     const groups = view.UNSAFE_getAllByType(SettingsRowGroup);
-    expect(groups).toHaveLength(4);
+    expect(groups).toHaveLength(5);
   });
 });
