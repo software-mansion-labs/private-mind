@@ -6,6 +6,7 @@ import NewChatSwarm, {
   swarmGeometry,
   SWARM_CLEARANCE_WITH_DESCRIPTION,
   SWARM_CLEARANCE_WITH_PROMPTS,
+  useNewChatStartedWhileAway,
   useSwarmOncePerNewChat,
 } from '../components/chat-screen/NewChatSwarm';
 
@@ -76,6 +77,38 @@ describe('useSwarmOncePerNewChat', () => {
     expect(result.current).toBe(false);
     rerender({ active: true, starts: 2 });
     expect(result.current).toBe(true);
+  });
+});
+
+describe('useNewChatStartedWhileAway', () => {
+  const renderAway = (active: boolean, starts = 1) =>
+    renderHook(
+      ({ active, starts }: { active: boolean; starts: number }) =>
+        useNewChatStartedWhileAway(active, starts),
+      { initialProps: { active, starts } }
+    );
+
+  it('stays false when the screen leaves and returns to the same chat', () => {
+    const { result, rerender } = renderAway(true);
+    rerender({ active: false, starts: 1 });
+    expect(result.current).toBe(false);
+    rerender({ active: true, starts: 1 });
+    expect(result.current).toBe(false);
+  });
+
+  it('flags a new chat started while the screen was away', () => {
+    const { result, rerender } = renderAway(true);
+    rerender({ active: false, starts: 1 });
+    rerender({ active: false, starts: 2 });
+    expect(result.current).toBe(true);
+    rerender({ active: true, starts: 2 });
+    expect(result.current).toBe(false);
+  });
+
+  it('ignores chats started before the screen was ever shown', () => {
+    const { result, rerender } = renderAway(false);
+    rerender({ active: false, starts: 2 });
+    expect(result.current).toBe(false);
   });
 });
 
