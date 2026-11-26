@@ -5,6 +5,8 @@ import {
   createStrayThinkCloseFilter,
   cutAtStrayThinkClose,
   hasUnclosedThink,
+  createThinkingOffFilter,
+  cutThinkingOffAnswer,
 } from '../utils/thinking';
 
 describe('mapOutsideThink', () => {
@@ -294,6 +296,74 @@ describe('a close tag that closes a block', () => {
       text: '<think>a</think>b',
       answerEnded: false,
     });
+  });
+});
+
+describe('a think block the model writes with thinking off', () => {
+  const answer = 'Quantum computers use qubits.';
+
+  it('is dropped with its tags, leaving the answer after it', () => {
+    expect(cutThinkingOffAnswer(`<think>plan</think>\n\n${answer}`)).toEqual({
+      text: answer,
+      answerEnded: false,
+    });
+  });
+
+  it('keeps what was said before it', () => {
+    expect(
+      cutThinkingOffAnswer(`Sure.\n<think>plan</think>\n${answer}`).text
+    ).toBe(`Sure.\n\n${answer}`);
+  });
+
+  it('holds what follows an open tag until the block closes', () => {
+    const filter = createThinkingOffFilter();
+
+    expect(
+      pushAll(filter, ['<think>', 'plan', ' more', '</think>', answer])
+    ).toEqual(['', '', '', '', answer]);
+  });
+
+  it('shows what it held as the answer when the block never closes', () => {
+    const filter = createThinkingOffFilter();
+
+    expect(pushAll(filter, ['<think>', '\n\n', answer])).toEqual(['', '', '']);
+    expect(filter.finish()).toBe(answer);
+  });
+
+  it('shows nothing for a block it never closed that only repeats itself', () => {
+    expect(
+      cutThinkingOffAnswer('<think>cząstek cząstek cząstek cząstek cząstek')
+        .text
+    ).toBe('');
+  });
+
+  it('recognises tags split across chunks', () => {
+    const filter = createThinkingOffFilter();
+
+    expect(
+      pushAll(filter, ['Sure. <thi', 'nk>pl', 'an</th', 'ink>', answer])
+    ).toEqual(['Sure. ', '', '', '', answer]);
+  });
+
+  it('shows the start of an open tag that never completes once the generation ends', () => {
+    const filter = createThinkingOffFilter();
+
+    expect(filter.push('Use a <thi')).toBe('Use a ');
+    expect(filter.finish()).toBe('<thi');
+  });
+
+  it('still ends the answer at a stray close tag that repeats it', () => {
+    expect(
+      cutThinkingOffAnswer(
+        '<think>a</think>Bonn was the capital.</think>The capital was Bonn.'
+      )
+    ).toEqual({ text: 'Bonn was the capital.', answerEnded: true });
+  });
+
+  it('still drops a stray close tag inside a sentence', () => {
+    expect(
+      cutThinkingOffAnswer('Liście zmieniają kolor</think> jesienią.').text
+    ).toBe('Liście zmieniają kolor jesienią.');
   });
 });
 
