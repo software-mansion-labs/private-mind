@@ -93,6 +93,7 @@ export const SpeechToTextModule = {
 };
 
 export const createWhisperSpeechToText = jest.fn();
+export const createReverbTextToSpeech = jest.fn();
 
 const whisperVariant = (backend: string) => ({
   modelPath: `https://huggingface.co/mock/whisper-tiny.en/${backend}/whisper.pte`,
@@ -104,7 +105,38 @@ const whisperVariant = (backend: string) => ({
   },
 });
 
+const REVERB_ROOT = 'https://huggingface.co/mock/Reverb-TTS';
+const REVERB_VOICES = [
+  'de_female_standard',
+  'en_female_narrator',
+  'es_male_standard_1',
+  'fr_female_standard',
+  'it_male_standard',
+  'pl_male_standard',
+  'pt_female_standard',
+].reduce(
+  (voices, name) => ({
+    ...voices,
+    [name]: `${REVERB_ROOT}/voices/${name}.json`,
+  }),
+  {} as Record<string, string>
+);
+
 export const models = {
+  textToSpeech: {
+    REVERB: {
+      DEFAULT: {
+        name: 'reverb',
+        modelPaths: {
+          backbone: `${REVERB_ROOT}/model/reverb_mlx_int8.pte`,
+          codecDecoder: `${REVERB_ROOT}/decoder/codec_decoder.pte`,
+          codecEncoder: `${REVERB_ROOT}/encoder/codec_encoder.pte`,
+        },
+        tokenizerPath: `${REVERB_ROOT}/model/tokenizer.json`,
+        voices: REVERB_VOICES,
+      },
+    },
+  },
   speechToText: {
     WHISPER: {
       EN: {

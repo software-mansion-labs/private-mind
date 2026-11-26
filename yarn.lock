@@ -10083,7 +10083,7 @@ __metadata:
     react-native-blob-util: ^0.24.0
     react-native-device-info: ^15.0.1
     react-native-enriched-markdown: ^1.1.1
-    react-native-executorch: 0.11.0
+    react-native-executorch: 0.11.1
     react-native-executorch-expo-resource-fetcher: ^0.10.0
     react-native-gesture-handler: ~2.32.0
     react-native-keyboard-controller: 1.22.6
@@ -10348,25 +10348,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:0.11.0":
-  version: 0.11.0
-  resolution: "react-native-executorch@npm:0.11.0"
+"react-native-executorch@npm:0.11.1":
+  version: 0.11.1
+  resolution: "react-native-executorch@npm:0.11.1"
   dependencies:
     "@huggingface/jinja": ^0.5.9
     jsonrepair: ^3.12.0
     jsonschema: ^1.5.0
     react-native-device-info: ^15.0.2
+    verbalis: ^0.1.1
     zod: ^4.3.6
   peerDependencies:
     "@kesha-antonov/react-native-background-downloader": ">=4.4.0"
     react: "*"
-    react-native: "*"
+    react-native: ">=0.83.0"
     react-native-blob-util: ">=0.24.11"
     react-native-worklets: ">=0.10.0 <0.14.0"
   peerDependenciesMeta:
     "@kesha-antonov/react-native-background-downloader":
       optional: true
-  checksum: 303c5ad61ecb51dbe2dbde3f393844091a75589d00cce79a5735c87e5785893ebbd0568edb947f7ffa0e16745e6f8b29db138fed6184872f464aba90a707a38d
+  checksum: 824e50cfae88c2708ecfe4004e163ed955485879ce0a8e1f85456565b3aa3182426985265a791cd8983de557bf2c2482cfc233adc8b1052563aa50892afe1c71
   languageName: node
   linkType: hard
 
@@ -12455,6 +12456,13 @@ __metadata:
     react: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
     react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
   checksum: e8f72775f066318daab44701e77c88c99f2b179f196093a32a57cf91e39b1fc3258e608c92359eee39ce47604298c1da68db1d11e19cb485507c28138d9f27ea
+  languageName: node
+  linkType: hard
+
+"verbalis@npm:^0.1.1":
+  version: 0.1.1
+  resolution: "verbalis@npm:0.1.1"
+  checksum: 399d062146e8b3fca79f640a3e4fe2e2db0318d66aacb4d241d6bda7b05e0398c898dad748bfcd000b2b2f570a96d0ad66586eb3f1ca1b56b8711d8b401601c7
   languageName: node
   linkType: hard
 

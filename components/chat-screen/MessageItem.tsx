@@ -38,12 +38,16 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { useWebSearchActivity } from '../../hooks/useWebSearchActivity';
 import { useMessageSources } from '../../hooks/useMessageSources';
 import { useSettingsStore } from '../../store/settingsStore';
+import { useLLMStore } from '../../store/llmStore';
+import { readAloudBlockedByModel } from '../../store/readAloudStore';
+import { readAloudPlanFor } from '../../utils/readAloudPlan';
 import { Theme } from '../../styles/colors';
 import ImageLightbox from './ImageLightbox';
 import AttachmentIcon from '../../assets/icons/attachment.svg';
 import BookIcon from '../../assets/icons/book-open.svg';
 import CopyIcon from '../../assets/icons/copy.svg';
 import ForkIcon from '../../assets/icons/fork.svg';
+import ReadAloudButton from './ReadAloudButton';
 import MessageActionButton from './MessageActionButton';
 import {
   MESSAGE_ACTION_ROW_HEIGHT,
@@ -287,6 +291,15 @@ const MessageItem = memo(
     const answerIsIncomplete =
       !!message.stoppedByUser || !!message.cutShortReason;
 
+    const modelBlocksReadAloud = useLLMStore(readAloudBlockedByModel);
+    const readAloudPlan = useMemo(
+      () =>
+        showActions && !answerIsIncomplete && !modelBlocksReadAloud
+          ? readAloudPlanFor({ role, content })
+          : null,
+      [showActions, answerIsIncomplete, modelBlocksReadAloud, role, content]
+    );
+
     const actions =
       !answerIsIncomplete && (showActions || canShowSourcesAction) ? (
         <View style={styles.actionRow} testID="message-actions">
@@ -296,6 +309,9 @@ const MessageItem = memo(
               icon={CopyIcon}
               onPress={() => onCopy?.(message)}
             />
+          )}
+          {readAloudPlan && (
+            <ReadAloudButton messageId={message.id} plan={readAloudPlan} />
           )}
           {showActions && showForkAction && (
             <MessageActionButton
