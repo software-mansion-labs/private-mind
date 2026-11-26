@@ -106,6 +106,11 @@ jest.mock('../database/exportImportRepository', () => ({
 
 import DrawerMenu from '../components/drawer/DrawerMenu';
 import { useModelUpdateSheetStore } from '../store/modelUpdateSheetStore';
+import { Feedback } from '../utils/Feedback';
+
+const navigateFeedback = jest
+  .spyOn(Feedback, 'navigate')
+  .mockImplementation(() => {});
 
 const setPlatform = (os: string) => {
   Object.defineProperty(Platform, 'OS', { get: () => os, configurable: true });
@@ -157,6 +162,7 @@ describe('DrawerMenu — collapsed', () => {
     fireEvent.press(screen.getByTestId('drawer-settings'));
 
     expect(mockPush).toHaveBeenCalledWith('/settings');
+    expect(navigateFeedback).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
     expect(mockInterrupt).not.toHaveBeenCalled();
     expect(onNavigate).not.toHaveBeenCalled();
@@ -170,6 +176,7 @@ describe('DrawerMenu — collapsed', () => {
     fireEvent.press(screen.getByText('Manage models'));
 
     expect(mockPush).toHaveBeenCalledWith('/model-hub');
+    expect(navigateFeedback).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
     expect(mockInterrupt).not.toHaveBeenCalled();
     expect(onNavigate).not.toHaveBeenCalled();

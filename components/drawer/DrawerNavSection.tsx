@@ -13,6 +13,7 @@ import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import CubeIcon from '../../assets/icons/cube.svg';
 import { DrawerItem } from './DrawerItem';
+import { Feedback } from '../../utils/Feedback';
 import {
   NAV_COLLAPSE_DURATION,
   SECTION_GAP,
@@ -79,7 +80,10 @@ export const DrawerNavSection = ({ collapsed, height, onMeasured }: Props) => {
     if (measured > 0) onMeasured(measured);
   };
 
-  const openModelHub = () => router.push('/model-hub');
+  const openModelHub = () => {
+    Feedback.navigate();
+    router.push('/model-hub');
+  };
 
   if (!rendered) return null;
 

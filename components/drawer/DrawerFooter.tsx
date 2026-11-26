@@ -25,6 +25,7 @@ import { useStartNewChat } from './useStartNewChat';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 import HeaderGlassButton, { headerGlassButtonFill } from '../HeaderGlassButton';
 import CollapsibleLabel from '../CollapsibleLabel';
+import { Feedback } from '../../utils/Feedback';
 
 const NEW_CHAT_ICON_SIZE = 18;
 const NEW_CHAT_PADDING_LEFT = 14;
@@ -62,7 +63,10 @@ export const DrawerFooter = ({ onNavigate, newChatCollapse }: Props) => {
 
   const { startNewChat, turnInFlight } = useStartNewChat(onNavigate);
 
-  const openSettings = () => router.push('/settings');
+  const openSettings = () => {
+    Feedback.navigate();
+    router.push('/settings');
+  };
 
   return (
     <View style={styles.footer}>
