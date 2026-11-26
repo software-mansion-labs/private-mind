@@ -4,6 +4,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { initDatabase } from '../database/db';
 import ModelUpdateSheet from '../components/bottomSheets/ModelUpdateSheet';
 import PrivacySheet from '../components/bottomSheets/PrivacySheet';
+import MilestoneSheet from '../components/bottomSheets/MilestoneSheet';
 import {
   useFonts,
   DMSans_400Regular,
@@ -171,6 +172,7 @@ export default function Layout() {
                   <RootNavigator />
                   <ModelUpdateSheet />
                   <PrivacySheet />
+                  <MilestoneSheet />
                   {Platform.OS === 'android' && <ThemedStatusBar />}
                 </BottomSheetModalProvider>
                 <AppToast />

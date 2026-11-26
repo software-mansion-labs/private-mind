@@ -111,8 +111,8 @@ import {
   chatTemplateFlagsFor,
   usesTemplateThinkingSwitch,
 } from '../constants/model-profiles';
-import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
-import { recordAnswerUsage } from '../database/usageStatsRepository';
+import { askAfterAnswer } from '../utils/askAfterAnswer';
+import { countFinishedAnswer } from '../utils/answerUsage';
 import { countWords } from '../utils/usageStats';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
@@ -2229,26 +2229,22 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
         armRetry(set, null);
         set({ generationError: null });
-        promptReviewAfterAnswer(
+        askAfterAnswer(
           {
             stoppedByUser,
             tokensPerSecond: responsePerformance.tokensPerSecond,
             cannedReply: !!openingWelcome,
           },
-          () => !get().isGenerating && !get().isLoading
-        );
-        if (!openingWelcome && answerTokenCount > 0) {
-          recordAnswerUsage(db, {
+          () => !get().isGenerating && !get().isLoading,
+          countFinishedAnswer(db, {
             chatId,
             messageId: assistantMessageId,
             modelName: assistantPlaceholder.modelName ?? '',
-            tokens: answerTokenCount,
+            tokens: openingWelcome ? 0 : answerTokenCount,
             words: countWords(humanizedResponse),
             tokensPerSecond: responsePerformance.tokensPerSecond,
-          }).catch((error) =>
-            console.warn('Counting the answer failed:', error)
-          );
-        }
+          })
+        );
 
         if (stoppedByUser) {
           armRetry(set, {
