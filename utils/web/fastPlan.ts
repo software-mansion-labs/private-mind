@@ -1,5 +1,4 @@
 import {
-  WEB_FAST_PLAN_LANGUAGES,
   WEB_FAST_PLAN_MIN_TERMS,
   WEB_QUERY_MAX_CHARS,
 } from '../../constants/web';
@@ -14,6 +13,7 @@ import {
   type WebSearchPlan,
 } from './buildSearchQuery';
 import type { WebIntentKind } from './intentKind';
+import { hasNoSearchLexicon, lacksSearchSignal } from './noSearchSignal';
 import {
   hasPriorTurns,
   namesItsOwnSubject,
@@ -26,29 +26,6 @@ const DATE_PHRASES =
   /(?<![\p{L}])(?:(?:what|which)\s+(?:day|date|year|month)|in\s+what\s+year|on\s+what\s+day|when\s+(?:did|was|is|will|does)|kiedy|w\s+kt[oó]rym\s+roku|kt[oó]rego\s+dnia|welches\s+jahr|wann|quand|cu[aá]ndo|quando)(?![\p{L}])/iu;
 const HOWTO_PHRASES =
   /(?<![\p{L}])(?:how\s+(?:to|do\s+i|can\s+i)|jak\s+(?:zrobi[cć]|ugotowa[cć]|naprawi[cć]|zainstalowa[cć]|za[lł]o[zż]y[cć]))(?![\p{L}])/iu;
-
-const POLITE_LEAD =
-  /^(?:(?:please|pls|can\s+you|could\s+you|would\s+you|proszę|prosze|czy\s+mo[zż]esz|mo[zż]esz|bitte|kannst\s+du|k[oö]nntest\s+du|por\s+favor|puedes|peux-tu|pouvez-vous|s'il\s+te\s+pla[iî]t)[\s,]+)*/iu;
-const TASK_OPENER =
-  /^(?:write|translate|rewrite|rephrase|paraphrase|summari[sz]e|proofread|correct|fix|draft|compose|generate|create|calculate|compute|solve|napisz|przet[lł]umacz|przepisz|przeredaguj|zredaguj|sparafrazuj|stre[sś][cć]|podsumuj|popraw|oblicz|policz|rozwi[aą][zż]|stw[oó]rz|wygeneruj|schreib\w*|[uü]bersetz\w*|formulier\w*|korrigier\w*|fasse|berechne\w*|erstell\w*|escrib\w*|traduc\w*|traduz\w*|reescrib\w*|resum\w*|calcul\w*|corrig\w*|[eé]cri[st]\w*|traduis\w*|r[eé][eé]cri\w*|r[eé]sum\w*)(?![\p{L}])/iu;
-const TRANSLATION_OR_WRITING =
-  /(?:अनुवाद|लिखो|लिखें|लिखिए|ترجمہ|ترجمه|لکھو|لکھیں|ترجم)/u;
-const OPINION_OR_ADVICE =
-  /(?<![\p{L}])(?:what\s+do\s+you\s+think|your\s+opinion|should\s+i|do\s+you\s+(?:like|prefer)|co\s+my[sś]lisz|czy\s+powin(?:ienem|nam)|jak\s+my[sś]lisz|was\s+(?:denkst|h[aä]ltst)\s+du|sollte\s+ich|qu'en\s+penses-tu|que\s+piensas|deber[ií]a)(?![\p{L}])/iu;
-const ARITHMETIC =
-  /\p{N}\s*(?:[+*/×÷^=]|\s-\s|\s(?:x|times|razy|mal|plus|minus|divided\s+by|podzielone\s+przez)\s)\s*\p{N}/iu;
-const CODE = /```|`[^`\n]+`|\bdef\s+\w+\(|=>|\bfunction\s*\w*\(/u;
-
-const lacksSearchSignal = (query: string): boolean => {
-  const request = query.replace(POLITE_LEAD, '');
-  return (
-    TASK_OPENER.test(request) ||
-    TRANSLATION_OR_WRITING.test(query) ||
-    OPINION_OR_ADVICE.test(query) ||
-    ARITHMETIC.test(query) ||
-    CODE.test(query)
-  );
-};
 
 const KIND_PATTERNS: [WebIntentKind, RegExp][] = [
   ['price', PRICE_WORDS],
@@ -79,11 +56,10 @@ export const fastPlanWebSearch = (
 ): WebSearchPlan | null => {
   const query = userInput.trim();
   if (!query || isAboutTheConversation(query)) return null;
-  if (lacksSearchSignal(query)) return null;
-  if (mayNeedConversation(query, history)) return null;
-
   const language = detectQuestionLanguage(query)?.code;
-  if (!language || !WEB_FAST_PLAN_LANGUAGES.has(language)) return null;
+  if (!language || !hasNoSearchLexicon(language)) return null;
+  if (lacksSearchSignal(query, language)) return null;
+  if (mayNeedConversation(query, history)) return null;
   if (!hasStopwordCoverage(language)) return null;
 
   const keywordQuery = keywordQueryFor(query, history, opts?.digest);
