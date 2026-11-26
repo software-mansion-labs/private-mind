@@ -338,7 +338,11 @@ const ChatSpeechInput: React.FC<Props> = ({
             testID="speech-cancel"
           />
           <View style={styles.actionNote}>
-            {cancelling ? null : phase === 'listening' ? (
+            {cancelling ? (
+              <Text style={[styles.secondaryNote, styles.cancelledNote]}>
+                Cancelled
+              </Text>
+            ) : phase === 'listening' ? (
               <RecordingInfo duration={recordingDuration} />
             ) : (
               <Text style={styles.secondaryNote}>{ACTION_NOTES[phase]}</Text>
@@ -425,6 +429,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSizes.xs,
       lineHeight: lineHeights.xs,
       color: theme.text.onChatBarMuted,
+    },
+    cancelledNote: {
+      color: theme.text.onChatBar,
     },
 
     recordingInfo: {
