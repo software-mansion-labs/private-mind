@@ -148,14 +148,6 @@ const DrawerLayout = () => {
           }}
         />
         <Drawer.Screen
-          name="settings"
-          options={{
-            title: 'Settings',
-            headerTransparent: true,
-            headerStyle: { backgroundColor: 'transparent' },
-          }}
-        />
-        <Drawer.Screen
           name="benchmark"
           options={{
             title: 'Benchmark',

@@ -148,12 +148,18 @@ describe('DrawerMenu — collapsed', () => {
     expect(screen.getByLabelText('Settings')).toBeTruthy();
   });
 
-  it('opens Settings from the footer', () => {
-    renderMenu();
+  it('opens Settings over the open drawer without stopping a running reply', () => {
+    mockPathname = '/chat/3';
+    startTurnInChat(3);
+    const onNavigate = jest.fn();
+    renderMenu({ onNavigate });
 
     fireEvent.press(screen.getByTestId('drawer-settings'));
 
-    expect(mockReplace).toHaveBeenCalledWith('/settings');
+    expect(mockPush).toHaveBeenCalledWith('/settings');
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockInterrupt).not.toHaveBeenCalled();
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 
   it('renders a search field look-alike instead of the app name', () => {

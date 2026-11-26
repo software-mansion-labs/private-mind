@@ -84,24 +84,10 @@ function RootNavigator() {
         }}
       />
       <Stack.Screen
-        name="(modals)/app-info"
+        name="(modals)/settings"
         options={{
           headerShown: false,
-          animation: 'ios_from_right',
-        }}
-      />
-      <Stack.Screen
-        name="(modals)/custom-system-prompt"
-        options={{
-          headerShown: false,
-          animation: 'ios_from_right',
-        }}
-      />
-      <Stack.Screen
-        name="(modals)/context-size"
-        options={{
-          headerShown: false,
-          animation: 'ios_from_right',
+          presentation: 'modal',
         }}
       />
       <Stack.Screen

@@ -7,9 +7,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useLLMStore } from '../../store/llmStore';
 import { fontFamily, fontSizes } from '../../styles/fontStyles';
 import { Theme } from '../../styles/colors';
 import ChatIcon from '../../assets/icons/chat.svg';
@@ -71,29 +70,22 @@ export const DrawerFooter = ({ onNavigate, newChatCollapse }: Props) => {
   }));
 
   const router = useRouter();
-  const pathname = usePathname();
-  const interrupt = useLLMStore((state) => state.interrupt);
 
   const { startNewChat, turnInFlight } = useStartNewChat(onNavigate);
 
-  const goToSettings = () => {
-    interrupt();
-    router.replace('/settings');
-    onNavigate?.();
-  };
+  const openSettings = () => router.push('/settings');
 
   return (
     <View style={styles.footer}>
       <HeaderGlassButton edge="leading">
         <Pressable
-          onPress={goToSettings}
+          onPress={openSettings}
           testID="drawer-settings"
           accessibilityRole="button"
           accessibilityLabel="Settings"
           hitSlop={15}
           style={({ pressed }) => [
             headerGlassButtonFill,
-            pathname === '/settings' && styles.settingsActive,
             pressed && pressedOpacity,
           ]}
         >
@@ -178,10 +170,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
       color: theme.text.onBrand,
-    },
-    settingsActive: {
-      borderRadius: radius.full,
-      backgroundColor: theme.bg.drawerItemActive,
     },
     settingsIcon: {
       color: theme.text.primary,

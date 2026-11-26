@@ -15,7 +15,7 @@ export const ContextSizeSettingRow = () => {
   const router = useRouter();
   const value = useContextSizeLabel();
 
-  const handlePress = () => router.push('/context-size');
+  const handlePress = () => router.push('/settings/context-size');
 
   return (
     <SettingsRow
