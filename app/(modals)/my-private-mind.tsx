@@ -9,6 +9,7 @@ import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
 } from '../../components/GlassScreenHeader';
 import PrimaryButton from '../../components/PrimaryButton';
+import SecondaryButton from '../../components/SecondaryButton';
 import { SHARE_CARD_RADIUS, ShareCard } from '../../components/share/ShareCard';
 import ShareIcon from '../../assets/icons/upload.svg';
 import { space, textStyles } from '../../constants/design-system';
@@ -22,6 +23,7 @@ import {
   shareUsageCard,
   thisPhoneName,
 } from '../../utils/shareUsageCard';
+import { type SocialNetwork, postToNetwork } from '../../utils/socialShare';
 
 const MY_PRIVATE_MIND_TITLE = 'My Private Mind';
 const MAX_CARD_WIDTH = 400;
@@ -57,24 +59,42 @@ export default function MyPrivateMindScreen() {
 
   const handleBack = () => router.back();
 
-  const handleShare = () => {
-    const card = cardRef.current;
-    if (!summary || !card) return;
-    setSharing(true);
-    card.toDataURL(async (pngBase64: string) => {
-      try {
-        await shareUsageCard(
-          pngBase64,
-          buildUsageShareMessage(summary, deviceName)
-        );
-      } catch (error) {
-        console.warn('Sharing the card failed:', error);
-        Toast.show({ type: 'defaultToast', text1: 'Could not share the card' });
-      } finally {
-        setSharing(false);
+  const renderCard = () =>
+    new Promise<string>((resolve, reject) => {
+      const card = cardRef.current;
+      if (!card) {
+        reject(new Error('The card is not on screen'));
+        return;
       }
+      card.toDataURL(resolve);
     });
+
+  const runShare = async (share: (summary: UsageSummary) => Promise<void>) => {
+    if (!summary) return;
+    setSharing(true);
+    try {
+      await share(summary);
+    } catch (error) {
+      console.warn('Sharing the card failed:', error);
+      Toast.show({ type: 'defaultToast', text1: 'Could not share the card' });
+    } finally {
+      setSharing(false);
+    }
   };
+
+  const handleShare = () =>
+    runShare(async (shown) =>
+      shareUsageCard(
+        await renderCard(),
+        buildUsageShareMessage(shown, deviceName)
+      )
+    );
+
+  const postTo = (network: SocialNetwork) =>
+    runShare((shown) => postToNetwork(network, shown, deviceName, renderCard));
+
+  const handlePostOnX = () => postTo('x');
+  const handleShareOnLinkedIn = () => postTo('linkedin');
 
   const note = summary && summary.tokens === 0 ? EMPTY_NOTE : PRIVACY_NOTE;
 
@@ -106,6 +126,20 @@ export default function MyPrivateMindScreen() {
           onPress={handleShare}
           disabled={!summary || sharing}
         />
+        <View style={styles.quickTargets}>
+          <SecondaryButton
+            text="Post on X"
+            onPress={handlePostOnX}
+            disabled={!summary || sharing}
+            style={styles.quickTarget}
+          />
+          <SecondaryButton
+            text="Share on LinkedIn"
+            onPress={handleShareOnLinkedIn}
+            disabled={!summary || sharing}
+            style={styles.quickTarget}
+          />
+        </View>
       </ScrollView>
       <GlassScreenHeader title={MY_PRIVATE_MIND_TITLE} onBack={handleBack} />
     </View>
@@ -131,6 +165,14 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       overflow: 'hidden',
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border.popover,
+    },
+    quickTargets: {
+      alignSelf: 'stretch',
+      flexDirection: 'row',
+      gap: space.two,
+    },
+    quickTarget: {
+      flex: 1,
     },
     note: {
       ...textStyles.bodySecondaryRegular,

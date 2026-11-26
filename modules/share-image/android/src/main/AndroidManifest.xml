@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <queries>
+    <package android:name="com.twitter.android" />
+    <package android:name="com.linkedin.android" />
+  </queries>
+</manifest>
