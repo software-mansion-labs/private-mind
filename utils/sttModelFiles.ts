@@ -5,59 +5,108 @@ import { ResourceFetcher } from 'react-native-executorch/legacy';
 import { cancelFetchingSources } from './cancelFetching';
 import { ensureStorageFor } from './storageSpace';
 import { toLocalPath } from './localPath';
+import type { SttModelKind } from './dictationLanguage';
+
+export type { SttModelKind };
+
+export const STT_MODEL_KINDS: readonly SttModelKind[] = [
+  'english',
+  'multilingual',
+];
 
 const WHISPER_TINY_EN_COREML_BYTES = 76_477_024;
 const WHISPER_TINY_EN_XNNPACK_BYTES = 232_606_208;
 const WHISPER_TINY_EN_TOKENIZER_BYTES = 2_405_679;
+const WHISPER_TINY_COREML_BYTES = 76_477_794;
+const WHISPER_TINY_XNNPACK_BYTES = 232_609_280;
+const WHISPER_TINY_TOKENIZER_BYTES = 2_480_466;
 const FSMN_VAD_BYTES = 1_827_808;
+const BYTES_PER_MB = 1_000_000;
 
-export const WHISPER_DOWNLOAD_SIZE_BYTES =
-  (Platform.OS === 'ios'
-    ? WHISPER_TINY_EN_COREML_BYTES
-    : WHISPER_TINY_EN_XNNPACK_BYTES) +
-  WHISPER_TINY_EN_TOKENIZER_BYTES +
-  FSMN_VAD_BYTES;
+const isIOS = () => Platform.OS === 'ios';
 
-const TINY_ENGLISH_WHISPER = models.speechToText.WHISPER.EN.TINY;
+const MODEL_BYTES: Record<SttModelKind, () => number> = {
+  english: () =>
+    (isIOS() ? WHISPER_TINY_EN_COREML_BYTES : WHISPER_TINY_EN_XNNPACK_BYTES) +
+    WHISPER_TINY_EN_TOKENIZER_BYTES,
+  multilingual: () =>
+    (isIOS() ? WHISPER_TINY_COREML_BYTES : WHISPER_TINY_XNNPACK_BYTES) +
+    WHISPER_TINY_TOKENIZER_BYTES,
+};
 
-export const whisperModel = (): WhisperSttModel<'en'> =>
-  Platform.OS === 'ios'
-    ? TINY_ENGLISH_WHISPER.COREML_FP16
-    : TINY_ENGLISH_WHISPER.XNNPACK_FP32;
+export const whisperDownloadSizeBytes = (kind: SttModelKind): number =>
+  MODEL_BYTES[kind]() + FSMN_VAD_BYTES;
 
-export const whisperSources = (): string[] => {
-  const model = whisperModel();
+export const whisperDownloadSizeLabel = (kind: SttModelKind): string =>
+  `${Math.round(whisperDownloadSizeBytes(kind) / BYTES_PER_MB)} MB`;
+
+const WHISPER_VARIANTS: Record<SttModelKind, () => WhisperSttModel> = {
+  english: () => {
+    const tiny = models.speechToText.WHISPER.EN.TINY;
+    return isIOS() ? tiny.COREML_FP16 : tiny.XNNPACK_FP32;
+  },
+  multilingual: () => {
+    const tiny = models.speechToText.WHISPER.TINY;
+    return isIOS() ? tiny.COREML_FP16 : tiny.XNNPACK_FP32;
+  },
+};
+
+export const whisperModel = (kind: SttModelKind): WhisperSttModel =>
+  WHISPER_VARIANTS[kind]();
+
+export const whisperSources = (kind: SttModelKind): string[] => {
+  const model = whisperModel(kind);
   return [model.modelPath, model.tokenizerPath, model.vadModel.modelPath];
 };
 
-const filenameOf = (source: string): string =>
-  source.split('?')[0].split('/').pop() ?? source;
+const otherKind = (kind: SttModelKind): SttModelKind =>
+  kind === 'english' ? 'multilingual' : 'english';
 
-export const isWhisperDownloaded = async (): Promise<boolean> => {
-  const filenames = whisperSources().map(filenameOf);
+export const downloadedFilenameOf = (source: string): string =>
+  (source.replace(/^https?:\/\//, '').split('#')[0] ?? source).replace(
+    /[^a-zA-Z0-9._-]/g,
+    '_'
+  );
+
+const allOnDisk = (sources: string[], files: string[]) =>
+  sources
+    .map(downloadedFilenameOf)
+    .every((name) => files.some((file) => file.endsWith(name)));
+
+export const isWhisperDownloaded = async (
+  kind: SttModelKind
+): Promise<boolean> => {
   try {
     const files = await ExpoResourceFetcher.listDownloadedFiles();
-    return filenames.every((name) => files.some((file) => file.endsWith(name)));
+    return allOnDisk(whisperSources(kind), files);
   } catch {
     return false;
   }
 };
 
 export const fetchWhisperFiles = async (
+  kind: SttModelKind,
   onProgress: (progress: number) => void
 ): Promise<boolean> => {
-  if (!(await isWhisperDownloaded())) {
-    ensureStorageFor(WHISPER_DOWNLOAD_SIZE_BYTES);
+  if (!(await isWhisperDownloaded(kind))) {
+    ensureStorageFor(whisperDownloadSizeBytes(kind));
   }
-  const paths = await ResourceFetcher.fetch(onProgress, ...whisperSources());
+  const paths = await ResourceFetcher.fetch(
+    onProgress,
+    ...whisperSources(kind)
+  );
   return paths !== null;
 };
 
 export const localWhisperModel = async (
+  kind: SttModelKind,
   onProgress: (progress: number) => void
-): Promise<WhisperSttModel<'en'>> => {
-  const model = whisperModel();
-  const paths = await ResourceFetcher.fetch(onProgress, ...whisperSources());
+): Promise<WhisperSttModel> => {
+  const model = whisperModel(kind);
+  const paths = await ResourceFetcher.fetch(
+    onProgress,
+    ...whisperSources(kind)
+  );
   if (!paths || paths.length < 3) {
     throw new Error('The dictation model download did not finish.');
   }
@@ -70,5 +119,16 @@ export const localWhisperModel = async (
   };
 };
 
-export const cancelWhisperFetch = (isStillFetching: () => boolean) =>
-  cancelFetchingSources(whisperSources(), isStillFetching);
+export const cancelWhisperFetch = (
+  kind: SttModelKind,
+  isStillFetching: () => boolean
+) => cancelFetchingSources(whisperSources(kind), isStillFetching);
+
+export const deleteWhisperFiles = async (kind: SttModelKind): Promise<void> => {
+  const [modelPath, tokenizerPath, vadPath] = whisperSources(kind);
+  const sharedVadStillNeeded = await isWhisperDownloaded(otherKind(kind));
+  const doomed = sharedVadStillNeeded
+    ? [modelPath, tokenizerPath]
+    : [modelPath, tokenizerPath, vadPath];
+  await ExpoResourceFetcher.deleteResources(...doomed);
+};

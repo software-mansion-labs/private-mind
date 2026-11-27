@@ -44,7 +44,15 @@ jest.mock('../hooks/useSpeechInput', () => ({
   useSpeechInput: () => mockSpeech,
 }));
 
+jest.mock('../utils/storageSpace', () => {
+  const actual = jest.requireActual('../utils/storageSpace');
+  return { ...actual, shortfallBehind: jest.fn(actual.shortfallBehind) };
+});
+
 import ChatSpeechInput from '../components/chat-screen/ChatSpeechInput';
+import { shortfallBehind } from '../utils/storageSpace';
+import { useSTTStore } from '../store/sttStore';
+import { whisperDownloadSizeBytes } from '../utils/sttModelFiles';
 
 const renderSheet = () =>
   render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={jest.fn()} />);
@@ -411,5 +419,34 @@ describe('ChatSpeechInput when the app goes to the background', () => {
     );
     expect(mockSpeech.abandon).not.toHaveBeenCalled();
     expect(onInterrupted).not.toHaveBeenCalled();
+  });
+});
+
+describe('ChatSpeechInput when the phone runs out of space for the model', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSpeech.status = 'loading';
+  });
+
+  afterEach(() => {
+    mockSpeech.start.mockImplementation(async () => null);
+    useSTTStore.setState({ requestedKind: 'english' });
+  });
+
+  it('measures the shortfall against the model the dictation language needs', async () => {
+    const outOfSpace = new Error('ENOSPC: no space left on device');
+    mockSpeech.start.mockImplementation(async () => {
+      throw outOfSpace;
+    });
+    useSTTStore.setState({ requestedKind: 'multilingual' });
+    const onCancel = jest.fn();
+
+    render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
+
+    await waitFor(() => expect(onCancel).toHaveBeenCalled());
+    expect(shortfallBehind).toHaveBeenCalledWith(
+      outOfSpace,
+      whisperDownloadSizeBytes('multilingual')
+    );
   });
 });

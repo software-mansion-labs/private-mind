@@ -104,9 +104,23 @@ const whisperVariant = (backend: string) => ({
   },
 });
 
+const multilingualWhisperVariant = (backend: string) => ({
+  modelPath: `https://huggingface.co/mock/whisper-tiny/${backend}/whisper.pte`,
+  tokenizerPath: 'https://huggingface.co/mock/whisper-tiny/tokenizer.json',
+  supportedLanguages: ['en', 'pl', 'de', 'hi'],
+  vadModel: {
+    modelPath: 'https://huggingface.co/mock/fsmn-vad/vad.pte',
+    defaultOptions: { speechThreshold: 0.6 },
+  },
+});
+
 export const models = {
   speechToText: {
     WHISPER: {
+      TINY: {
+        COREML_FP16: multilingualWhisperVariant('coreml'),
+        XNNPACK_FP32: multilingualWhisperVariant('xnnpack'),
+      },
       EN: {
         TINY: {
           COREML_FP16: whisperVariant('coreml'),

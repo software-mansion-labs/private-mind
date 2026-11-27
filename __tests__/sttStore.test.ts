@@ -2,6 +2,7 @@ import { useSTTStore } from '../store/sttStore';
 import { createWhisperSpeechToText } from 'react-native-executorch';
 import {
   cancelWhisperFetch,
+  deleteWhisperFiles,
   fetchWhisperFiles,
   isWhisperDownloaded,
   localWhisperModel,
@@ -9,10 +10,13 @@ import {
 import { pauseModelDownloadsWhile } from '../store/modelStore';
 
 jest.mock('../utils/sttModelFiles', () => ({
+  STT_MODEL_KINDS: ['english', 'multilingual'],
   isWhisperDownloaded: jest.fn(async () => true),
   fetchWhisperFiles: jest.fn(async () => true),
   cancelWhisperFetch: jest.fn(async () => undefined),
+  deleteWhisperFiles: jest.fn(async () => undefined),
   localWhisperModel: jest.fn(async () => LOCAL_WHISPER),
+  whisperDownloadSizeBytes: jest.fn(() => 80_000_000),
 }));
 
 const LOCAL_WHISPER = {
@@ -45,11 +49,15 @@ const mockModule = {
   stream: jest.fn(),
   streamInsert: jest.fn(),
   streamStop: jest.fn(),
+  dispose: jest.fn(),
 };
 
 beforeEach(() => {
   useSTTStore.setState({
     module: null,
+    moduleKind: null,
+    fetchingKind: null,
+    onDisk: { english: false, multilingual: false },
     isReady: false,
     isLoading: false,
     isDownloading: false,
@@ -83,7 +91,7 @@ describe('ensureLoaded', () => {
   });
 
   it('reports progress callbacks', async () => {
-    mockLocalWhisperModel.mockImplementationOnce(async (onProgress) => {
+    mockLocalWhisperModel.mockImplementationOnce(async (_kind, onProgress) => {
       onProgress(0.5);
       onProgress(1.0);
       return LOCAL_WHISPER;
@@ -105,7 +113,11 @@ describe('ensureLoaded', () => {
   });
 
   it('returns immediately when already ready', async () => {
-    useSTTStore.setState({ isReady: true, module: mockModule as any });
+    useSTTStore.setState({
+      isReady: true,
+      module: mockModule as any,
+      moduleKind: 'english',
+    });
 
     await useSTTStore.getState().ensureLoaded();
 
@@ -270,7 +282,7 @@ describe('fetching Whisper ahead of the first dictation', () => {
     const fetching = useSTTStore.getState().fetchFiles();
     await useSTTStore.getState().cancelFetchFiles();
 
-    const isStillFetching = (cancelWhisperFetch as jest.Mock).mock.calls[0][0];
+    const isStillFetching = (cancelWhisperFetch as jest.Mock).mock.calls[0][1];
     expect(isStillFetching()).toBe(true);
 
     fetch.finish(false);
@@ -323,5 +335,245 @@ describe('fetching Whisper ahead of the first dictation', () => {
     expect(fetchWhisperFiles).toHaveBeenCalledTimes(2);
     expect(useSTTStore.getState().isFetchingFiles).toBe(false);
     expect(useSTTStore.getState().filesProgress).toBe(1);
+  });
+});
+
+const makeModule = (name: string, events: string[]) => ({
+  name,
+  stream: jest.fn(),
+  streamInsert: jest.fn(),
+  streamStop: jest.fn(),
+  dispose: jest.fn(() => {
+    events.push(`dispose ${name}`);
+  }),
+});
+
+const createInOrder = (events: string[], ...names: string[]) => {
+  for (const name of names) {
+    mockCreateWhisper.mockImplementationOnce(async () => {
+      events.push(`create ${name}`);
+      return makeModule(name, events);
+    });
+  }
+};
+
+describe('dictation in a language other than English', () => {
+  it('loads the multilingual recognizer from its own files', async () => {
+    mockCreateWhisper.mockResolvedValue(mockModule);
+
+    await useSTTStore.getState().ensureLoaded('multilingual');
+
+    expect(mockLocalWhisperModel).toHaveBeenCalledWith(
+      'multilingual',
+      expect.any(Function)
+    );
+    expect(useSTTStore.getState()).toMatchObject({
+      moduleKind: 'multilingual',
+      requestedKind: 'multilingual',
+      isReady: true,
+    });
+    expect(useSTTStore.getState().onDisk.multilingual).toBe(true);
+  });
+
+  it('holds the other model downloads while the multilingual model downloads too', async () => {
+    (isWhisperDownloaded as jest.Mock).mockResolvedValue(false);
+    let resolveLoad!: (m: typeof mockModule) => void;
+    mockCreateWhisper.mockReturnValue(
+      new Promise((res) => {
+        resolveLoad = res;
+      })
+    );
+
+    const loading = useSTTStore.getState().ensureLoaded('multilingual');
+    await new Promise(setImmediate);
+
+    expect(isWhisperDownloaded).toHaveBeenCalledWith('multilingual');
+    expect(pauseModelDownloadsWhile).toHaveBeenCalledTimes(1);
+    expect(useSTTStore.getState().isDownloading).toBe(true);
+
+    resolveLoad(mockModule);
+    await loading;
+
+    expect(useSTTStore.getState().isDownloading).toBe(false);
+  });
+
+  it('is ready only for the kind it loaded', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'english', 'multilingual');
+
+    await useSTTStore.getState().ensureLoaded('english');
+    await useSTTStore.getState().ensureLoaded('english');
+    await useSTTStore.getState().ensureLoaded('multilingual');
+
+    expect(mockCreateWhisper).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('switching the dictation language', () => {
+  it('frees the English recognizer before it builds the multilingual one', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'english', 'multilingual');
+
+    await useSTTStore.getState().ensureLoaded('english');
+    await useSTTStore.getState().ensureLoaded('multilingual');
+
+    expect(events).toEqual([
+      'create english',
+      'dispose english',
+      'create multilingual',
+    ]);
+  });
+
+  it('waits for a recognizer still loading, then frees it before loading the other', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'english', 'multilingual');
+
+    const english = useSTTStore.getState().ensureLoaded('english');
+    const multilingual = useSTTStore.getState().ensureLoaded('multilingual');
+    await Promise.all([english, multilingual]);
+
+    expect(events).toEqual([
+      'create english',
+      'dispose english',
+      'create multilingual',
+    ]);
+    expect(useSTTStore.getState().moduleKind).toBe('multilingual');
+  });
+
+  it('keeps the next recognizer waiting until the open transcript stream has ended', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'english', 'multilingual');
+    await useSTTStore.getState().ensureLoaded('english');
+
+    let endStream!: () => void;
+    useSTTStore.getState().trackStream(
+      new Promise<void>((resolve) => {
+        endStream = resolve;
+      })
+    );
+    const loading = useSTTStore.getState().ensureLoaded('multilingual');
+    await new Promise(setImmediate);
+
+    expect(events).toEqual(['create english']);
+
+    endStream();
+    await loading;
+
+    expect(events).toEqual([
+      'create english',
+      'dispose english',
+      'create multilingual',
+    ]);
+  });
+
+  it('releases a recognizer of the other kind when a language is picked in settings', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'english');
+    await useSTTStore.getState().ensureLoaded('english');
+
+    useSTTStore.getState().releaseModelOtherThan('english');
+    await new Promise(setImmediate);
+    expect(events).toEqual(['create english']);
+
+    useSTTStore.getState().releaseModelOtherThan('multilingual');
+    await new Promise(setImmediate);
+    expect(events).toEqual(['create english', 'dispose english']);
+    expect(useSTTStore.getState().module).toBeNull();
+  });
+});
+
+describe('managing the dictation models on the phone', () => {
+  it('downloads the multilingual files ahead of time and remembers they are there', async () => {
+    const fetching = useSTTStore.getState().fetchFiles('multilingual');
+
+    expect(useSTTStore.getState().fetchingKind).toBe('multilingual');
+    expect(await fetching).toBe(true);
+    expect(fetchWhisperFiles).toHaveBeenCalledWith(
+      'multilingual',
+      expect.any(Function)
+    );
+    expect(useSTTStore.getState().fetchingKind).toBeNull();
+    expect(useSTTStore.getState().onDisk.multilingual).toBe(true);
+  });
+
+  it('cancels the download of the kind that is being fetched', async () => {
+    const fetch = deferredFetch();
+    const fetching = useSTTStore.getState().fetchFiles('multilingual');
+
+    await useSTTStore.getState().cancelFetchFiles();
+
+    expect(cancelWhisperFetch).toHaveBeenCalledWith(
+      'multilingual',
+      expect.any(Function)
+    );
+    fetch.finish(false);
+    await fetching;
+  });
+
+  it('does not wait for an English download before loading the multilingual model', async () => {
+    const fetch = deferredFetch();
+    mockCreateWhisper.mockResolvedValue(mockModule);
+    const fetching = useSTTStore.getState().fetchFiles('english');
+
+    await useSTTStore.getState().ensureLoaded('multilingual');
+
+    expect(useSTTStore.getState().moduleKind).toBe('multilingual');
+    fetch.finish(true);
+    await fetching;
+  });
+
+  it('frees the loaded recognizer before deleting its files', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'multilingual');
+    (deleteWhisperFiles as jest.Mock).mockImplementationOnce(async () => {
+      events.push('delete multilingual files');
+    });
+    await useSTTStore.getState().ensureLoaded('multilingual');
+
+    await useSTTStore.getState().deleteModelFiles('multilingual');
+
+    expect(events).toEqual([
+      'create multilingual',
+      'dispose multilingual',
+      'delete multilingual files',
+    ]);
+    expect(useSTTStore.getState().module).toBeNull();
+    expect(useSTTStore.getState().onDisk.multilingual).toBe(false);
+  });
+
+  it('keeps the English recognizer when the multilingual files are deleted', async () => {
+    const events: string[] = [];
+    createInOrder(events, 'english');
+    await useSTTStore.getState().ensureLoaded('english');
+
+    await useSTTStore.getState().deleteModelFiles('multilingual');
+
+    expect(deleteWhisperFiles).toHaveBeenCalledWith('multilingual');
+    expect(events).toEqual(['create english']);
+    expect(useSTTStore.getState().moduleKind).toBe('english');
+  });
+
+  it('stops a running download of the model being deleted', async () => {
+    const fetch = deferredFetch();
+    const fetching = useSTTStore.getState().fetchFiles('multilingual');
+
+    const deleting = useSTTStore.getState().deleteModelFiles('multilingual');
+    fetch.finish(false);
+    await deleting;
+    await fetching;
+
+    expect(cancelWhisperFetch).toHaveBeenCalledTimes(1);
+    expect(deleteWhisperFiles).toHaveBeenCalledWith('multilingual');
+  });
+
+  it('reads which models are on the phone', async () => {
+    (isWhisperDownloaded as jest.Mock).mockImplementation(
+      async (kind: string) => kind === 'english'
+    );
+
+    const onDisk = await useSTTStore.getState().refreshOnDisk();
+
+    expect(onDisk).toEqual({ english: true, multilingual: false });
+    expect(useSTTStore.getState().onDisk).toEqual(onDisk);
   });
 });

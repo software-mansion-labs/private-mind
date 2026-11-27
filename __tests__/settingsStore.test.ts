@@ -188,3 +188,59 @@ describe('conversation memory persistence', () => {
     }
   );
 });
+
+describe('dictation language persistence', () => {
+  const STORAGE_KEY = 'app-settings';
+
+  const flushWrites = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const storedDictationLanguage = async () => {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    return JSON.parse(raw ?? '{}').state.dictationLanguage;
+  };
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    useSettingsStore.setState({ dictationLanguage: 'phone' });
+  });
+
+  it('follows the phone language until the user picks one', () => {
+    expect(useSettingsStore.getInitialState().dictationLanguage).toBe('phone');
+  });
+
+  it('remembers the picked language across launches', async () => {
+    useSettingsStore.getState().setDictationLanguage('pl');
+    await flushWrites();
+
+    expect(await storedDictationLanguage()).toBe('pl');
+    const persistedBytes = await AsyncStorage.getItem(STORAGE_KEY);
+
+    useSettingsStore.setState({ dictationLanguage: 'phone' });
+    await AsyncStorage.setItem(STORAGE_KEY, persistedBytes ?? '');
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().dictationLanguage).toBe('pl');
+  });
+
+  it('goes back to the phone language when the stored value is not a language', async () => {
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ state: { dictationLanguage: 'xx' }, version: 0 })
+    );
+
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().dictationLanguage).toBe('phone');
+  });
+
+  it('starts settings saved before this setting existed on the phone language', async () => {
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ state: { hapticsEnabled: true }, version: 0 })
+    );
+
+    await useSettingsStore.persist.rehydrate();
+
+    expect(useSettingsStore.getState().dictationLanguage).toBe('phone');
+  });
+});

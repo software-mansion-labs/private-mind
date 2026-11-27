@@ -88,6 +88,16 @@ describe('the settings screen', () => {
     expect(mockPush).toHaveBeenCalledWith('/settings/context-size');
   });
 
+  it('shows the dictation language on its row and opens its page from it', () => {
+    useSettingsStore.setState({ dictationLanguage: 'ur' });
+    render(<SettingsScreen />);
+    expect(
+      screen.getByTestId('settings-dictation-language-value')
+    ).toHaveTextContent('Urdu');
+    fireEvent.press(screen.getByTestId('settings-dictation-language'));
+    expect(mockPush).toHaveBeenCalledWith('/settings/dictation-language');
+  });
+
   it('keeps the response speed stats switch working', () => {
     render(<SettingsScreen />);
     fireEvent(screen.getAllByRole('switch')[0]!, 'valueChange', true);

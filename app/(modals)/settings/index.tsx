@@ -8,6 +8,7 @@ import { SettingsGroup } from '../../../components/settings/SettingsGroup';
 import { SettingsToggleRow } from '../../../components/settings/SettingsToggleRow';
 import { SettingsChoiceRow } from '../../../components/settings/SettingsChoiceRow';
 import { ContextSizeSettingRow } from '../../../components/settings/ContextSizeSettingRow';
+import { DictationLanguageSettingRow } from '../../../components/settings/DictationLanguageSettingRow';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
 } from '../../../components/GlassScreenHeader';
@@ -107,6 +108,7 @@ const SettingsScreen = () => {
             showChevron
           />
           <ContextSizeSettingRow />
+          <DictationLanguageSettingRow />
           <SettingsToggleRow
             label="Response speed stats"
             description="Show what each answer cost: document and web retrieval, time to first token, tokens per second."

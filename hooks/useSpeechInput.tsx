@@ -7,6 +7,8 @@ import {
   useSTTStore,
   type SpeechToTextModule,
 } from '../store/sttStore';
+import { chooseDictationLanguage } from '../utils/chooseDictationLanguage';
+import { sttModelKindFor } from '../utils/dictationLanguage';
 
 interface Options {
   onAudioData?: (data: number[]) => void;
@@ -72,13 +74,19 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       isStartCanceled.current = false;
       changeStatus('loading');
 
+      const language = await chooseDictationLanguage();
+      if (!language || isStartCanceled.current) {
+        changeStatus('idle');
+        return null;
+      }
+
       AudioManager.setAudioSessionOptions({
         iosCategory: 'playAndRecord',
         iosMode: 'spokenAudio',
       });
       await AudioManager.setAudioSessionActivity(true);
       await closeOpenStream();
-      await stt.ensureLoaded();
+      await stt.ensureLoaded(sttModelKindFor(language));
 
       if (isStartCanceled.current) {
         releaseAudioSession(claim);
@@ -88,7 +96,7 @@ export function useSpeechInput({ onAudioData }: Options = {}): Result {
       changeStatus('listening');
       const streamGenerator = useSTTStore
         .getState()
-        .module!.stream({ language: 'en' });
+        .module!.stream({ language });
       throwIfRecorderFailed(
         recorder.current!.onAudioReady(
           {
