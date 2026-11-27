@@ -98,6 +98,7 @@ export default function MyPrivateMindScreen() {
 
   const handlePostOnX = () => postTo('x');
   const handleShareOnLinkedIn = () => postTo('linkedin');
+  const handlePostOnReddit = () => postTo('reddit');
 
   const note = summary && summary.tokens === 0 ? EMPTY_NOTE : PRIVACY_NOTE;
 
@@ -131,14 +132,23 @@ export default function MyPrivateMindScreen() {
         />
         <View style={styles.quickTargets}>
           <SecondaryButton
-            text="Post on X"
+            text="X"
+            accessibilityLabel="Post on X"
             onPress={handlePostOnX}
             disabled={!summary || sharing}
             style={styles.quickTarget}
           />
           <SecondaryButton
-            text="Share on LinkedIn"
+            text="LinkedIn"
+            accessibilityLabel="Share on LinkedIn"
             onPress={handleShareOnLinkedIn}
+            disabled={!summary || sharing}
+            style={styles.quickTarget}
+          />
+          <SecondaryButton
+            text="Reddit"
+            accessibilityLabel="Post on Reddit"
+            onPress={handlePostOnReddit}
             disabled={!summary || sharing}
             style={styles.quickTarget}
           />

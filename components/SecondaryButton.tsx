@@ -22,6 +22,7 @@ interface Props {
   style?: ViewStyle;
   textStyle?: TextStyle;
   accessibilityRole?: AccessibilityRole;
+  accessibilityLabel?: string;
   accessibilityHint?: string;
 }
 
@@ -33,6 +34,7 @@ const SecondaryButton = ({
   style,
   textStyle,
   accessibilityRole,
+  accessibilityLabel,
   accessibilityHint,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles, disabled);
@@ -42,6 +44,7 @@ const SecondaryButton = ({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       style={({ pressed }) => [styles.button, style, pressed && pressedOpacity]}
     >

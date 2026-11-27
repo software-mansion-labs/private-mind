@@ -11,11 +11,12 @@ import {
   pagesLabel,
 } from './usageStats';
 
-export type SocialNetwork = 'x' | 'linkedin';
+export type SocialNetwork = 'x' | 'linkedin' | 'reddit';
 
 export const SOCIAL_APP_PACKAGES: Record<SocialNetwork, string> = {
   x: 'com.twitter.android',
   linkedin: 'com.linkedin.android',
+  reddit: 'com.reddit.frontpage',
 };
 
 export const X_POST_LIMIT = 280;
@@ -55,6 +56,18 @@ export const linkedInPostText = (
     LINKEDIN_HASHTAGS,
     APP_SITE_URL,
   ].join('\n');
+
+export const redditPostTitle = (
+  summary: UsageSummary,
+  deviceName: string | null
+): string =>
+  `${phonePhrase(deviceName)} has written ${pagesPhrase(summary)} with an AI that runs entirely on the phone`;
+
+export const redditSubmitUrl = (
+  title: string,
+  url: string = APP_SITE_URL
+): string =>
+  `https://www.reddit.com/submit?title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
 
 export const xIntentUrl = (text: string, url: string = APP_SITE_URL): string =>
   `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
@@ -107,12 +120,36 @@ const shareOnLinkedIn = async (
   await Linking.openURL(linkedInShareUrl());
 };
 
+const postOnReddit = async (
+  summary: UsageSummary,
+  deviceName: string | null,
+  renderCard: () => Promise<string>
+) => {
+  const title = redditPostTitle(summary, deviceName);
+  const app = installedAppFor('reddit');
+  if (app) {
+    await postToApp(app, `${title} ${APP_SITE_URL}`, renderCard);
+    return;
+  }
+  await Linking.openURL(redditSubmitUrl(title));
+};
+
+const POSTERS: Record<
+  SocialNetwork,
+  (
+    summary: UsageSummary,
+    deviceName: string | null,
+    renderCard: () => Promise<string>
+  ) => Promise<void>
+> = {
+  x: postOnX,
+  linkedin: shareOnLinkedIn,
+  reddit: postOnReddit,
+};
+
 export const postToNetwork = (
   network: SocialNetwork,
   summary: UsageSummary,
   deviceName: string | null,
   renderCard: () => Promise<string>
-): Promise<void> => {
-  if (network === 'x') return postOnX(summary, deviceName, renderCard);
-  return shareOnLinkedIn(summary, deviceName, renderCard);
-};
+): Promise<void> => POSTERS[network](summary, deviceName, renderCard);

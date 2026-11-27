@@ -23,6 +23,8 @@ import { APP_SITE_URL } from '../utils/shareApp';
 import {
   LINKEDIN_TEXT_COPIED,
   SOCIAL_APP_PACKAGES,
+  redditPostTitle,
+  redditSubmitUrl,
   X_HASHTAGS,
   X_POST_LIMIT,
   linkedInPostText,
@@ -170,6 +172,34 @@ describe('posting from the My Private Mind screen', () => {
       'com.linkedin.android'
     );
     expect(openURL).not.toHaveBeenCalled();
+  });
+
+  it('hands the card and a title with the link to the Reddit app when it is installed', async () => {
+    mockIsInstalled.mockReturnValue(true);
+
+    await postToNetwork('reddit', summary, 'Pixel 10', renderCard);
+
+    expect(mockShareToPackage).toHaveBeenCalledWith(
+      'file:///cache/my-private-mind.png',
+      `${redditPostTitle(summary, 'Pixel 10')} ${APP_SITE_URL}`,
+      'com.reddit.frontpage'
+    );
+    expect(openURL).not.toHaveBeenCalled();
+  });
+
+  it('opens the Reddit submit page with the title and the link when the app is missing', async () => {
+    await postToNetwork('reddit', summary, 'Pixel 10', renderCard);
+
+    expect(openURL).toHaveBeenCalledWith(
+      redditSubmitUrl(redditPostTitle(summary, 'Pixel 10'))
+    );
+    expect(renderCard).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Reddit title within the 300 characters Reddit allows', () => {
+    expect(
+      redditPostTitle(summary, 'Samsung Galaxy S25 Ultra').length
+    ).toBeLessThanOrEqual(300);
   });
 
   it('uses the web intents on iOS, where no app can be targeted with an image', async () => {
