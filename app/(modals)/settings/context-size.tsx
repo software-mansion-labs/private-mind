@@ -57,7 +57,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
       backgroundColor: theme.bg.softPrimary,
     },
     content: {
-      paddingTop: headerHeight + space.four,
+      paddingTop: headerHeight + space.six,
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + space.four,
     },

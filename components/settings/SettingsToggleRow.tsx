@@ -13,6 +13,7 @@ interface Props {
   icon?: React.ReactNode;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  testID?: string;
 }
 
 export const SettingsToggleRow = ({
@@ -21,17 +22,26 @@ export const SettingsToggleRow = ({
   icon,
   value,
   onValueChange,
+  testID,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.row}>
-      {icon}
+      {icon && (
+        <View style={[styles.iconSlot, description && styles.iconOnLabelLine]}>
+          {icon}
+        </View>
+      )}
       <View style={styles.texts}>
         <Text style={styles.label}>{label}</Text>
         {description && <Text style={styles.description}>{description}</Text>}
       </View>
-      <ThemedSwitch value={value} onValueChange={onValueChange} />
+      <ThemedSwitch
+        value={value}
+        onValueChange={onValueChange}
+        testID={testID}
+      />
     </View>
   );
 };
@@ -46,6 +56,13 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       gap: space.three,
     },
+    iconSlot: {
+      height: lineHeights.md,
+      justifyContent: 'center',
+    },
+    iconOnLabelLine: {
+      alignSelf: 'flex-start',
+    },
     texts: {
       flex: 1,
       gap: space.half,
@@ -53,6 +70,7 @@ const createStyles = (theme: Theme) =>
     label: {
       fontFamily: fontFamily.medium,
       fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
     description: {
