@@ -332,6 +332,7 @@ const ChatSpeechInput: React.FC<Props> = ({
           <CircleButton
             icon={StopIcon}
             onPress={handleCancel}
+            disabled={sending}
             size={13}
             {...composerControlColors(theme)}
             color={theme.text.onChatBar}
