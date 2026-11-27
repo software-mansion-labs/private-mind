@@ -23,6 +23,8 @@ import { APP_SITE_URL } from '../utils/shareApp';
 import {
   LINKEDIN_TEXT_COPIED,
   SOCIAL_APP_PACKAGES,
+  X_MAKER_ACCOUNT,
+  LINKEDIN_MAKER_PAGE,
   redditPostTitle,
   redditSubmitUrl,
   X_HASHTAGS,
@@ -76,6 +78,13 @@ describe('the post for X', () => {
     expect(text.endsWith(X_HASHTAGS)).toBe(true);
   });
 
+  it('credits the makers by their X account, in the long and the shortened post', () => {
+    expect(xPostText(summary, 'Pixel 10')).toContain(`By ${X_MAKER_ACCOUNT} `);
+    expect(xPostText(hugeEstimate, LONGEST_DEVICE_NAME)).toContain(
+      `By ${X_MAKER_ACCOUNT} `
+    );
+  });
+
   it('stays within 280 characters with the link X adds', () => {
     expect(xPostLength(xPostText(summary, 'Pixel 10'))).toBeLessThanOrEqual(
       X_POST_LIMIT
@@ -110,6 +119,7 @@ describe('the post for LinkedIn', () => {
     expect(text).toContain('My Pixel 10 has written 412 A4 pages');
     expect(text).toContain('206,000 words across 38 chats');
     expect(text).toContain('not a single byte of it went to the cloud');
+    expect(text).toContain(`built by ${LINKEDIN_MAKER_PAGE}.`);
     expect(text.trimEnd().endsWith(APP_SITE_URL)).toBe(true);
     expect(text.length).toBeGreaterThan(X_POST_LIMIT);
   });

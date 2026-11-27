@@ -22,6 +22,8 @@ export const SOCIAL_APP_PACKAGES: Record<SocialNetwork, string> = {
 export const X_POST_LIMIT = 280;
 export const X_LINK_LENGTH = 23;
 export const X_HASHTAGS = '#OnDeviceAI #PrivateMind';
+export const X_MAKER_ACCOUNT = '@swmansion_ai';
+export const LINKEDIN_MAKER_PAGE = 'Software Mansion AI Labs';
 export const LINKEDIN_HASHTAGS = '#OnDeviceAI #Privacy #PrivateMind';
 export const LINKEDIN_TEXT_COPIED = 'Text copied — paste it into your post';
 
@@ -39,9 +41,9 @@ export const xPostText = (
   deviceName: string | null
 ): string => {
   const headline = `${phonePhrase(deviceName)} has written ${pagesPhrase(summary)} with Private Mind.`;
-  const full = `${headline} The AI runs entirely on the phone: 0 bytes sent to the cloud. ${X_HASHTAGS}`;
+  const full = `${headline} The AI runs entirely on the phone: 0 bytes sent to the cloud. By ${X_MAKER_ACCOUNT} ${X_HASHTAGS}`;
   if (xPostLength(full) <= X_POST_LIMIT) return full;
-  return `${headline} ${X_HASHTAGS}`;
+  return `${headline} By ${X_MAKER_ACCOUNT} ${X_HASHTAGS}`;
 };
 
 export const linkedInPostText = (
@@ -51,7 +53,7 @@ export const linkedInPostText = (
   [
     `${phonePhrase(deviceName)} has written ${pagesPhrase(summary)} of AI answers with Private Mind: ${approximately(formatCount(summary.words), summary.approximate)} words across ${formatCount(summary.chats)} chats, and not a single byte of it went to the cloud.`,
     '',
-    'Private Mind runs language models entirely on the phone. No account, no server, and it keeps working offline, so what you ask stays with you. It is free and open source, built by Software Mansion.',
+    `Private Mind runs language models entirely on the phone. No account, no server, and it keeps working offline, so what you ask stays with you. It is free and open source, built by ${LINKEDIN_MAKER_PAGE}.`,
     '',
     LINKEDIN_HASHTAGS,
     APP_SITE_URL,
