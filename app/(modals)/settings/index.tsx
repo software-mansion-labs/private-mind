@@ -183,7 +183,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     scrollContent: {
       gap: space.six,
-      paddingTop: headerHeight + 24,
+      paddingTop: headerHeight + space.six,
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
     },
