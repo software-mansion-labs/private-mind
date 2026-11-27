@@ -40,7 +40,7 @@ export default function App() {
 
   const { styles } = useThemedStyles(createStyles);
 
-  const openModels = useCallback(() => router.replace('/model-hub'), []);
+  const openModels = useCallback(() => router.push('/model-hub'), []);
 
   const handleImport = useImportChat();
 

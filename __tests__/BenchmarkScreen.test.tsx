@@ -6,11 +6,13 @@ const mockSetParams = jest.fn();
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ setParams: mockSetParams }),
+  useRouter: () => ({ setParams: mockSetParams, back: jest.fn() }),
 }));
 
-jest.mock('expo-router/react-navigation', () => ({
-  useHeaderHeight: () => 0,
+jest.mock('../components/GlassScreenHeader', () => ({
+  __esModule: true,
+  default: () => null,
+  useGlassScreenHeaderHeight: () => 0,
 }));
 
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: () => ({}) }));
@@ -50,8 +52,6 @@ jest.mock('../hooks/useBenchmarkRunner', () => () => ({
   cancelBenchmark: jest.fn(),
 }));
 
-jest.mock('../hooks/useDefaultHeader', () => () => {});
-
 jest.mock('../components/benchmark/BenchmarkModal', () => ({
   BenchmarkModal: () => null,
 }));
@@ -79,7 +79,7 @@ jest.mock('../components/benchmark/ModelSelector', () => {
   };
 });
 
-import BenchmarkScreen from '../app/(drawer)/benchmark';
+import BenchmarkScreen from '../app/(modals)/model-hub/benchmark';
 
 const selectedName = () =>
   screen.getByTestId('selected-model').props.children as string;

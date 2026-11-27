@@ -1,60 +1,54 @@
-import React, {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, Text, Keyboard } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
-import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { useModelStore } from '../../store/modelStore';
-import FloatingActionButton from '../../components/model-hub/FloatingActionButton';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import AddModelSheet from '../../components/bottomSheets/AddModelSheet';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useModelStore } from '../../../store/modelStore';
+import FloatingActionButton from '../../../components/model-hub/FloatingActionButton';
+import {
+  BottomSheetModal,
+  BottomSheetModalProvider,
+} from '@gorhom/bottom-sheet';
+import AddModelSheet from '../../../components/bottomSheets/AddModelSheet';
 import WarningSheet, {
   WarningSheetData,
-} from '../../components/bottomSheets/WarningSheet';
-import ModelManagementSheet from '../../components/bottomSheets/ModelManagementSheet';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { Theme } from '../../styles/colors';
-import { scrollIndicatorProps } from '../../constants/scroll-indicator';
-import { fontFamily, fontSizes } from '../../styles/fontStyles';
-import { Model } from '../../database/modelRepository';
-import SearchField from '../../components/SearchField';
-import QuestionIcon from '../../assets/icons/question.svg';
-import SecondaryButton from '../../components/SecondaryButton';
+} from '../../../components/bottomSheets/WarningSheet';
+import ModelManagementSheet from '../../../components/bottomSheets/ModelManagementSheet';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
+import { scrollIndicatorProps } from '../../../constants/scroll-indicator';
+import { fontFamily, fontSizes } from '../../../styles/fontStyles';
+import { Model } from '../../../database/modelRepository';
+import SearchField from '../../../components/SearchField';
+import QuestionIcon from '../../../assets/icons/question.svg';
+import SecondaryButton from '../../../components/SecondaryButton';
 import ModelHubTabs, {
   ModelHubTab,
-} from '../../components/model-hub/ModelHubTabs';
-import FamilyCard from '../../components/model-hub/FamilyCard';
-import RowGroup from '../../components/model-hub/RowGroup';
-import ModelDownloadRow from '../../components/model-hub/ModelDownloadRow';
+} from '../../../components/model-hub/ModelHubTabs';
+import FamilyCard from '../../../components/model-hub/FamilyCard';
+import RowGroup from '../../../components/model-hub/RowGroup';
+import ModelDownloadRow from '../../../components/model-hub/ModelDownloadRow';
 import {
   groupModelsByFamily,
   orderFamiliesForDevice,
   DeviceModelFamily,
   ModelFamily,
-} from '../../utils/modelFamily';
-import { isModelCompatible } from '../../utils/modelCompatibility';
-import { radius, space, stroke } from '../../constants/design-system';
-import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
-import { CustomKeyboardAvoidingView } from '../../components/CustomKeyboardAvoidingView';
-import { useKeyboardOwnerStore } from '../../store/keyboardOwnerStore';
-import { useConfirm } from '../../hooks/useConfirm';
-import DownloadsHeaderButton from '../../components/model-hub/DownloadsHeaderButton';
+} from '../../../utils/modelFamily';
+import { isModelCompatible } from '../../../utils/modelCompatibility';
+import { radius, space, stroke } from '../../../constants/design-system';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../../components/GlassScreenHeader';
+import { CustomKeyboardAvoidingView } from '../../../components/CustomKeyboardAvoidingView';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useCollapseOnScroll } from '../../../hooks/useCollapseOnScroll';
+import DownloadsHeaderButton from '../../../components/model-hub/DownloadsHeaderButton';
 
 const HEADER_INSET = space.four;
 
 const ModelHubScreen = () => {
-  const drawerSearchOwnsKeyboard = useKeyboardOwnerStore(
-    (state) => state.drawerSearchOwnsKeyboard
-  );
-  useDefaultHeader({ glass: true });
-  const headerHeight = useHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
+  const { collapse: addButtonCollapse, trackScroll } = useCollapseOnScroll();
   const router = useRouter();
   const { styles, theme } = useThemedStyles(createStyles, headerHeight);
 
@@ -116,16 +110,7 @@ const ModelHubScreen = () => {
     [router]
   );
   const openFamily = (family: ModelFamily) =>
-    navigateOnce(`/model-family/${encodeURIComponent(family.name)}`);
-
-  const navigation = useNavigation();
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <DownloadsHeaderButton onPress={() => navigateOnce('/downloads')} />
-      ),
-    });
-  }, [navigation, navigateOnce]);
+    navigateOnce(`/model-hub/model-family/${encodeURIComponent(family.name)}`);
 
   const deletableDownloaded = useMemo(
     () => models.filter((m) => m.isDownloaded && m.source !== 'local'),
@@ -187,102 +172,118 @@ const ModelHubScreen = () => {
   );
 
   return (
-    <CustomKeyboardAvoidingView
-      enabled={!drawerSearchOwnsKeyboard}
-      style={styles.keyboardAvoidingView}
-      underTransparentHeader
-    >
-      <View style={styles.container}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          {...scrollIndicatorProps(headerHeight)}
-        >
-          <View style={styles.header}>
-            <ModelHubTabs
-              value={tab}
-              onChange={setTab}
-              edgeInset={HEADER_INSET}
-            />
-            <SearchField
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search models"
-              accessibilityLabel="Search models"
-            />
-          </View>
-
-          {isEmpty ? (
-            renderEmptyState()
-          ) : (
-            <View style={styles.list}>
-              {tab === 'mine'
-                ? mineModels.length > 0 && (
-                    <RowGroup separatorInset={0}>
-                      {mineModels.map((model) => (
-                        <ModelDownloadRow
-                          key={model.id}
-                          model={model}
-                          showFamilyTile
-                          matchFamilyCards
-                          onPress={() =>
-                            modelManagementSheetRef.current?.present(model)
-                          }
-                          wifiWarningSheetRef={wifiWarningSheetRef}
-                        />
-                      ))}
-                    </RowGroup>
-                  )
-                : families.length > 0 && (
-                    <RowGroup separatorInset={0}>
-                      {families.map((family) => (
-                        <FamilyCard
-                          runnable={family.runnable}
-                          key={family.name}
-                          family={family}
-                          onPress={openFamily}
-                        />
-                      ))}
-                    </RowGroup>
-                  )}
-
-              {tab !== 'mine' && deletableDownloaded.length > 0 && (
-                <View style={styles.storageFooter}>
-                  <View style={styles.storageInfo}>
-                    <Text style={styles.storageTitle}>
-                      {totalDownloadedSizeGB.toFixed(2)} GB downloaded
-                    </Text>
-                    <Text style={styles.storageSubtitle}>
-                      Across {deletableDownloaded.length} model
-                      {deletableDownloaded.length === 1 ? '' : 's'}
-                    </Text>
-                  </View>
-                  <SecondaryButton
-                    text="Clear all"
-                    onPress={handleClearAll}
-                    textStyle={{ color: theme.text.error }}
-                    style={{ borderColor: theme.text.error }}
-                  />
-                </View>
-              )}
+    <BottomSheetModalProvider>
+      <CustomKeyboardAvoidingView
+        isModalScreen
+        style={styles.keyboardAvoidingView}
+      >
+        <View style={styles.container}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            onScroll={trackScroll}
+            scrollEventThrottle={16}
+            {...scrollIndicatorProps(headerHeight)}
+          >
+            <View style={styles.header}>
+              <ModelHubTabs
+                value={tab}
+                onChange={setTab}
+                edgeInset={HEADER_INSET}
+              />
+              <SearchField
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search models"
+                accessibilityLabel="Search models"
+              />
             </View>
-          )}
-        </ScrollView>
-        <GlassScrollEdge anchor={headerHeight} />
 
-        <FloatingActionButton
-          onPress={() => {
-            Keyboard.dismiss();
-            addModelSheetRef.current?.present();
-          }}
-        />
-      </View>
-      <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
-      <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
-      <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
-      {ConfirmElement}
-    </CustomKeyboardAvoidingView>
+            {isEmpty ? (
+              renderEmptyState()
+            ) : (
+              <View style={styles.list}>
+                {tab === 'mine'
+                  ? mineModels.length > 0 && (
+                      <RowGroup separatorInset={0}>
+                        {mineModels.map((model) => (
+                          <ModelDownloadRow
+                            key={model.id}
+                            model={model}
+                            showFamilyTile
+                            matchFamilyCards
+                            onPress={() =>
+                              modelManagementSheetRef.current?.present(model)
+                            }
+                            wifiWarningSheetRef={wifiWarningSheetRef}
+                          />
+                        ))}
+                      </RowGroup>
+                    )
+                  : families.length > 0 && (
+                      <RowGroup separatorInset={0}>
+                        {families.map((family) => (
+                          <FamilyCard
+                            runnable={family.runnable}
+                            key={family.name}
+                            family={family}
+                            onPress={openFamily}
+                          />
+                        ))}
+                      </RowGroup>
+                    )}
+
+                {tab !== 'mine' && deletableDownloaded.length > 0 && (
+                  <View style={styles.storageFooter}>
+                    <View style={styles.storageInfo}>
+                      <Text style={styles.storageTitle}>
+                        {totalDownloadedSizeGB.toFixed(2)} GB downloaded
+                      </Text>
+                      <Text style={styles.storageSubtitle}>
+                        Across {deletableDownloaded.length} model
+                        {deletableDownloaded.length === 1 ? '' : 's'}
+                      </Text>
+                    </View>
+                    <SecondaryButton
+                      text="Clear all"
+                      onPress={handleClearAll}
+                      textStyle={{ color: theme.text.error }}
+                      style={{ borderColor: theme.text.error }}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
+          <GlassScreenHeader
+            title="Manage models"
+            icon="close"
+            onBack={() => router.back()}
+            sheet
+            trailing={
+              <DownloadsHeaderButton
+                onPress={() => navigateOnce('/model-hub/downloads')}
+              />
+            }
+          />
+
+          <FloatingActionButton
+            label="Add model"
+            collapse={addButtonCollapse}
+            testID="model-hub-add-model"
+            onPress={() => {
+              Keyboard.dismiss();
+              addModelSheetRef.current?.present();
+            }}
+          />
+        </View>
+        <AddModelSheet bottomSheetModalRef={addModelSheetRef} />
+        <WarningSheet bottomSheetModalRef={wifiWarningSheetRef} />
+        <ModelManagementSheet bottomSheetModalRef={modelManagementSheetRef} />
+        {ConfirmElement}
+      </CustomKeyboardAvoidingView>
+    </BottomSheetModalProvider>
   );
 };
 

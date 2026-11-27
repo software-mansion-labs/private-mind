@@ -68,10 +68,15 @@ interface Props {
   searchProgress?: SharedValue<number>;
   searchExpansion?: SharedValue<number>;
   footerOpacity?: SharedValue<number>;
-  resetScrollPosition?: boolean;
   newChatCollapse?: SharedValue<number>;
   onListScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
 }
+
+const wasUsedAgain = (previous?: Chat, current?: Chat) =>
+  !!previous &&
+  !!current &&
+  previous.id === current.id &&
+  current.lastUsed > previous.lastUsed;
 
 const DrawerMenu = ({
   searching,
@@ -91,7 +96,6 @@ const DrawerMenu = ({
   searchProgress,
   searchExpansion,
   footerOpacity,
-  resetScrollPosition,
   newChatCollapse,
   onListScroll,
 }: Props) => {
@@ -128,6 +132,12 @@ const DrawerMenu = ({
 
   const hasNoResults = isFiltering && sections.length === 0;
 
+  const activeChat = useMemo(
+    () => chats.find((chat) => pathname === `/chat/${chat.id}`),
+    [chats, pathname]
+  );
+  const lastSeenActiveChat = useRef(activeChat);
+
   const internalScrollRef = useRef<ScrollView>(null);
   const scrollRef = externalScrollRef ?? internalScrollRef;
 
@@ -152,11 +162,12 @@ const DrawerMenu = ({
   }, [query, scrollRef, scrollOffsetRef]);
 
   useEffect(() => {
-    if (resetScrollPosition) {
-      if (scrollOffsetRef) scrollOffsetRef.current = 0;
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }
-  }, [resetScrollPosition, scrollRef, scrollOffsetRef]);
+    const previous = lastSeenActiveChat.current;
+    lastSeenActiveChat.current = activeChat;
+    if (!wasUsedAgain(previous, activeChat)) return;
+    if (scrollOffsetRef) scrollOffsetRef.current = 0;
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [activeChat, scrollRef, scrollOffsetRef]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     onListScroll?.(event);
@@ -212,7 +223,6 @@ const DrawerMenu = ({
             collapsed={isFiltering}
             height={navHeight}
             onMeasured={onNavMeasured}
-            onNavigate={onNavigate}
           />
 
           {sections.map(([sectionTitle, sectionChats]) => (

@@ -600,15 +600,15 @@ const pickLocalCitationsByAnswer = (
     .map((s) => s.doc);
 };
 
-const loadWholeAttachments = async (
-  activeAttachmentSources: SourceRow[],
+const loadWholeDocuments = async (
+  documents: SourceRow[],
   vectorStore: OPSQLiteVectorStore,
   sourceTokenBudget: number
 ): Promise<ContextChunk[] | null> => {
-  if (activeAttachmentSources.length === 0) return null;
+  if (documents.length === 0) return null;
   try {
     const perDocument = await Promise.all(
-      activeAttachmentSources.map((source) =>
+      documents.map((source) =>
         loadDocumentChunks(vectorStore, source.id, source.name)
       )
     );
@@ -622,6 +622,25 @@ const loadWholeAttachments = async (
     console.error('Error loading whole attachment:', error);
     return null;
   }
+};
+
+const writtenLanguageOf = (documents: SourceRow[]): QuestionLanguage | null =>
+  documents.every((document) => document.firstChunk)
+    ? detectQuestionLanguage(
+        documents.map((document) => document.firstChunk).join('\n')
+      )
+    : null;
+
+const wholeDocumentsWrittenInAnotherLanguage = async (
+  question: string,
+  documents: SourceRow[],
+  vectorStore: OPSQLiteVectorStore,
+  sourceTokenBudget: number
+): Promise<ContextChunk[] | null> => {
+  const asked = detectQuestionLanguage(question);
+  const written = writtenLanguageOf(documents);
+  if (!asked || !written || asked.code === written.code) return null;
+  return loadWholeDocuments(documents, vectorStore, sourceTokenBudget);
 };
 
 const retrieveChunks = async (
@@ -720,7 +739,7 @@ export const buildMessageSources = async ({
     );
     const wholeAttachments =
       passWholeDocument && sourceTokenBudget !== undefined
-        ? await loadWholeAttachments(
+        ? await loadWholeDocuments(
             activeAttachmentSources,
             vectorStore,
             sourceTokenBudget
@@ -742,9 +761,21 @@ export const buildMessageSources = async ({
             extraChunks
           )
         : [];
-    const relevantChunks = [...(wholeAttachments ?? []), ...retrievedChunks];
+    const wholeDocumentsAcrossLanguages =
+      !wholeAttachments &&
+      retrievedChunks.length === 0 &&
+      sourceTokenBudget !== undefined
+        ? await wholeDocumentsWrittenInAnotherLanguage(
+            userInput,
+            activeSources,
+            vectorStore,
+            sourceTokenBudget
+          )
+        : null;
+    const wholeDocuments = wholeAttachments ?? wholeDocumentsAcrossLanguages;
+    const relevantChunks = [...(wholeDocuments ?? []), ...retrievedChunks];
     context.push(...formatContextChunks(relevantChunks));
-    if (!wholeAttachments) context.push(...attachmentOverview());
+    if (!wholeDocuments) context.push(...attachmentOverview());
 
     const retrieved = getSourceDocumentsFromChunks(relevantChunks);
     sourceDocuments = assembleSourceDocuments(

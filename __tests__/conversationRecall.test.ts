@@ -11,17 +11,21 @@ import { prepareMessagesForLLM } from '../utils/promptUtils';
 import { conversationWindowFor } from '../utils/conversationWindow';
 import {
   bestWindow,
-  createRecallEmbeddingCache,
-  embedConversationForRecall,
   questionTermsFor,
-  recallEmbeddingPool,
+  weightedCoverage,
+} from '../utils/recall/recallTerms';
+import {
   recallShareFor,
   selectRecalledMessages,
-  weightedCoverage,
   withoutLeastRanked,
-  type RecallEmbedder,
   type RecalledMessage,
-} from '../utils/conversationRecall';
+} from '../utils/recall/recallSelection';
+import {
+  createRecallEmbeddingCache,
+  embedConversationForRecall,
+  recallEmbeddingPool,
+  type RecallEmbedder,
+} from '../utils/recall/recallEmbeddings';
 import { retrievalStatsLines } from '../utils/retrievalStatsLine';
 import type {
   ChatSettings,
