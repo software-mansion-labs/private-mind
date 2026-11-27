@@ -72,15 +72,17 @@ const DETAIL_VALUE_SIZE = 15;
 const LOCK_PATH =
   'M11 5C11 4.49336 10.84 3.71081 10.3887 3.08398C9.97406 2.50819 9.274 2 8 2C6.726 2 6.02594 2.50819 5.61133 3.08398C5.16001 3.71081 5 4.49336 5 5V6H11V5ZM2 18H14V8H2V18ZM7 14V12C7 11.4477 7.44772 11 8 11C8.55229 11 9 11.4477 9 12V14C9 14.5523 8.55229 15 8 15C7.44772 15 7 14.5523 7 14ZM13 6H15C15.5523 6 16 6.44772 16 7V19C16 19.5523 15.5523 20 15 20H1C0.447715 20 0 19.5523 0 19V7C0 6.44772 0.447715 6 1 6H3V5C3 4.17339 3.23977 2.95579 3.98828 1.91602C4.77368 0.825186 6.07408 0 8 0C9.92592 0 11.2263 0.825186 12.0117 1.91602C12.7602 2.95579 13 4.17339 13 5V6Z';
 const LOCK_ICON_WIDTH = 16;
-const LOCK_TEXT_GAP = 12;
-const LOCK_TILE_TOP = 404;
-const LOCK_ICON_LEFT = 4;
-const LOCK_ICON_TOP = 10;
-const PRIVACY_TEXT_X =
-  PADDING + LOCK_ICON_LEFT + LOCK_ICON_WIDTH + LOCK_TEXT_GAP;
-const PRIVACY_TITLE_BASELINE = 420;
+const LOCK_ICON_HEIGHT = 20;
+const LOCK_TITLE_GAP = 8;
+const PRIVACY_GROUP_TOP = 395;
+const PRIVACY_TITLE_CAP_HEIGHT = 12;
+const PRIVACY_TITLE_BASELINE =
+  PRIVACY_GROUP_TOP +
+  LOCK_ICON_HEIGHT +
+  LOCK_TITLE_GAP +
+  PRIVACY_TITLE_CAP_HEIGHT;
+const PRIVACY_DETAIL_BASELINE = PRIVACY_TITLE_BASELINE + 19;
 const PRIVACY_TITLE_SIZE = 16;
-const PRIVACY_DETAIL_BASELINE = 439;
 const PRIVACY_DETAIL_SIZE = 12;
 
 const GLOW_TOP_X = 320;
@@ -354,13 +356,14 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         palette={palette}
       />
       <G
-        transform={`translate(${PADDING + LOCK_ICON_LEFT} ${LOCK_TILE_TOP + LOCK_ICON_TOP})`}
+        transform={`translate(${CARD_CENTER - LOCK_ICON_WIDTH / 2} ${PRIVACY_GROUP_TOP})`}
       >
         <Path d={LOCK_PATH} fill={palette.accent} />
       </G>
       <Text
-        x={PRIVACY_TEXT_X}
+        x={CARD_CENTER}
         y={PRIVACY_TITLE_BASELINE}
+        textAnchor="middle"
         fontFamily={fontFamily.bold}
         fontSize={PRIVACY_TITLE_SIZE}
         fill={palette.primary}
@@ -368,8 +371,9 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         0 bytes sent to an AI cloud
       </Text>
       <Text
-        x={PRIVACY_TEXT_X}
+        x={CARD_CENTER}
         y={PRIVACY_DETAIL_BASELINE}
+        textAnchor="middle"
         fontFamily={fontFamily.regular}
         fontSize={PRIVACY_DETAIL_SIZE}
         fill={palette.secondary}
