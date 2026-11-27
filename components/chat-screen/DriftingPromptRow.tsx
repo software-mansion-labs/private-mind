@@ -26,7 +26,7 @@ import { CAPPED_TEXT_MAX_SCALE } from '../../constants/font-scale';
 import type { PromptSuggestion } from '../../constants/default-prompts';
 import { pressedOpacity } from '../../styles/pressable';
 import { GUTTER } from './attachments/constants';
-import { Glass } from '../Glass';
+import { Glass, LIQUID_GLASS } from '../Glass';
 import {
   DRIFT_RESUME_MS,
   DRIFT_SETTLE_MS,
@@ -216,7 +216,7 @@ export default DriftingPromptRow;
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     viewport: {
-      overflow: 'hidden',
+      overflow: LIQUID_GLASS ? 'visible' : 'hidden',
       marginHorizontal: -GUTTER,
       paddingVertical: PILL_SHADOW_ROOM,
       marginVertical: -PILL_SHADOW_ROOM,

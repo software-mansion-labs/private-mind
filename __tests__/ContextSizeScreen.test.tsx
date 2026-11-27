@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import ContextSizeScreen from '../app/(modals)/context-size';
+import ContextSizeScreen from '../app/(modals)/settings/context-size';
 import { useSettingsStore } from '../store/settingsStore';
 import { useLLMStore } from '../store/llmStore';
 import { useModelStore } from '../store/modelStore';

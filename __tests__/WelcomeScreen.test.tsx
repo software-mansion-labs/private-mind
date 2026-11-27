@@ -1,14 +1,14 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-const mockReplace = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock('../context/ThemeContext', () => ({
   useTheme: () => ({ theme: require('./helpers/renderWithTheme').testTheme }),
 }));
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: () => ({}) }));
 jest.mock('expo-router', () => ({
-  router: { replace: (...args: unknown[]) => mockReplace(...args) },
+  router: { push: (...args: unknown[]) => mockPush(...args) },
   useFocusEffect: jest.fn(),
   useNavigation: () => ({ setOptions: jest.fn() }),
 }));
@@ -44,7 +44,7 @@ import WelcomeScreen from '../app/(drawer)/index';
 import { useSettingsStore } from '../store/settingsStore';
 
 beforeEach(() => {
-  mockReplace.mockClear();
+  mockPush.mockClear();
   useSettingsStore.setState({
     hasHydrated: true,
     dismissedWhatsNewVersion: null,
@@ -60,7 +60,7 @@ describe('the welcome screen without a model', () => {
 
     fireEvent.press(screen.getByText('Choose a model'));
 
-    expect(mockReplace).toHaveBeenCalledWith('/model-hub');
+    expect(mockPush).toHaveBeenCalledWith('/model-hub');
   });
 
   it('does not render the model picker sheet', () => {

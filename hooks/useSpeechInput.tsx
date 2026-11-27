@@ -27,8 +27,8 @@ interface Result extends Pick<STTStore, 'loadProgress' | 'isDownloading'> {
   status: Status;
 }
 
-const SAMPLE_RATE = 16000;
-const AUDIO_LENGTH_SECONDS = 0.15;
+export const SAMPLE_RATE = 16000;
+export const AUDIO_LENGTH_SECONDS = 0.15;
 const BUFFER_LENGTH = Math.floor(SAMPLE_RATE * AUDIO_LENGTH_SECONDS);
 
 export function useSpeechInput({ onAudioData }: Options = {}): Result {

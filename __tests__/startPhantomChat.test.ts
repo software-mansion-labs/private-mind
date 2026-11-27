@@ -9,7 +9,7 @@ import type { Model } from '../database/modelRepository';
 import { CHAT_ENTRY_ACTION } from '../constants/chat-route-params';
 
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn(), push: jest.fn() },
+  router: { replace: jest.fn(), push: jest.fn(), dismissTo: jest.fn() },
 }));
 
 jest.mock('../database/chatRepository', () => ({
@@ -127,6 +127,17 @@ describe('startPhantomChat', () => {
     await promise;
 
     expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('closes the screens above the drawer on the way to the new chat', async () => {
+    await startPhantomChat({} as never, 'dismiss-to');
+
+    expect(router.dismissTo).toHaveBeenCalledWith({
+      pathname: '/chat/42',
+      params: { modelId: '7' },
+    });
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it('does not delay a push navigation', async () => {

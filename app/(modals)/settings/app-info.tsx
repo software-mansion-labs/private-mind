@@ -6,24 +6,24 @@ import * as Clipboard from 'expo-clipboard';
 import * as Application from 'expo-application';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fontSizes, fontFamily } from '../../styles/fontStyles';
-import { useTheme } from '../../context/ThemeContext';
+import { fontSizes, fontFamily } from '../../../styles/fontStyles';
+import { useTheme } from '../../../context/ThemeContext';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
-} from '../../components/GlassScreenHeader';
-import SecondaryButton from '../../components/SecondaryButton';
-import Logo from '../../assets/icons/logo.svg';
-import GithubIcon from '../../assets/icons/github.svg';
-import CopyIcon from '../../assets/icons/copy.svg';
-import SwmLogo from '../../assets/icons/swm-ai-labs-logo.svg';
-import RneLogo from '../../assets/icons/rne-logo.svg';
-import { pressedOpacity } from '../../styles/pressable';
+} from '../../../components/GlassScreenHeader';
+import SecondaryButton from '../../../components/SecondaryButton';
+import Logo from '../../../assets/icons/logo.svg';
+import GithubIcon from '../../../assets/icons/github.svg';
+import CopyIcon from '../../../assets/icons/copy.svg';
+import SwmLogo from '../../../assets/icons/swm-ai-labs-logo.svg';
+import RneLogo from '../../../assets/icons/rne-logo.svg';
+import { pressedOpacity } from '../../../styles/pressable';
 import {
   APP_INFO_SWM_URL,
   OPENS_IN_BROWSER_HINT,
   SWM_AI_LABS_NAME,
-} from '../../constants/model-attribution';
-import { radius, space, stroke } from '../../constants/design-system';
+} from '../../../constants/model-attribution';
+import { radius, space, stroke } from '../../../constants/design-system';
 
 const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
 
@@ -141,7 +141,7 @@ export default function AppInfoScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useGlassScreenHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
 
   const handleOpenSwmAiLabs = () => Linking.openURL(APP_INFO_SWM_URL);
 
@@ -176,7 +176,7 @@ export default function AppInfoScreen() {
           </View>
         </View>
       </ScrollView>
-      <GlassScreenHeader title="App info" onBack={() => router.back()} />
+      <GlassScreenHeader title="App info" onBack={() => router.back()} sheet />
     </View>
   );
 }

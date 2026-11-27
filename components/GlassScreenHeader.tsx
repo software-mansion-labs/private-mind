@@ -47,6 +47,7 @@ interface Props {
   onBack: () => void;
   sheet?: boolean;
   icon?: keyof typeof LEADING_ICONS;
+  trailing?: React.ReactNode;
 }
 
 const GlassScreenHeader = ({
@@ -55,6 +56,7 @@ const GlassScreenHeader = ({
   onBack,
   sheet = false,
   icon = 'back',
+  trailing,
 }: Props) => {
   const { Icon, size, label } = LEADING_ICONS[icon];
   const { styles } = useThemedStyles(createStyles);
@@ -98,6 +100,7 @@ const GlassScreenHeader = ({
             <Icon width={size} height={size} style={styles.icon} />
           </Pressable>
         </HeaderGlassButton>
+        {trailing && <View style={styles.trailing}>{trailing}</View>}
       </View>
     </>
   );
@@ -130,5 +133,8 @@ const createStyles = (theme: Theme) =>
     },
     icon: {
       color: theme.text.primary,
+    },
+    trailing: {
+      marginLeft: 'auto',
     },
   });
