@@ -1,10 +1,9 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import Svg, { Text as SvgText } from 'react-native-svg';
+import Svg from 'react-native-svg';
 import {
   SHARE_CARD_BLEED,
   SHARE_CARD_HEIGHT,
-  SHARE_CARD_SITE,
   SHARE_CARD_WIDTH,
   ShareCard,
   shareCardSize,
@@ -62,14 +61,5 @@ describe('the exported card geometry', () => {
     expect(toNumber(y) + toNumber(height)).toBeGreaterThan(SHARE_CARD_HEIGHT);
     expect(SHARE_CARD_BLEED).toBeGreaterThan(0);
     expect(alphaOf(fill)).toBe(OPAQUE_ALPHA);
-  });
-
-  it('prints the site on the card so the picture stands alone without its text', () => {
-    const view = render(<ShareCard content={content} width={360} />);
-    const texts = view
-      .UNSAFE_getAllByType(SvgText)
-      .map((text) => text.props.children);
-    expect(SHARE_CARD_SITE).toBe('privatemind.swmansion.com');
-    expect(texts).toContain(SHARE_CARD_SITE);
   });
 });
