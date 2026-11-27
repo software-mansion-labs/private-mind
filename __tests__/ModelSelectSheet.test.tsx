@@ -276,7 +276,7 @@ describe('with downloaded models', () => {
 
     fireEvent.press(screen.getByTestId('model-select-see-all'));
 
-    expect(router.replace).toHaveBeenCalledWith('/model-hub');
+    expect(router.push).toHaveBeenCalledWith('/model-hub');
     expect(onSheetStateChange).toHaveBeenLastCalledWith(false);
   });
 
