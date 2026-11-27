@@ -76,14 +76,14 @@ const appIsInForeground = () => AppState.currentState === 'active';
 export async function promptReviewAfterAnswer(
   answer: FinishedAnswer,
   stillIdle: () => boolean
-): Promise<void> {
+): Promise<boolean> {
   const chatCount = dueAtChatCount;
   if (chatCount === null || !answerEarnsReviewPrompt(answer, launchNumber)) {
-    return;
+    return false;
   }
   await new Promise((resolve) => setTimeout(resolve, REVIEW_PROMPT_DELAY_MS));
   if (dueAtChatCount !== chatCount || !stillIdle() || !appIsInForeground()) {
-    return;
+    return false;
   }
   dueAtChatCount = null;
   try {
@@ -93,5 +93,16 @@ export async function promptReviewAfterAnswer(
     }
   } catch (error) {
     console.warn('Review prompt failed:', error);
+  }
+  return true;
+}
+
+export async function noteReviewAskedByUser(): Promise<void> {
+  dueAtChatCount = null;
+  try {
+    const totalChats = await AsyncStorage.getItem(TOTAL_CHATS_KEY);
+    await AsyncStorage.setItem(LAST_PROMPT_KEY, totalChats ?? '0');
+  } catch (error) {
+    console.warn('Recording the review request failed:', error);
   }
 }

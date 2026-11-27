@@ -111,7 +111,9 @@ import {
   chatTemplateFlagsFor,
   usesTemplateThinkingSwitch,
 } from '../constants/model-profiles';
-import { promptReviewAfterAnswer } from '../utils/reviewPrompt';
+import { askAfterAnswer } from '../utils/askAfterAnswer';
+import { countFinishedAnswer } from '../utils/answerUsage';
+import { countWords } from '../utils/usageStats';
 import { cpuLacksLseAtomics } from '../utils/cpuSupport';
 import { UNSUPPORTED_CPU_REFUSAL } from '../constants/cpu-support';
 import { rememberModelContextCapacity } from '../utils/modelContextCapacity';
@@ -1020,7 +1022,11 @@ const reportPromptEstimateAccuracy = (
 
 type LLMGenerationResult = {
   response: string | null;
-  performance: { timeToFirstToken: number; tokensPerSecond: number };
+  performance: {
+    timeToFirstToken: number;
+    tokensPerSecond: number;
+    tokenCount: number;
+  };
   stalled: boolean;
 };
 
@@ -1036,7 +1042,7 @@ const cannotWriteWelcome = (model: Model): boolean =>
 
 const NO_LLM_RESPONSE: LLMGenerationResult = {
   response: null,
-  performance: { timeToFirstToken: 0, tokensPerSecond: 0 },
+  performance: { timeToFirstToken: 0, tokensPerSecond: 0, tokenCount: 0 },
   stalled: false,
 };
 
@@ -1088,11 +1094,12 @@ const generateLLMResponse = (
     reportPromptEstimateAccuracy(messages, instance);
 
     if (finalResponse) {
+      const tokenCount = instance.getGeneratedTokenCount();
       const { timeToFirstToken, tokensPerSecond } = calculatePerformanceMetrics(
         startTime,
         endTime,
         get().performance.firstTokenTime,
-        instance.getGeneratedTokenCount()
+        tokenCount
       );
 
       return {
@@ -1101,7 +1108,7 @@ const generateLLMResponse = (
           : thinkClosedByTemplate
             ? cutThinkingOffAnswer(finalResponse).text
             : finalResponse,
-        performance: { timeToFirstToken, tokensPerSecond },
+        performance: { timeToFirstToken, tokensPerSecond, tokenCount },
         stalled,
       };
     }
@@ -1831,6 +1838,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
 
       const { response: rawResponse } = generation;
       let responsePerformance = generation.performance;
+      let answerTokenCount = generation.performance.tokenCount;
       let finalResponse = rawResponse
         ? tidyVisibleAnswer(rawResponse)
         : rawResponse;
@@ -1950,6 +1958,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           accepted: true,
         });
         finalResponse = retried;
+        answerTokenCount = retryGeneration.performance.tokenCount;
         loopGuardTrimmed = retried !== retryGeneration.response;
       };
 
@@ -2121,6 +2130,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
             finalResponse,
             continuationResponse.trim()
           );
+          answerTokenCount += continuationGeneration.performance.tokenCount;
           responsePerformance = {
             ...continuationGeneration.performance,
             timeToFirstToken: responsePerformance.timeToFirstToken,
@@ -2219,13 +2229,21 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
         armRetry(set, null);
         set({ generationError: null });
-        promptReviewAfterAnswer(
+        askAfterAnswer(
           {
             stoppedByUser,
             tokensPerSecond: responsePerformance.tokensPerSecond,
             cannedReply: !!openingWelcome,
           },
-          () => !get().isGenerating && !get().isLoading
+          () => !get().isGenerating && !get().isLoading,
+          countFinishedAnswer(db, {
+            chatId,
+            messageId: assistantMessageId,
+            modelName: assistantPlaceholder.modelName ?? '',
+            tokens: openingWelcome ? 0 : answerTokenCount,
+            words: countWords(humanizedResponse),
+            tokensPerSecond: responsePerformance.tokensPerSecond,
+          })
         );
 
         if (stoppedByUser) {

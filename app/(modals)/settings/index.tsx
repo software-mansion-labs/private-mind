@@ -16,6 +16,10 @@ import InfoCircleIcon from '../../../assets/icons/info-circle.svg';
 import BenchmarkIcon from '../../../assets/icons/benchmark.svg';
 import DownloadIcon from '../../../assets/icons/download.svg';
 import TrashIcon from '../../../assets/icons/trash.svg';
+import ShareIcon from '../../../assets/icons/upload.svg';
+import BookIcon from '../../../assets/icons/book-open.svg';
+import StarIcon from '../../../assets/icons/star.svg';
+import ChatIcon from '../../../assets/icons/chat.svg';
 import PhoneIcon from '../../../assets/icons/phone.svg';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
 import { useConfirm } from '../../../hooks/useConfirm';
@@ -25,6 +29,9 @@ import { useChatStore } from '../../../store/chatStore';
 import { useLLMStore } from '../../../store/llmStore';
 import { useSettingsStore } from '../../../store/settingsStore';
 import { Feedback } from '../../../utils/Feedback';
+import { shareApp } from '../../../utils/shareApp';
+import { openFeedback } from '../../../utils/feedbackLink';
+import { rateApp } from '../../../utils/rateApp';
 import { currentAppVersion } from '../../../utils/appVersion';
 import { Theme } from '../../../styles/colors';
 import { space } from '../../../constants/design-system';
@@ -66,6 +73,8 @@ const SettingsScreen = () => {
   const handleOpenCustomInstructions = () =>
     navigation.push('/settings/custom-system-prompt');
   const handleOpenAppInfo = () => navigation.push('/settings/app-info');
+  const handleOpenMyPrivateMind = () =>
+    navigation.push('/settings/my-private-mind');
 
   const handleDeleteAllChats = useCallback(async () => {
     const confirmed = await confirm({
@@ -148,6 +157,29 @@ const SettingsScreen = () => {
             }
             onPress={handleDeleteAllChats}
             destructive
+          />
+        </SettingsGroup>
+        <SettingsGroup title="Help us grow">
+          <SettingsRow
+            label="Share my Private Mind"
+            icon={<BookIcon width={20} height={20} style={styles.rowIcon} />}
+            onPress={handleOpenMyPrivateMind}
+            showChevron
+          />
+          <SettingsRow
+            label="Rate the app"
+            icon={<StarIcon width={20} height={20} style={styles.rowIcon} />}
+            onPress={rateApp}
+          />
+          <SettingsRow
+            label="Share the app"
+            icon={<ShareIcon width={20} height={20} style={styles.rowIcon} />}
+            onPress={shareApp}
+          />
+          <SettingsRow
+            label="Send feedback"
+            icon={<ChatIcon width={20} height={20} style={styles.rowIcon} />}
+            onPress={openFeedback}
           />
         </SettingsGroup>
         <SettingsGroup title="About">
