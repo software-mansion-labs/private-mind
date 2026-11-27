@@ -38,10 +38,10 @@ const PANEL_RADIUS = 20;
 const PANEL_TOP = 252;
 const PANEL_HEIGHT = 120;
 const PANEL_ROW_HEIGHT = 60;
-const PANEL_INSET = 20;
 const PANEL_WIDTH = SHARE_CARD_WIDTH - PADDING * 2;
-const THIRD_COLUMN_WIDTH = 104;
-const HALF_COLUMN_WIDTH = 156;
+const THIRD_COLUMN_WIDTH = PANEL_WIDTH / 3;
+const HALF_COLUMN_WIDTH = PANEL_WIDTH / 2;
+const CARD_CENTER = SHARE_CARD_WIDTH / 2;
 const DIVIDER_INSET = 12;
 
 const LOGO_PATH =
@@ -68,10 +68,8 @@ const PAGES_UNIT_SIZE = 24;
 
 const STAT_VALUE_SIZE = 19;
 const STAT_LABEL_SIZE = 11;
-const STAT_VALUE_OFFSET = 32;
-const STAT_LABEL_OFFSET = 50;
-const DETAIL_LABEL_OFFSET = 22;
-const DETAIL_VALUE_OFFSET = 44;
+const STAT_VALUE_OFFSET = 30;
+const STAT_LABEL_OFFSET = 47;
 const DETAIL_VALUE_SIZE = 15;
 
 const LOCK_PATH =
@@ -110,7 +108,6 @@ interface CardPalette {
   logo: string;
   badgeFill: string;
   panelFill: string;
-  panelStroke: string;
   divider: string;
   lockTile: string;
 }
@@ -135,7 +132,6 @@ const paletteFor = (theme: Theme): CardPalette => {
     logo: dark ? theme.text.accent : theme.bg.main,
     badgeFill: theme.bg.accentSoft,
     panelFill: theme.bg.chatBarBadge,
-    panelStroke: theme.border.popover,
     divider: theme.border.popover,
     lockTile: theme.bg.accentSoft,
   };
@@ -148,55 +144,42 @@ interface Props {
 }
 
 interface StatProps {
-  x: number;
+  centerX: number;
   top: number;
   value: string;
+  valueSize: number;
   label: string;
   palette: CardPalette;
 }
 
-const Stat = ({ x, top, value, label, palette }: StatProps) => (
+const Stat = ({
+  centerX,
+  top,
+  value,
+  valueSize,
+  label,
+  palette,
+}: StatProps) => (
   <G>
     <Text
-      x={x}
+      x={centerX}
       y={top + STAT_VALUE_OFFSET}
+      textAnchor="middle"
       fontFamily={fontFamily.bold}
-      fontSize={STAT_VALUE_SIZE}
+      fontSize={valueSize}
       fill={palette.primary}
     >
       {value}
     </Text>
     <Text
-      x={x}
+      x={centerX}
       y={top + STAT_LABEL_OFFSET}
+      textAnchor="middle"
       fontFamily={fontFamily.medium}
       fontSize={STAT_LABEL_SIZE}
       fill={palette.tertiary}
     >
       {label}
-    </Text>
-  </G>
-);
-
-const Detail = ({ x, top, value, label, palette }: StatProps) => (
-  <G>
-    <Text
-      x={x}
-      y={top + DETAIL_LABEL_OFFSET}
-      fontFamily={fontFamily.medium}
-      fontSize={STAT_LABEL_SIZE}
-      fill={palette.tertiary}
-    >
-      {label}
-    </Text>
-    <Text
-      x={x}
-      y={top + DETAIL_VALUE_OFFSET}
-      fontFamily={fontFamily.bold}
-      fontSize={DETAIL_VALUE_SIZE}
-      fill={palette.primary}
-    >
-      {value}
     </Text>
   </G>
 );
@@ -207,7 +190,10 @@ export const ShareCard = ({ ref, content, width }: Props) => {
   const size = shareCardSize(width);
   const logoScale = LOGO_HEIGHT / LOGO_VIEWBOX_HEIGHT;
   const panelLeft = PADDING;
-  const columnLeft = panelLeft + PANEL_INSET;
+  const thirdCenter = (column: number) =>
+    panelLeft + THIRD_COLUMN_WIDTH * (column + 0.5);
+  const halfCenter = (column: number) =>
+    panelLeft + HALF_COLUMN_WIDTH * (column + 0.5);
   const secondRowTop = PANEL_TOP + PANEL_ROW_HEIGHT;
   const badgeLeft = SHARE_CARD_WIDTH - PADDING - BADGE_WIDTH;
 
@@ -300,8 +286,9 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         100% on-device AI
       </Text>
       <Text
-        x={PADDING}
+        x={CARD_CENTER}
         y={OWNER_BASELINE}
+        textAnchor="middle"
         fontFamily={fontFamily.medium}
         fontSize={OWNER_SIZE}
         fill={palette.secondary}
@@ -309,8 +296,9 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         {content.owner}
       </Text>
       <Text
-        x={PADDING}
+        x={CARD_CENTER}
         y={PAGES_BASELINE}
+        textAnchor="middle"
         fontFamily={fontFamily.bold}
         fontSize={PAGES_SIZE}
         fill={palette.accent}
@@ -318,8 +306,9 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         {content.pages}
       </Text>
       <Text
-        x={PADDING}
+        x={CARD_CENTER}
         y={PAGES_UNIT_BASELINE}
+        textAnchor="middle"
         fontFamily={fontFamily.medium}
         fontSize={PAGES_UNIT_SIZE}
         fill={palette.primary}
@@ -333,8 +322,6 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         height={PANEL_HEIGHT}
         rx={PANEL_RADIUS}
         fill={palette.panelFill}
-        stroke={palette.panelStroke}
-        strokeWidth={stroke.soft}
       />
       <Line
         x1={panelLeft + DIVIDER_INSET}
@@ -345,38 +332,43 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         strokeWidth={stroke.soft}
       />
       <Stat
-        x={columnLeft}
+        centerX={thirdCenter(0)}
         top={PANEL_TOP}
         value={content.tokens}
+        valueSize={STAT_VALUE_SIZE}
         label="tokens"
         palette={palette}
       />
       <Stat
-        x={columnLeft + THIRD_COLUMN_WIDTH}
+        centerX={thirdCenter(1)}
         top={PANEL_TOP}
         value={content.words}
+        valueSize={STAT_VALUE_SIZE}
         label="words"
         palette={palette}
       />
       <Stat
-        x={columnLeft + THIRD_COLUMN_WIDTH * 2}
+        centerX={thirdCenter(2)}
         top={PANEL_TOP}
         value={content.chats}
+        valueSize={STAT_VALUE_SIZE}
         label="chats"
         palette={palette}
       />
-      <Detail
-        x={columnLeft}
+      <Stat
+        centerX={halfCenter(0)}
         top={secondRowTop}
         value={content.mostUsedModel}
-        label="Most used model"
+        valueSize={DETAIL_VALUE_SIZE}
+        label="most used model"
         palette={palette}
       />
-      <Detail
-        x={columnLeft + HALF_COLUMN_WIDTH}
+      <Stat
+        centerX={halfCenter(1)}
         top={secondRowTop}
         value={content.bestSpeed}
-        label="Best speed"
+        valueSize={DETAIL_VALUE_SIZE}
+        label="best speed"
         palette={palette}
       />
       <Rect
