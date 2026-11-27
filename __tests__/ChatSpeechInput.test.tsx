@@ -106,6 +106,21 @@ describe('ChatSpeechInput once it is listening', () => {
     expect(Toast.show).not.toHaveBeenCalled();
   });
 
+  it('takes no cancel once a send is on its way, so the message is neither sent under a Cancelled label nor dropped', () => {
+    jest.useFakeTimers();
+    const onCancel = jest.fn();
+    render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+    fireEvent.press(screen.getByTestId('speech-cancel'));
+    act(() => jest.runAllTimers());
+
+    expect(screen.queryByText('Cancelled')).toBeNull();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(mockSpeech.stop).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
   it('spins the send it took and takes no second one while the transcript finishes', () => {
     renderSheet();
 

@@ -1,3 +1,5 @@
+import { NO_SEARCH_LEXICONS } from './web/noSearchLexicon';
+
 export interface QuestionLanguage {
   code: string;
   name: string;
@@ -219,7 +221,7 @@ const index = (source: Record<string, string>, split: 'words' | 'chars') => {
   return map;
 };
 
-const WORD_INDEX = index(WORDS, 'words');
+const CURATED_WORD_INDEX = index(WORDS, 'words');
 const LETTER_INDEX = index(LETTERS, 'chars');
 
 const spellings = (value: string): Set<string> => {
@@ -240,7 +242,7 @@ const STEM_LENGTH = 4;
 
 const STEM_INDEX = (() => {
   const map = new Map<string, [string, Set<string>][]>();
-  for (const [word, langs] of WORD_INDEX) {
+  for (const [word, langs] of CURATED_WORD_INDEX) {
     if (word.length < STEM_LENGTH) continue;
     const stem = word.slice(0, STEM_LENGTH);
     map.set(stem, [...(map.get(stem) ?? []), [word, langs]]);
@@ -259,7 +261,47 @@ const inflectedLanguages = (token: string): Set<string> | undefined => {
   return merged.size > 0 ? merged : undefined;
 };
 
+const curatedLanguages = (unit: string): Set<string> | undefined =>
+  CURATED_WORD_INDEX.get(unit) ??
+  (unit.length > STEM_LENGTH ? inflectedLanguages(unit) : undefined);
+
+const isOnlyRequestEvidence = (word: string): boolean =>
+  wordUnits(word).every((unit) => !curatedLanguages(unit));
+
+const requestWordsOf = (code: string): string => {
+  const lexicon = NO_SEARCH_LEXICONS[code];
+  if (!lexicon) return '';
+  return [
+    ...lexicon.taskVerbs,
+    ...lexicon.makeVerbs,
+    ...lexicon.writtenWorks,
+    ...lexicon.opinionOpeners,
+    ...lexicon.opinionPhrases,
+  ]
+    .flatMap((phrase) => phrase.split(/\s+/))
+    .filter(isOnlyRequestEvidence)
+    .join(' ');
+};
+
+const REQUEST_WORDS: Record<string, string> = Object.fromEntries(
+  Object.keys(NAMES).map((code) => [code, requestWordsOf(code)])
+);
+
+const EVIDENCE_WORDS: Record<string, string> = Object.fromEntries(
+  Object.keys(NAMES).map((code) => [
+    code,
+    `${WORDS[code] ?? ''} ${REQUEST_WORDS[code]}`.trim(),
+  ])
+);
+
+const WORD_INDEX = index(EVIDENCE_WORDS, 'words');
+
+const REQUEST_SPELLINGS: Record<string, Set<string>> = Object.fromEntries(
+  Object.entries(REQUEST_WORDS).map(([code, value]) => [code, spellings(value)])
+);
+
 const spelledAsListed = (code: string, token: string): boolean => {
+  if (REQUEST_SPELLINGS[code]?.has(token)) return true;
   const words = SPELLINGS[code];
   if (!words) return false;
   if (words.has(token)) return true;
@@ -426,6 +468,9 @@ const withoutQuotedWords = (question: string): string => {
   const unquoted = question.replace(QUOTED, ' ');
   return HAS_LETTER.test(unquoted) ? unquoted : question;
 };
+
+export const scriptLanguagesOf = (question: string): string[] =>
+  dominantScript(withoutQuotedWords(question)) ?? [];
 
 export const detectQuestionLanguage = (
   question: string

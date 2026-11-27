@@ -18,6 +18,7 @@ import { deviceMemoryGBOrZero } from '../../utils/deviceMemory';
 import { useModelContextCapacityStore } from '../../store/modelContextCapacityStore';
 import { Feedback } from '../../utils/Feedback';
 import {
+  CONTEXT_SIZE_AUTO_HEADER,
   CONTEXT_SIZE_MANUAL_HEADER,
   CONVERSATION_MEMORY_LABEL,
   CONVERSATION_MEMORY_OPTION_LABELS,
@@ -33,8 +34,7 @@ import CheckIcon from '../../assets/icons/check.svg';
 import { dimmedOpacity, pressedOpacity } from '../../styles/pressable';
 
 const CHECK_SIZE = 20;
-const BADGE_COLUMN_WIDTH = 32;
-const LABEL_LINE_HEIGHT = lineHeights.sm;
+const LABEL_LINE_MIN_HEIGHT = 24;
 
 const useContextSizeEnvironment = (
   model?: Model | null
@@ -113,42 +113,40 @@ export const ContextSizeSelector = ({
           pressed && pressedOpacity,
         ]}
       >
-        <View style={styles.texts}>
+        <View style={styles.labelLine}>
           <Text
             style={[styles.optionLabel, checked && styles.optionLabelChecked]}
             maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
           >
             {option.label}
           </Text>
+          {option.size && <ModelBadge label={option.size} color="neutral" />}
+          <View style={styles.labelLineEnd}>
+            {checked && (
+              <CheckIcon
+                width={CHECK_SIZE}
+                height={CHECK_SIZE}
+                style={styles.check}
+                testID={`${testIDPrefix}-${option.level}-check`}
+              />
+            )}
+          </View>
+        </View>
+        <Text
+          style={styles.description}
+          maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
+        >
+          {option.description}
+        </Text>
+        {option.note && (
           <Text
-            style={styles.description}
+            style={styles.note}
+            testID={`${testIDPrefix}-${option.level}-note`}
             maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
           >
-            {option.description}
+            {option.note}
           </Text>
-          {option.note && (
-            <Text
-              style={styles.note}
-              testID={`${testIDPrefix}-${option.level}-note`}
-              maxFontSizeMultiplier={CAPPED_TEXT_MAX_SCALE}
-            >
-              {option.note}
-            </Text>
-          )}
-        </View>
-        <View style={styles.badgeColumn}>
-          {option.size && <ModelBadge label={option.size} color="neutral" />}
-        </View>
-        <View style={styles.checkSlot}>
-          {checked && (
-            <CheckIcon
-              width={CHECK_SIZE}
-              height={CHECK_SIZE}
-              style={styles.check}
-              testID={`${testIDPrefix}-${option.level}-check`}
-            />
-          )}
-        </View>
+        )}
       </Pressable>
     );
   };
@@ -166,10 +164,13 @@ export const ContextSizeSelector = ({
       style={styles.group}
       testID={`${testIDPrefix}-group`}
     >
-      <SettingsRowGroup separatorInset={0}>
-        {automatic.map(renderOption)}
-      </SettingsRowGroup>
-      <View style={styles.manual}>
+      <View style={styles.section}>
+        <SectionHeader title={CONTEXT_SIZE_AUTO_HEADER} />
+        <SettingsRowGroup separatorInset={0}>
+          {automatic.map(renderOption)}
+        </SettingsRowGroup>
+      </View>
+      <View style={styles.section}>
         <SectionHeader title={CONTEXT_SIZE_MANUAL_HEADER} />
         <SettingsRowGroup
           separatorInset={0}
@@ -187,16 +188,25 @@ export const ContextSizeSelector = ({
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     group: {
-      gap: space.four,
+      gap: space.six,
     },
-    manual: {
+    section: {
       gap: space.two,
     },
     option: {
+      gap: space.half,
+      paddingVertical: space.three,
+      paddingHorizontal: space.four,
+    },
+    labelLine: {
+      minHeight: LABEL_LINE_MIN_HEIGHT,
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: space.three,
-      padding: space.four,
+      alignItems: 'center',
+      gap: space.two,
+    },
+    labelLineEnd: {
+      flex: 1,
+      alignItems: 'flex-end',
     },
     optionChecked: {
       backgroundColor: theme.bg.accentSoft,
@@ -204,26 +214,10 @@ const createStyles = (theme: Theme) =>
     check: {
       color: theme.text.accent,
     },
-    badgeColumn: {
-      width: BADGE_COLUMN_WIDTH,
-      height: LABEL_LINE_HEIGHT,
-      alignItems: 'flex-end',
-      justifyContent: 'center',
-    },
-    checkSlot: {
-      width: CHECK_SIZE,
-      height: LABEL_LINE_HEIGHT,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    texts: {
-      flex: 1,
-      gap: space.half,
-    },
     optionLabel: {
       fontFamily: fontFamily.medium,
-      fontSize: fontSizes.sm,
-      lineHeight: LABEL_LINE_HEIGHT,
+      fontSize: fontSizes.md,
+      lineHeight: lineHeights.md,
       color: theme.text.primary,
     },
     optionLabelChecked: {

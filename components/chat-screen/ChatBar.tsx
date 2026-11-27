@@ -643,8 +643,15 @@ const ChatBar = ({
   }, [onSpeechInputChange, showSpeechInput]);
 
   const [speechMounted, setSpeechMounted] = useState(false);
+  const [speechSession, setSpeechSession] = useState(0);
+  const showSpeechInputRef = useRef(showSpeechInput);
+  showSpeechInputRef.current = showSpeechInput;
+  const unmountSpeechUnlessReopened = useCallback(() => {
+    if (!showSpeechInputRef.current) setSpeechMounted(false);
+  }, []);
   useEffect(() => {
     if (showSpeechInput) {
+      setSpeechSession((session) => session + 1);
       setSpeechMounted(true);
       speechShown.set(
         withTiming(1, {
@@ -659,11 +666,11 @@ const ChatBar = ({
         0,
         { duration: MODE_SWAP_OUT_MS, easing: Easing.inOut(Easing.quad) },
         (finished) => {
-          if (finished) runOnJS(setSpeechMounted)(false);
+          if (finished) runOnJS(unmountSpeechUnlessReopened)();
         }
       )
     );
-  }, [showSpeechInput, speechShown]);
+  }, [showSpeechInput, speechShown, unmountSpeechUnlessReopened]);
 
   const composerSwapStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
@@ -929,6 +936,7 @@ const ChatBar = ({
               pointerEvents={showSpeechInput ? 'auto' : 'none'}
             >
               <ChatSpeechInput
+                key={speechSession}
                 onSubmit={handleSpeechSubmit}
                 onCancel={() => setShowSpeechInput(false)}
                 onInterrupted={handleSpeechInterrupted}

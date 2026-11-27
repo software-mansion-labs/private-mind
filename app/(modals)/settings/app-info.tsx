@@ -3,18 +3,20 @@ import { StyleSheet, View, Text, Pressable, Linking } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import * as Application from 'expo-application';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { fontSizes, fontFamily } from '../../../styles/fontStyles';
-import { useTheme } from '../../../context/ThemeContext';
+import { fontFamily } from '../../../styles/fontStyles';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { Theme } from '../../../styles/colors';
 import GlassScreenHeader, {
   useGlassScreenHeaderHeight,
 } from '../../../components/GlassScreenHeader';
-import SecondaryButton from '../../../components/SecondaryButton';
+import { SettingsGroup } from '../../../components/settings/SettingsGroup';
+import { SettingsRow } from '../../../components/settings/SettingsRow';
 import Logo from '../../../assets/icons/logo.svg';
 import GithubIcon from '../../../assets/icons/github.svg';
 import CopyIcon from '../../../assets/icons/copy.svg';
+import InfoCircleIcon from '../../../assets/icons/info-circle.svg';
 import SwmLogo from '../../../assets/icons/swm-ai-labs-logo.svg';
 import RneLogo from '../../../assets/icons/rne-logo.svg';
 import { pressedOpacity } from '../../../styles/pressable';
@@ -23,10 +25,19 @@ import {
   OPENS_IN_BROWSER_HINT,
   SWM_AI_LABS_NAME,
 } from '../../../constants/model-attribution';
-import { radius, space, stroke } from '../../../constants/design-system';
+import {
+  radius,
+  space,
+  stroke,
+  textStyles,
+} from '../../../constants/design-system';
+import { currentAppVersion } from '../../../utils/appVersion';
 
-const APP_VERSION = `v.${Application.nativeApplicationVersion ?? ''}`;
+const APP_VERSION = `v${currentAppVersion()}`;
 
+const ROW_ICON_SIZE = 20;
+const ACCESSORY_ICON_SIZE = 16;
+const HERO_LOGO_SIZE = 48;
 const FOOTER_LOGO_COLOR = '#e6e7eb';
 const FOOTER_HEIGHT = 80;
 const SWM_LOGO_SIZE = { width: 100, height: 32 };
@@ -35,131 +46,103 @@ const FOOTER_SEPARATOR_HEIGHT = 21;
 
 const GITHUB_LINKS: { text: string; url: string }[] = [
   {
-    text: 'Check React Native ExecuTorch',
+    text: 'React Native ExecuTorch',
     url: 'https://github.com/software-mansion/react-native-executorch',
   },
   {
-    text: 'Check Private Mind repo',
+    text: 'Private Mind',
     url: 'https://github.com/software-mansion-labs/private-mind',
   },
   {
-    text: 'Check React Native RAG',
+    text: 'React Native RAG',
     url: 'https://github.com/software-mansion-labs/react-native-rag',
   },
 ];
 
-const AppHeader = () => {
-  const { theme } = useTheme();
-
-  return (
-    <View style={[styles.card, { borderColor: theme.border.soft }]}>
-      <View style={styles.logoContainer}>
-        <Logo width={28} height={28} />
-        <Text style={[styles.appName, { color: theme.text.primary }]}>
-          Private Mind
-        </Text>
-      </View>
-      <Text style={[styles.appDescription, { color: theme.text.primary }]}>
-        An app brought to you by Software Mansion AI Labs to run AI models,
-        locally on your device.
-      </Text>
-    </View>
-  );
-};
-
-const LearnMoreSection = () => {
-  const { theme } = useTheme();
-
-  return (
-    <View style={[styles.card, { borderColor: theme.border.soft }]}>
-      <Text style={[styles.learnMoreTitle, { color: theme.text.primary }]}>
-        Want to learn more?
-      </Text>
-      <Text
-        style={[
-          styles.learnMoreSubtitle,
-          { color: theme.text.defaultSecondary },
-        ]}
-      >
-        Check our other libraries related to AI.
-      </Text>
-      {GITHUB_LINKS.map(({ text, url }) => (
-        <SecondaryButton
-          key={text}
-          icon={
-            <GithubIcon
-              width={20}
-              height={20}
-              style={{ color: theme.text.primary }}
-            />
-          }
-          style={{ width: '100%' }}
-          text={text}
-          onPress={() => Linking.openURL(url)}
-        />
-      ))}
-    </View>
-  );
-};
-
-const VersionInfo = () => {
-  const { theme } = useTheme();
-
-  const handleCopyVersion = async () => {
-    await Clipboard.setStringAsync(APP_VERSION);
-    Toast.show({
-      type: 'defaultToast',
-      text1: 'Successfully copied version to clipboard',
-    });
-  };
-
-  return (
-    <View style={[styles.versionCard, { borderColor: theme.border.soft }]}>
-      <Text style={[styles.versionText, { color: theme.text.primary }]}>
-        App version:
-      </Text>
-      <View style={styles.versionInfoContainer}>
-        <Text style={[styles.versionText, { color: theme.text.primary }]}>
-          {APP_VERSION}
-        </Text>
-        <Pressable
-          onPress={handleCopyVersion}
-          style={({ pressed }) => pressed && pressedOpacity}
-        >
-          <CopyIcon
-            width={16}
-            height={16}
-            style={{ color: theme.text.defaultTertiary }}
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
+const handleCopyVersion = async () => {
+  await Clipboard.setStringAsync(APP_VERSION);
+  Toast.show({
+    type: 'defaultToast',
+    text1: 'Successfully copied version to clipboard',
+  });
 };
 
 export default function AppInfoScreen() {
   const router = useRouter();
-  const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const headerHeight = useGlassScreenHeaderHeight(true);
+  const { styles } = useThemedStyles(createStyles);
 
   const handleOpenSwmAiLabs = () => Linking.openURL(APP_INFO_SWM_URL);
 
   return (
-    <View style={[styles.screen, { backgroundColor: theme.bg.softPrimary }]}>
+    <View style={styles.screen}>
       <ScrollView
         contentContainerStyle={[
           styles.container,
           {
-            paddingTop: headerHeight + 24,
-            paddingBottom: insets.bottom + 16,
+            paddingTop: headerHeight + space.six,
+            paddingBottom: insets.bottom + space.four,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <AppHeader />
-        <LearnMoreSection />
-        <VersionInfo />
+        <View style={styles.hero}>
+          <Logo width={HERO_LOGO_SIZE} height={HERO_LOGO_SIZE} />
+          <Text style={styles.appName} accessibilityRole="header">
+            Private Mind
+          </Text>
+          <Text style={styles.appDescription}>
+            An app brought to you by Software Mansion AI Labs to run AI models,
+            locally on your device.
+          </Text>
+        </View>
+        <SettingsGroup
+          title="Want to learn more?"
+          description="Check our other libraries related to AI."
+        >
+          {GITHUB_LINKS.map(({ text, url }) => (
+            <SettingsRow
+              key={text}
+              label={text}
+              icon={
+                <GithubIcon
+                  width={ROW_ICON_SIZE}
+                  height={ROW_ICON_SIZE}
+                  style={styles.rowIcon}
+                />
+              }
+              showChevron
+              accessibilityRole="link"
+              accessibilityHint={OPENS_IN_BROWSER_HINT}
+              onPress={() => Linking.openURL(url)}
+            />
+          ))}
+        </SettingsGroup>
+        <SettingsGroup title="About">
+          <SettingsRow
+            label="App version"
+            icon={
+              <InfoCircleIcon
+                width={ROW_ICON_SIZE}
+                height={ROW_ICON_SIZE}
+                style={styles.rowIcon}
+              />
+            }
+            value={APP_VERSION}
+            accessory={
+              <CopyIcon
+                width={ACCESSORY_ICON_SIZE}
+                height={ACCESSORY_ICON_SIZE}
+                style={styles.accessoryIcon}
+              />
+            }
+            accessibilityLabel={`App version ${APP_VERSION}`}
+            accessibilityHint="Copies the version"
+            onPress={handleCopyVersion}
+            testID="app-info-version"
+          />
+        </SettingsGroup>
         <View style={styles.footer}>
           <View style={styles.footerLogos}>
             <Pressable
@@ -181,82 +164,59 @@ export default function AppInfoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: space.four,
-    gap: space.four,
-  },
-  card: {
-    padding: space.four,
-    alignItems: 'center',
-    gap: space.four,
-    borderRadius: radius.eighteen,
-    borderWidth: stroke.soft,
-  },
-  versionCard: {
-    padding: space.four,
-    alignItems: 'center',
-    gap: space.four,
-    borderRadius: radius.eighteen,
-    borderWidth: stroke.soft,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.two,
-  },
-  appName: {
-    fontSize: fontSizes.xxl,
-    fontFamily: fontFamily.bold,
-  },
-  appDescription: {
-    fontSize: fontSizes.sm,
-    fontFamily: fontFamily.regular,
-    textAlign: 'center',
-  },
-  learnMoreTitle: {
-    fontSize: fontSizes.md,
-    fontFamily: fontFamily.medium,
-  },
-  learnMoreSubtitle: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.sm,
-  },
-  versionInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.two,
-  },
-  versionText: {
-    fontFamily: fontFamily.regular,
-    fontSize: fontSizes.sm,
-  },
-  footer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: space.four,
-  },
-  footerLogos: {
-    height: FOOTER_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  footerLogo: {
-    color: FOOTER_LOGO_COLOR,
-  },
-  footerSeparator: {
-    width: stroke.soft,
-    height: FOOTER_SEPARATOR_HEIGHT,
-    marginLeft: space.four + space.half,
-    marginRight: space.three + space.half,
-    borderRadius: radius.full,
-    backgroundColor: FOOTER_LOGO_COLOR,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.bg.softPrimary,
+    },
+    rowIcon: {
+      color: theme.text.primary,
+    },
+    accessoryIcon: {
+      color: theme.text.defaultTertiary,
+    },
+    container: {
+      flexGrow: 1,
+      paddingHorizontal: space.four,
+      gap: space.six,
+    },
+    hero: {
+      alignItems: 'center',
+      gap: space.two,
+      paddingHorizontal: space.four,
+    },
+    appName: {
+      ...textStyles.titleH1,
+      marginTop: space.one,
+      color: theme.text.primary,
+    },
+    appDescription: {
+      ...textStyles.bodySecondaryRegular,
+      fontFamily: fontFamily.regular,
+      textAlign: 'center',
+      color: theme.text.defaultSecondary,
+    },
+    footer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      paddingBottom: space.four,
+    },
+    footerLogos: {
+      height: FOOTER_HEIGHT,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    footerLogo: {
+      color: FOOTER_LOGO_COLOR,
+    },
+    footerSeparator: {
+      width: stroke.soft,
+      height: FOOTER_SEPARATOR_HEIGHT,
+      marginLeft: space.four + space.half,
+      marginRight: space.three + space.half,
+      borderRadius: radius.full,
+      backgroundColor: FOOTER_LOGO_COLOR,
+    },
+  });

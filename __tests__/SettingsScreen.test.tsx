@@ -60,16 +60,16 @@ beforeEach(() => {
 });
 
 describe('the settings screen', () => {
-  it('groups every setting under Chat, Appearance, Data controls and About', () => {
+  it('groups every setting under General, Chat, Data and About', () => {
     render(<SettingsScreen />);
-    for (const title of ['Chat', 'Appearance', 'Data controls', 'About']) {
+    for (const title of ['General', 'Chat', 'Data', 'About']) {
       expect(screen.getByText(title)).toBeTruthy();
     }
     for (const label of [
       'Custom instructions',
       'Context size',
       'Response speed stats',
-      'Theme',
+      'Haptic feedback',
       'Import chat',
       'Delete all chats',
       'App info',
@@ -90,14 +90,38 @@ describe('the settings screen', () => {
 
   it('keeps the response speed stats switch working', () => {
     render(<SettingsScreen />);
-    fireEvent(screen.getAllByRole('switch')[0]!, 'valueChange', true);
+    fireEvent(
+      screen.getByTestId('settings-speed-stats-switch'),
+      'valueChange',
+      true
+    );
     expect(useSettingsStore.getState().showPerformanceMetrics).toBe(true);
   });
 
-  it('keeps the theme choice working', () => {
+  it('picks the theme from its light, dark and system previews', () => {
     render(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-choice-dark'));
+    expect(
+      screen.getByTestId('settings-theme-system').props.accessibilityState
+        .checked
+    ).toBe(true);
+    fireEvent.press(screen.getByTestId('settings-theme-dark'));
     expect(useSettingsStore.getState().themePreference).toBe('dark');
+    expect(
+      screen.getByTestId('settings-theme-dark').props.accessibilityState.checked
+    ).toBe(true);
+  });
+
+  it('tells whether custom instructions are set', () => {
+    useSettingsStore.setState({ customSystemPrompt: '' });
+    const view = render(<SettingsScreen />);
+    expect(
+      screen.getByTestId('settings-custom-instructions-value')
+    ).toHaveTextContent('Off');
+    useSettingsStore.setState({ customSystemPrompt: 'Be brief.' });
+    view.rerender(<SettingsScreen />);
+    expect(
+      screen.getByTestId('settings-custom-instructions-value')
+    ).toHaveTextContent('On');
   });
 
   it('opens custom instructions and app info', () => {
