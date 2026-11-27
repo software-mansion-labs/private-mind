@@ -5,7 +5,11 @@ export interface CoordinationLexicon {
   functionWords: string[];
   objectPronouns: string[];
   questionWordLeadsClause: boolean;
+  listCommas?: string[];
 }
+
+export const DEFAULT_LIST_COMMAS = [','];
+const ARABIC_SCRIPT_LIST_COMMAS = [',', '،'];
 
 export const COORDINATION_LEXICONS: Record<string, CoordinationLexicon> = {
   en: {
@@ -391,6 +395,7 @@ export const COORDINATION_LEXICONS: Record<string, CoordinationLexicon> = {
     functionWords: ['هو', 'هي', 'كان', 'مع'],
     objectPronouns: ['ذلك', 'هذا'],
     questionWordLeadsClause: true,
+    listCommas: ARABIC_SCRIPT_LIST_COMMAS,
   },
   he: {
     conjunctions: ['או'],
@@ -452,6 +457,7 @@ export const COORDINATION_LEXICONS: Record<string, CoordinationLexicon> = {
     functionWords: ['ہے', 'ہیں', 'تھا', 'تھی', 'تھے', 'نے'],
     objectPronouns: ['وہ', 'یہ', 'اسے', 'انہیں'],
     questionWordLeadsClause: false,
+    listCommas: ARABIC_SCRIPT_LIST_COMMAS,
   },
   bn: {
     conjunctions: ['এবং', 'ও', 'আর', 'বা'],
@@ -478,6 +484,7 @@ export const COORDINATION_LEXICONS: Record<string, CoordinationLexicon> = {
     functionWords: ['است', 'بود', 'را', 'با'],
     objectPronouns: ['آن', 'این'],
     questionWordLeadsClause: false,
+    listCommas: ARABIC_SCRIPT_LIST_COMMAS,
   },
   tr: {
     conjunctions: ['ve', 'veya'],
