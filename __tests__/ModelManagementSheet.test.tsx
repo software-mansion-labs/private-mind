@@ -29,8 +29,6 @@ jest.mock('expo-router', () => ({
   router: {
     push: jest.fn(),
     replace: jest.fn(),
-    canDismiss: jest.fn(() => false),
-    dismissAll: jest.fn(),
   },
 }));
 
@@ -84,6 +82,7 @@ import { useModelStore } from '../store/modelStore';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import { startPhantomChat } from '../utils/startPhantomChat';
+import { router } from 'expo-router';
 
 const mockUseModelStore = useModelStore as unknown as jest.Mock;
 const setSheetData = (BottomSheetModal as any).__setData;
@@ -143,8 +142,25 @@ describe('Initial stage', () => {
     fireEvent.press(screen.getByText('Start a chat'));
     expect(startPhantomChat).toHaveBeenCalledWith(
       expect.anything(),
-      'replace',
+      'dismiss-to',
       expect.objectContaining({ id: baseModel.id })
+    );
+  });
+
+  it('opens the benchmark inside the models sheet', () => {
+    renderSheet();
+    fireEvent.press(screen.getByText('Run benchmark'));
+    expect(router.push).toHaveBeenCalledWith(
+      `/model-hub/benchmark?modelId=${baseModel.id}`
+    );
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('opens editing by its full path, from any screen in the models sheet', () => {
+    renderSheet({ ...baseModel, source: 'remote' });
+    fireEvent.press(screen.getByText('Edit model'));
+    expect(router.push).toHaveBeenCalledWith(
+      `/edit-remote-model/${baseModel.id}`
     );
   });
 

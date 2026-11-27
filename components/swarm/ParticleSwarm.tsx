@@ -7,7 +7,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import { Canvas, installWebGPU, type CanvasRef } from 'react-native-webgpu';
-import tgpu, { type TgpuRoot } from 'typegpu';
+import { getGpuRoot } from './gpuRoot';
 import {
   prepareSwarm,
   SWARM_CLOCK_FLOATS,
@@ -22,15 +22,6 @@ const ANGLE_SPEED = 0.5;
 const DESIGNED_DURATION_SECONDS = 2;
 const MIN_FRAME_INTERVAL_MS = 10;
 const clockValues = new Float32Array(SWARM_CLOCK_FLOATS);
-
-let sharedRoot: Promise<TgpuRoot> | null = null;
-const getRoot = () => {
-  sharedRoot ??= tgpu.init().catch((error) => {
-    sharedRoot = null;
-    throw error;
-  });
-  return sharedRoot;
-};
 
 type Built = ReturnType<typeof prepareSwarm> & {
   context: NonNullable<ReturnType<CanvasRef['getContext']>>;
@@ -74,7 +65,7 @@ const ParticleSwarm = ({
     let cancelled = false;
     (async () => {
       try {
-        const root = await getRoot();
+        const root = await getGpuRoot();
         if (cancelled) return;
         const canvas = canvasRef.current;
         const context = canvas?.getContext('webgpu');

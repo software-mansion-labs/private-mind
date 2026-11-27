@@ -120,6 +120,17 @@ export const useSwarmOncePerNewChat = (
   return active && spentFor !== newChatStarts;
 };
 
+export const useNewChatStartedWhileAway = (
+  active: boolean,
+  newChatStarts: number
+): boolean => {
+  const [lastSeenStarts, setLastSeenStarts] = useState<number | null>(null);
+  useEffect(() => {
+    if (active) setLastSeenStarts(newChatStarts);
+  }, [active, newChatStarts]);
+  return !active && lastSeenStarts !== null && lastSeenStarts !== newChatStarts;
+};
+
 interface Props {
   screenHeight: number;
   headingClearance: number;

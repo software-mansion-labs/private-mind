@@ -23,7 +23,7 @@ jest.mock('react-native-gesture-handler', () => {
   return { Pressable, ScrollView };
 });
 
-jest.mock('../components/chat-screen/RecordingAnimation', () => {
+jest.mock('../components/swarm/VoiceDome', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
@@ -91,10 +91,10 @@ describe('ChatSpeechInput once it is listening', () => {
     mockSpeech.status = 'listening';
   });
 
-  it('offers the send', () => {
+  it('shows how long it has been listening between cancel and send', () => {
     renderSheet();
 
-    expect(screen.getByText('Click again to send')).toBeTruthy();
+    expect(screen.getByText('0:00')).toBeTruthy();
   });
 
   it('stops the recording on send', () => {
