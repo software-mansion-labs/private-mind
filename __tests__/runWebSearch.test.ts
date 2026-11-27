@@ -280,6 +280,81 @@ describe('runWebSearch', () => {
     });
   });
 
+  describe('a question with three parts', () => {
+    const question =
+      'Who won the 2025 Nobel Prizes in Physics, in Chemistry and in Medicine?';
+    const FIELDS = ['Physics', 'Chemistry', 'Medicine'];
+    const PAGES_PER_QUERY = 2;
+
+    class PerFieldProvider implements WebSearchProvider {
+      readonly id = 'per-field';
+      calls: string[] = [];
+      isReady() {
+        return true;
+      }
+      async search(query: string): Promise<WebSearchResult[]> {
+        this.calls.push(query);
+        const named = FIELDS.filter((field) => query.includes(field));
+        const host = named.length === 1 ? named[0]!.toLowerCase() : 'combined';
+        return Array.from({ length: PAGES_PER_QUERY }, (_, index) => ({
+          title: `2025 Nobel Prize ${named.join(' ')} ${index}`,
+          url: `https://${host}.example/${index}`,
+          snippet: `2025 Nobel Prize in ${named.join(' ')} winners`,
+        }));
+      }
+    }
+
+    const searchWith = async () => {
+      const provider = new PerFieldProvider();
+      const events: WebSearchProgressEvent[] = [];
+      (extractArticle as jest.Mock).mockImplementation(async (url: string) => ({
+        url,
+        title: url,
+        text: `The 2025 Nobel Prize winners announced at ${url}. `.repeat(12),
+        siteName: url,
+      }));
+      await runWebSearch({
+        query: question,
+        history: [],
+        provider,
+        embeddings: fakeEmbeddings,
+        embeddingModelReady: true,
+        generate: noGen,
+        onProgress: (event) => events.push(event),
+        today: '2026-07-20',
+      });
+      return { calls: provider.calls, events };
+    };
+
+    it('searches each of the three parts on its own next to the planned query', async () => {
+      const { calls } = await searchWith();
+      for (const field of FIELDS) {
+        expect(
+          calls.filter((call) =>
+            FIELDS.every((other) => call.includes(other) === (other === field))
+          )
+        ).toHaveLength(1);
+      }
+      expect(
+        calls.filter((call) => FIELDS.every((field) => call.includes(field)))
+      ).toHaveLength(1);
+    });
+
+    it('reads a page for every part in the first wave so the third is not left to its snippet', async () => {
+      const { events } = await searchWith();
+      const firstRanking = events.findIndex(
+        (event) => event.type === 'ranking'
+      );
+      const readFirst = events
+        .slice(0, firstRanking)
+        .filter((event) => event.type === 'fetched')
+        .map((event) => event.host);
+      for (const field of FIELDS) {
+        expect(readFirst).toContain(`${field.toLowerCase()}.example`);
+      }
+    });
+  });
+
   it('runs one round and reports it on strong retrieval', async () => {
     const provider = new MockProvider({
       'warsaw weather': [weatherPage('https://weather.example/1')],
