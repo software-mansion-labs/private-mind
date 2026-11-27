@@ -14,7 +14,7 @@ import {
   SHARE_CARD_RADIUS,
   ShareCard,
 } from '../../../components/share/ShareCard';
-import ShareIcon from '../../../assets/icons/upload.svg';
+import ShareIcon from '../../../assets/icons/share-arrow.svg';
 import XIcon from '../../../assets/icons/social-x.svg';
 import LinkedInIcon from '../../../assets/icons/social-linkedin.svg';
 import { space, textStyles } from '../../../constants/design-system';
