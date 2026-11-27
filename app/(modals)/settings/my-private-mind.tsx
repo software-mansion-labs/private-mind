@@ -15,6 +15,9 @@ import {
   ShareCard,
 } from '../../../components/share/ShareCard';
 import ShareIcon from '../../../assets/icons/upload.svg';
+import XIcon from '../../../assets/icons/social-x.svg';
+import LinkedInIcon from '../../../assets/icons/social-linkedin.svg';
+import RedditIcon from '../../../assets/icons/social-reddit.svg';
 import { space, textStyles } from '../../../constants/design-system';
 import { loadUsageTotals } from '../../../database/usageStatsRepository';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
@@ -31,6 +34,7 @@ import { type SocialNetwork, postToNetwork } from '../../../utils/socialShare';
 const MY_PRIVATE_MIND_TITLE = 'My Private Mind';
 const MAX_CARD_WIDTH = 400;
 const SHARE_ICON_SIZE = 20;
+const NETWORK_ICON_SIZE = 22;
 const PRIVACY_NOTE =
   'These numbers are counted on this phone and never leave it. Sharing sends only this picture and a link to the app.';
 const EMPTY_NOTE =
@@ -132,21 +136,45 @@ export default function MyPrivateMindScreen() {
         />
         <View style={styles.quickTargets}>
           <SecondaryButton
-            text="X"
+            text=""
+            icon={
+              <XIcon
+                width={NETWORK_ICON_SIZE}
+                height={NETWORK_ICON_SIZE}
+                color={theme.text.primary}
+              />
+            }
+            accessibilityRole="button"
             accessibilityLabel="Post on X"
             onPress={handlePostOnX}
             disabled={!summary || sharing}
             style={styles.quickTarget}
           />
           <SecondaryButton
-            text="LinkedIn"
+            text=""
+            icon={
+              <LinkedInIcon
+                width={NETWORK_ICON_SIZE}
+                height={NETWORK_ICON_SIZE}
+                color={theme.text.primary}
+              />
+            }
+            accessibilityRole="button"
             accessibilityLabel="Share on LinkedIn"
             onPress={handleShareOnLinkedIn}
             disabled={!summary || sharing}
             style={styles.quickTarget}
           />
           <SecondaryButton
-            text="Reddit"
+            text=""
+            icon={
+              <RedditIcon
+                width={NETWORK_ICON_SIZE}
+                height={NETWORK_ICON_SIZE}
+                color={theme.text.primary}
+              />
+            }
+            accessibilityRole="button"
             accessibilityLabel="Post on Reddit"
             onPress={handlePostOnReddit}
             disabled={!summary || sharing}
