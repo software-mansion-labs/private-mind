@@ -25,8 +25,6 @@ import {
   SOCIAL_APP_PACKAGES,
   X_MAKER_ACCOUNT,
   LINKEDIN_MAKER_PAGE,
-  redditPostTitle,
-  redditSubmitUrl,
   X_HASHTAGS,
   X_POST_LIMIT,
   linkedInPostText,
@@ -74,7 +72,7 @@ describe('the post for X', () => {
   it('names the phone, the pages and the privacy claim with two hashtags', () => {
     const text = xPostText(summary, 'Pixel 10');
     expect(text).toContain('My Pixel 10 has written 412 A4 pages');
-    expect(text).toContain('0 bytes sent to the cloud');
+    expect(text).toContain('0 bytes sent to an AI cloud');
     expect(text.endsWith(X_HASHTAGS)).toBe(true);
   });
 
@@ -118,7 +116,7 @@ describe('the post for LinkedIn', () => {
     const text = linkedInPostText(summary, 'Pixel 10');
     expect(text).toContain('My Pixel 10 has written 412 A4 pages');
     expect(text).toContain('206,000 words across 38 chats');
-    expect(text).toContain('not a single byte of it went to the cloud');
+    expect(text).toContain('not a single byte of it went to an AI cloud');
     expect(text).toContain(`built by ${LINKEDIN_MAKER_PAGE}.`);
     expect(text.trimEnd().endsWith(APP_SITE_URL)).toBe(true);
     expect(text.length).toBeGreaterThan(X_POST_LIMIT);
@@ -182,34 +180,6 @@ describe('posting from the My Private Mind screen', () => {
       'com.linkedin.android'
     );
     expect(openURL).not.toHaveBeenCalled();
-  });
-
-  it('hands the card and a title with the link to the Reddit app when it is installed', async () => {
-    mockIsInstalled.mockReturnValue(true);
-
-    await postToNetwork('reddit', summary, 'Pixel 10', renderCard);
-
-    expect(mockShareToPackage).toHaveBeenCalledWith(
-      'file:///cache/my-private-mind.png',
-      `${redditPostTitle(summary, 'Pixel 10')} ${APP_SITE_URL}`,
-      'com.reddit.frontpage'
-    );
-    expect(openURL).not.toHaveBeenCalled();
-  });
-
-  it('opens the Reddit submit page with the title and the link when the app is missing', async () => {
-    await postToNetwork('reddit', summary, 'Pixel 10', renderCard);
-
-    expect(openURL).toHaveBeenCalledWith(
-      redditSubmitUrl(redditPostTitle(summary, 'Pixel 10'))
-    );
-    expect(renderCard).not.toHaveBeenCalled();
-  });
-
-  it('keeps the Reddit title within the 300 characters Reddit allows', () => {
-    expect(
-      redditPostTitle(summary, 'Samsung Galaxy S25 Ultra').length
-    ).toBeLessThanOrEqual(300);
   });
 
   it('uses the web intents on iOS, where no app can be targeted with an image', async () => {

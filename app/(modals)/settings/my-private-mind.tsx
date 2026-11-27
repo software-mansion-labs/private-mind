@@ -17,7 +17,6 @@ import {
 import ShareIcon from '../../../assets/icons/upload.svg';
 import XIcon from '../../../assets/icons/social-x.svg';
 import LinkedInIcon from '../../../assets/icons/social-linkedin.svg';
-import RedditIcon from '../../../assets/icons/social-reddit.svg';
 import { space, textStyles } from '../../../constants/design-system';
 import { loadUsageTotals } from '../../../database/usageStatsRepository';
 import { useThemedStyles } from '../../../hooks/useThemedStyles';
@@ -102,7 +101,6 @@ export default function MyPrivateMindScreen() {
 
   const handlePostOnX = () => postTo('x');
   const handleShareOnLinkedIn = () => postTo('linkedin');
-  const handlePostOnReddit = () => postTo('reddit');
 
   const note = summary && summary.tokens === 0 ? EMPTY_NOTE : PRIVACY_NOTE;
 
@@ -162,21 +160,6 @@ export default function MyPrivateMindScreen() {
             accessibilityRole="button"
             accessibilityLabel="Share on LinkedIn"
             onPress={handleShareOnLinkedIn}
-            disabled={!summary || sharing}
-            style={styles.quickTarget}
-          />
-          <SecondaryButton
-            text=""
-            icon={
-              <RedditIcon
-                width={NETWORK_ICON_SIZE}
-                height={NETWORK_ICON_SIZE}
-                color={theme.text.primary}
-              />
-            }
-            accessibilityRole="button"
-            accessibilityLabel="Post on Reddit"
-            onPress={handlePostOnReddit}
             disabled={!summary || sharing}
             style={styles.quickTarget}
           />

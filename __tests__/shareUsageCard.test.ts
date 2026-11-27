@@ -46,7 +46,7 @@ describe('the share message', () => {
     const message = buildUsageShareMessage(summary, 'Pixel 10');
 
     expect(message).toContain('My Pixel 10 has written 412 A4 pages');
-    expect(message).toContain('0 bytes went to the cloud');
+    expect(message).toContain('0 bytes went to an AI cloud');
     expect(message).toContain(
       'https://apps.apple.com/app/private-mind/id6746713439'
     );

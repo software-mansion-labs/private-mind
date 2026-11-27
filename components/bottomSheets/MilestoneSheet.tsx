@@ -21,7 +21,7 @@ const LOGO_HEIGHT = 26;
 const STAR_SIZE = 18;
 const NOT_NOW_HEIGHT = 40;
 const MILESTONE_DETAIL =
-  'Every word was written on this phone, with nothing sent to the cloud. Sharing it or leaving a rating helps others find a private AI.';
+  'Every word was written on this phone, with nothing sent to an AI cloud. Sharing it or leaving a rating helps others find a private AI.';
 
 const MilestoneSheet = () => {
   const { styles, theme } = useThemedStyles(createStyles);

@@ -38,7 +38,7 @@ export const buildUsageShareMessage = (
   deviceName: string | null
 ): string =>
   [
-    `${ownerPhrase(deviceName)} has written ${approximately(pagesLabel(summary.pages), summary.approximate)} with Private Mind, and 0 bytes went to the cloud. The AI runs entirely on the phone.`,
+    `${ownerPhrase(deviceName)} has written ${approximately(pagesLabel(summary.pages), summary.approximate)} with Private Mind, and 0 bytes went to an AI cloud. The AI runs entirely on the phone.`,
     '',
     `App Store: ${APP_STORE_URL}`,
     `Google Play: ${GOOGLE_PLAY_URL}`,

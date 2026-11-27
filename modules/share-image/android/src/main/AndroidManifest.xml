@@ -2,6 +2,5 @@
   <queries>
     <package android:name="com.twitter.android" />
     <package android:name="com.linkedin.android" />
-    <package android:name="com.reddit.frontpage" />
   </queries>
 </manifest>

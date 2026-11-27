@@ -39,7 +39,6 @@ const PANEL_TOP = 252;
 const PANEL_HEIGHT = 120;
 const PANEL_ROW_HEIGHT = 60;
 const PANEL_WIDTH = SHARE_CARD_WIDTH - PADDING * 2;
-const THIRD_COLUMN_WIDTH = PANEL_WIDTH / 3;
 const HALF_COLUMN_WIDTH = PANEL_WIDTH / 2;
 const CARD_CENTER = SHARE_CARD_WIDTH / 2;
 const DIVIDER_INSET = 12;
@@ -74,19 +73,19 @@ const DETAIL_VALUE_SIZE = 15;
 
 const LOCK_PATH =
   'M11 5C11 4.49336 10.84 3.71081 10.3887 3.08398C9.97406 2.50819 9.274 2 8 2C6.726 2 6.02594 2.50819 5.61133 3.08398C5.16001 3.71081 5 4.49336 5 5V6H11V5ZM2 18H14V8H2V18ZM7 14V12C7 11.4477 7.44772 11 8 11C8.55229 11 9 11.4477 9 12V14C9 14.5523 8.55229 15 8 15C7.44772 15 7 14.5523 7 14ZM13 6H15C15.5523 6 16 6.44772 16 7V19C16 19.5523 15.5523 20 15 20H1C0.447715 20 0 19.5523 0 19V7C0 6.44772 0.447715 6 1 6H3V5C3 4.17339 3.23977 2.95579 3.98828 1.91602C4.77368 0.825186 6.07408 0 8 0C9.92592 0 11.2263 0.825186 12.0117 1.91602C12.7602 2.95579 13 4.17339 13 5V6Z';
-const LOCK_TILE_SIZE = 40;
-const LOCK_TILE_RADIUS = 12;
+const LOCK_ICON_WIDTH = 16;
+const LOCK_TEXT_GAP = 12;
 const LOCK_TILE_TOP = 392;
-const LOCK_ICON_LEFT = 12;
+const LOCK_ICON_LEFT = 4;
 const LOCK_ICON_TOP = 10;
-const PRIVACY_TEXT_X = PADDING + LOCK_TILE_SIZE + 12;
+const PRIVACY_TEXT_X =
+  PADDING + LOCK_ICON_LEFT + LOCK_ICON_WIDTH + LOCK_TEXT_GAP;
 const PRIVACY_TITLE_BASELINE = 408;
 const PRIVACY_TITLE_SIZE = 16;
 const PRIVACY_DETAIL_BASELINE = 427;
 const PRIVACY_DETAIL_SIZE = 12;
 
 const FOOTER_BASELINE = 460;
-const FOOTER_SIZE = 11;
 const SITE_SIZE = 12;
 
 const GLOW_TOP_X = 320;
@@ -109,7 +108,6 @@ interface CardPalette {
   badgeFill: string;
   panelFill: string;
   divider: string;
-  lockTile: string;
 }
 
 const LIGHT_GLOW_OPACITY = 0.28;
@@ -133,7 +131,6 @@ const paletteFor = (theme: Theme): CardPalette => {
     badgeFill: theme.bg.accentSoft,
     panelFill: theme.bg.chatBarBadge,
     divider: theme.border.popover,
-    lockTile: theme.bg.accentSoft,
   };
 };
 
@@ -190,8 +187,6 @@ export const ShareCard = ({ ref, content, width }: Props) => {
   const size = shareCardSize(width);
   const logoScale = LOGO_HEIGHT / LOGO_VIEWBOX_HEIGHT;
   const panelLeft = PADDING;
-  const thirdCenter = (column: number) =>
-    panelLeft + THIRD_COLUMN_WIDTH * (column + 0.5);
   const halfCenter = (column: number) =>
     panelLeft + HALF_COLUMN_WIDTH * (column + 0.5);
   const secondRowTop = PANEL_TOP + PANEL_ROW_HEIGHT;
@@ -204,7 +199,7 @@ export const ShareCard = ({ ref, content, width }: Props) => {
       height={size.height}
       viewBox={`0 0 ${SHARE_CARD_WIDTH} ${SHARE_CARD_HEIGHT}`}
       accessible
-      accessibilityLabel={`${content.owner} ${content.pages} ${content.pagesUnit}. ${content.tokens} tokens, ${content.words} words, ${content.chats} chats. 0 bytes sent to the cloud.`}
+      accessibilityLabel={`${content.owner} ${content.pages} ${content.pagesUnit}. ${content.tokens} tokens, ${content.words} words. 0 bytes sent to an AI cloud.`}
     >
       <Defs>
         <LinearGradient id="cardBackground" x1="0" y1="0" x2="0.4" y2="1">
@@ -332,7 +327,7 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         strokeWidth={stroke.soft}
       />
       <Stat
-        centerX={thirdCenter(0)}
+        centerX={halfCenter(0)}
         top={PANEL_TOP}
         value={content.tokens}
         valueSize={STAT_VALUE_SIZE}
@@ -340,19 +335,11 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         palette={palette}
       />
       <Stat
-        centerX={thirdCenter(1)}
+        centerX={halfCenter(1)}
         top={PANEL_TOP}
         value={content.words}
         valueSize={STAT_VALUE_SIZE}
         label="words"
-        palette={palette}
-      />
-      <Stat
-        centerX={thirdCenter(2)}
-        top={PANEL_TOP}
-        value={content.chats}
-        valueSize={STAT_VALUE_SIZE}
-        label="chats"
         palette={palette}
       />
       <Stat
@@ -371,14 +358,6 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         label="best speed"
         palette={palette}
       />
-      <Rect
-        x={PADDING}
-        y={LOCK_TILE_TOP}
-        width={LOCK_TILE_SIZE}
-        height={LOCK_TILE_SIZE}
-        rx={LOCK_TILE_RADIUS}
-        fill={palette.lockTile}
-      />
       <G
         transform={`translate(${PADDING + LOCK_ICON_LEFT} ${LOCK_TILE_TOP + LOCK_ICON_TOP})`}
       >
@@ -391,7 +370,7 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         fontSize={PRIVACY_TITLE_SIZE}
         fill={palette.primary}
       >
-        0 bytes sent to the cloud
+        0 bytes sent to an AI cloud
       </Text>
       <Text
         x={PRIVACY_TEXT_X}
@@ -400,26 +379,17 @@ export const ShareCard = ({ ref, content, width }: Props) => {
         fontSize={PRIVACY_DETAIL_SIZE}
         fill={palette.secondary}
       >
-        Everything stayed on my phone.
+        Every answer was written on my phone.
       </Text>
       <Text
-        x={PADDING}
+        x={CARD_CENTER}
         y={FOOTER_BASELINE}
+        textAnchor="middle"
         fontFamily={fontFamily.bold}
         fontSize={SITE_SIZE}
         fill={palette.accent}
       >
         {SHARE_CARD_SITE}
-      </Text>
-      <Text
-        x={SHARE_CARD_WIDTH - PADDING}
-        y={FOOTER_BASELINE}
-        textAnchor="end"
-        fontFamily={fontFamily.medium}
-        fontSize={FOOTER_SIZE}
-        fill={palette.tertiary}
-      >
-        App Store · Google Play
       </Text>
     </Svg>
   );
