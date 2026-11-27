@@ -7,13 +7,18 @@ import { extractQueryTerms, hasStopwordCoverage } from '../queryTerms';
 import {
   dependsOnConversation,
   extractSiteRestriction,
+  hasHardSearchSignal,
   isAboutTheConversation,
   toKeywordQuery,
   withSiteRestriction,
   type WebSearchPlan,
 } from './buildSearchQuery';
 import type { WebIntentKind } from './intentKind';
-import { hasNoSearchLexicon, lacksSearchSignal } from './noSearchSignal';
+import {
+  hasNoSearchLexicon,
+  lacksSearchSignal,
+  namesFreshnessOrLookup,
+} from './noSearchSignal';
 import {
   hasPriorTurns,
   namesItsOwnSubject,
@@ -26,6 +31,9 @@ const DATE_PHRASES =
   /(?<![\p{L}])(?:(?:what|which)\s+(?:day|date|year|month)|in\s+what\s+year|on\s+what\s+day|when\s+(?:did|was|is|will|does)|kiedy|w\s+kt[oó]rym\s+roku|kt[oó]rego\s+dnia|welches\s+jahr|wann|quand|cu[aá]ndo|quando)(?![\p{L}])/iu;
 const HOWTO_PHRASES =
   /(?<![\p{L}])(?:how\s+(?:to|do\s+i|can\s+i)|jak\s+(?:zrobi[cć]|ugotowa[cć]|naprawi[cć]|zainstalowa[cć]|za[lł]o[zż]y[cć]))(?![\p{L}])/iu;
+
+const CODE_SPANS = /```[\s\S]*?```|`[^`\n]+`/gu;
+const WEB_ADDRESS = /https?:\/\/|www\./iu;
 
 const KIND_PATTERNS: [WebIntentKind, RegExp][] = [
   ['price', PRICE_WORDS],
@@ -49,15 +57,40 @@ export const keywordQueryFor = (
   digest?: string
 ): string => toKeywordQuery(topicAnchorer(query, history, digest)(query));
 
+const lexiconLanguageOf = (query: string): string | null => {
+  if (!query || isAboutTheConversation(query)) return null;
+  const language = detectQuestionLanguage(query)?.code;
+  return language && hasNoSearchLexicon(language) ? language : null;
+};
+
+const carriesLookupSignal = (query: string, language: string): boolean => {
+  const prose = query.replace(CODE_SPANS, ' ');
+  return (
+    hasHardSearchSignal(prose) ||
+    WEB_ADDRESS.test(prose) ||
+    extractSiteRestriction(prose) !== null ||
+    namesFreshnessOrLookup(prose, language)
+  );
+};
+
+export const isNoSearchRequest = (userInput: string): boolean => {
+  const query = userInput.trim();
+  const language = lexiconLanguageOf(query);
+  return (
+    !!language &&
+    lacksSearchSignal(query, language) &&
+    !carriesLookupSignal(query, language)
+  );
+};
+
 export const fastPlanWebSearch = (
   userInput: string,
   history: { role: string; content: string }[],
   opts?: { digest?: string }
 ): WebSearchPlan | null => {
   const query = userInput.trim();
-  if (!query || isAboutTheConversation(query)) return null;
-  const language = detectQuestionLanguage(query)?.code;
-  if (!language || !hasNoSearchLexicon(language)) return null;
+  const language = lexiconLanguageOf(query);
+  if (!language) return null;
   if (lacksSearchSignal(query, language)) return null;
   if (mayNeedConversation(query, history)) return null;
   if (!hasStopwordCoverage(language)) return null;

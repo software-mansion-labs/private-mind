@@ -276,21 +276,12 @@ describe('the fast web plan in runWebSearch', () => {
     expect(telemetry.timings?.planner).toBeUndefined();
   });
 
-  it('leaves a request with nothing to look up to the planner, which decides not to search', async () => {
-    const generate = jest.fn(async () =>
-      JSON.stringify({
-        needs_search: false,
-        intent: 'translate a phrase',
-        kind: 'chat',
-        queries: [],
-        expects: [],
-      })
-    );
-    const run = search("Translate 'thank you' into Hindi", { generate });
+  it('decides not to search a request with nothing to look up, without asking the planner', async () => {
+    const run = search("Translate 'thank you' into Hindi");
     const { telemetry } = await run.done;
 
-    expect(generate).toHaveBeenCalledTimes(1);
-    expect(telemetry.timings?.planner).toBe('llm');
+    expect(run.generate).not.toHaveBeenCalled();
+    expect(telemetry.skippedReason).toBe('no-search-request');
     expect(run.provider.calls).toEqual([]);
   });
 
