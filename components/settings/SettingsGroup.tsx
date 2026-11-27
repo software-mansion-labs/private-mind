@@ -1,29 +1,44 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { space } from '../../constants/design-system';
+import { Theme } from '../../styles/colors';
+import { space, textStyles } from '../../constants/design-system';
 import SettingsRowGroup from './SettingsRowGroup';
 import SectionHeader from '../model-hub/SectionHeader';
 
 interface Props {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }
 
-export const SettingsGroup = ({ title, children }: Props) => {
+export const SettingsGroup = ({ title, description, children }: Props) => {
   const { styles } = useThemedStyles(createStyles);
 
   return (
     <View style={styles.group}>
-      <SectionHeader title={title} />
+      <View style={styles.header}>
+        <SectionHeader title={title} />
+        {description ? (
+          <Text style={styles.description}>{description}</Text>
+        ) : null}
+      </View>
       <SettingsRowGroup separatorInset={0}>{children}</SettingsRowGroup>
     </View>
   );
 };
 
-const createStyles = () =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     group: {
       gap: space.two,
+    },
+    header: {
+      gap: space.half,
+    },
+    description: {
+      ...textStyles.bodySecondaryRegular,
+      paddingHorizontal: space.one,
+      color: theme.text.defaultTertiary,
     },
   });
