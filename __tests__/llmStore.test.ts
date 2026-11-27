@@ -13,6 +13,8 @@ import type { Model } from '../database/modelRepository';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import * as Feedback from '../utils/Feedback';
 import { prepareMessagesForLLM } from '../utils/promptUtils';
+import { questionTurnOf } from '../utils/answerLanguageTurn';
+import type { LLMMessage } from '../types/llmMessage';
 import { useSettingsStore } from '../store/settingsStore';
 import { useWebSearchStore } from '../store/webSearchStore';
 import { OPENING_WELCOMES } from '../constants/opening-greetings';
@@ -47,9 +49,6 @@ jest.mock('../utils/promptUtils', () => ({
     { role: 'user', content: 'hello' },
     { role: 'assistant', content: '' },
   ]),
-  answerLanguageAnchor: jest.fn(
-    () => ' (Answer in the same language as this message.)'
-  ),
   focusedRetrySystemPrompt: jest.fn(() => 'Answer from the quoted lines.'),
   answerLanguageOf: jest.requireActual('../utils/promptUtils').answerLanguageOf,
 }));
@@ -1205,11 +1204,8 @@ describe('sendChatMessage', () => {
         thinkingEnabled: true,
       });
 
-    const retry = mockInstance.generate.mock.calls[1][0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(retry.at(-1)!.content).toMatch(/ \/no_think$/);
+    const retry = mockInstance.generate.mock.calls[1][0] as LLMMessage[];
+    expect(questionTurnOf(retry)!.content).toMatch(/ \/no_think$/);
   });
 
   it('interrupts a turn that yields no token within the first-token budget', async () => {
@@ -2015,7 +2011,12 @@ describe('sendChatMessage', () => {
     );
   });
 
-  it('anchors the continuation nudge to the conversation language and continues from the dangling text', async () => {
+  it('gives the continuation nudge one language instruction, after the nudge, and continues from the dangling text', async () => {
+    (prepareMessagesForLLM as jest.Mock).mockReturnValueOnce([
+      { role: 'system', content: 'You are helpful.' },
+      { role: 'user', content: 'co zabrać do samolotu?' },
+      { role: 'system', content: '(Answer in Polish.)' },
+    ]);
     mockInstance.generate
       .mockResolvedValueOnce('Oto co warto zabrać:')
       .mockResolvedValueOnce('- Paszport');
@@ -2029,22 +2030,24 @@ describe('sendChatMessage', () => {
       .getState()
       .sendChatMessage('co zabrać do samolotu?', 1, noSources, settings);
 
-    const continuationMessages = mockInstance.generate.mock.calls[1][0];
-    const lastMessage = continuationMessages[continuationMessages.length - 1];
-    const echoedAssistantTurn =
-      continuationMessages[continuationMessages.length - 2];
+    const continuationMessages = mockInstance.generate.mock
+      .calls[1][0] as LLMMessage[];
 
-    expect(echoedAssistantTurn).toEqual({
-      role: 'assistant',
-      content: 'Oto co warto zabrać:',
-    });
-    expect(lastMessage.role).toBe('user');
-    expect(lastMessage.content).toContain(
-      'Continue now with ONLY the actual list items'
-    );
-    expect(lastMessage.content).toContain(
-      '(Answer in the same language as this message.)'
-    );
+    expect(continuationMessages.slice(-3)).toEqual([
+      { role: 'assistant', content: 'Oto co warto zabrać:' },
+      {
+        role: 'user',
+        content: expect.stringContaining(
+          'Continue now with ONLY the actual list items'
+        ),
+      },
+      { role: 'system', content: '(Answer in Polish.)' },
+    ]);
+    expect(
+      continuationMessages.filter((message) =>
+        message.content.includes('Answer in')
+      )
+    ).toHaveLength(1);
   });
 
   it('spends the echo nudge, not the list nudge, when the reply is both', async () => {
@@ -2061,12 +2064,13 @@ describe('sendChatMessage', () => {
       .getState()
       .sendChatMessage('Co zabrać do samolotu?', 1, noSources, settings);
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.at(-1)!.content).toContain('only repeated the question back');
-    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(questionTurnOf(nudge)!.content).toContain(
+      'only repeated the question back'
+    );
+    expect(questionTurnOf(nudge)!.content).not.toContain(
+      'ONLY the actual list items'
+    );
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Zabierz paszport, bilet i ładowarkę.'
@@ -2092,12 +2096,13 @@ describe('sendChatMessage', () => {
       .getState()
       .sendChatMessage(question, 1, noSources, settings);
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.at(-1)!.content).toContain('written in the wrong language');
-    expect(nudge.at(-1)!.content).not.toContain('ONLY the actual list items');
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(questionTurnOf(nudge)!.content).toContain(
+      'written in the wrong language'
+    );
+    expect(questionTurnOf(nudge)!.content).not.toContain(
+      'ONLY the actual list items'
+    );
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Kazimierz Wielki był królem Polski i zreformował prawo.'
@@ -2136,8 +2141,10 @@ describe('sendChatMessage', () => {
       .sendChatMessage('', 1, noSources, settings, '/local/castle.jpg');
 
     const nudge = mockInstance.generate.mock.calls[1]?.[0] as
-      { role: string; content: string }[] | undefined;
-    expect(nudge?.at(-1)?.content).toContain('written in the wrong language');
+      LLMMessage[] | undefined;
+    expect(questionTurnOf(nudge ?? [])?.content).toContain(
+      'written in the wrong language'
+    );
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Na zdjęciu jest zamek w Krakowie.'
     );
@@ -2207,11 +2214,10 @@ describe('sendChatMessage', () => {
       .getState()
       .sendChatMessage('ile kosztuje?', 1, noSources, settings);
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.at(-1)!.content).toContain('only talked about the sources');
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(questionTurnOf(nudge)!.content).toContain(
+      'only talked about the sources'
+    );
     expect(useLLMStore.getState().generationError).toBeNull();
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       'Cena wynosi 3200 zł.'
@@ -2299,12 +2305,9 @@ describe('sendChatMessage', () => {
         settings
       );
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.at(-1)!.content).toContain('first sentence');
-    expect(nudge.at(-1)!.content).toContain('1,86 miliona');
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(questionTurnOf(nudge)!.content).toContain('first sentence');
+    expect(questionTurnOf(nudge)!.content).toContain('1,86 miliona');
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       digest
     );
@@ -2379,17 +2382,18 @@ describe('sendChatMessage', () => {
       .getState()
       .sendChatMessage(question, 1, specsSources, settings);
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.map((message) => message.role)).toEqual(['system', 'user']);
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(nudge.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'system',
+    ]);
     expect(nudge[0]!.content).toBe('Answer from the quoted lines.');
-    expect(nudge.at(-1)!.content).toContain('quoted from the sources');
-    expect(nudge.at(-1)!.content).toContain('144 Hz');
-    expect(nudge.at(-1)!.content).toContain(question);
-    expect(nudge.at(-1)!.content).not.toContain('Klasa energetyczna');
-    expect(nudge.at(-1)!.content).not.toContain('--- Source 1');
+    expect(questionTurnOf(nudge)!.content).toContain('quoted from the sources');
+    expect(questionTurnOf(nudge)!.content).toContain('144 Hz');
+    expect(questionTurnOf(nudge)!.content).toContain(question);
+    expect(questionTurnOf(nudge)!.content).not.toContain('Klasa energetyczna');
+    expect(questionTurnOf(nudge)!.content).not.toContain('--- Source 1');
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(
       answer
     );
@@ -2431,11 +2435,8 @@ describe('sendChatMessage', () => {
         settings
       );
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.at(-1)!.content).toContain(
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(questionTurnOf(nudge)!.content).toContain(
       'does not address: "kurs ethereum"'
     );
     expect(useLLMStore.getState().generationError).toBeNull();
@@ -2480,11 +2481,8 @@ describe('sendChatMessage', () => {
         settings
       );
 
-    const nudge = mockInstance.generate.mock.calls[1]![0] as {
-      role: string;
-      content: string;
-    }[];
-    expect(nudge.at(-1)!.content).toContain(
+    const nudge = mockInstance.generate.mock.calls[1]![0] as LLMMessage[];
+    expect(questionTurnOf(nudge)!.content).toContain(
       'does not address: "kurs ethereum"'
     );
     expect(useLLMStore.getState().activeChatMessages.at(-1)?.content).toBe(

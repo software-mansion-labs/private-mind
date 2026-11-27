@@ -1,4 +1,5 @@
 import * as modelProfiles from '../constants/model-profiles';
+import { questionTurnOf } from '../utils/answerLanguageTurn';
 import {
   estimatePromptTokens,
   getConversationTokenBudget,
@@ -155,8 +156,10 @@ describe.each(windowTokens)(
       const { prompt } = prepare(longChat(ASKED));
 
       expect(prompt[0]!.role).toBe('system');
-      expect(prompt.at(-1)!.role).toBe('user');
-      expect(String(prompt.at(-1)!.content).startsWith(ASKED)).toBe(true);
+      expect(questionTurnOf(prompt)!.role).toBe('user');
+      expect(String(questionTurnOf(prompt)!.content).startsWith(ASKED)).toBe(
+        true
+      );
       expect(prompt[1]!.role).toBe('user');
     });
 
@@ -254,7 +257,7 @@ describe('conversationRecall alongside sources and reload', () => {
       { sourceDocuments: [{ name: 'doc', passage: 'body' }] }
     );
 
-    expect(String(prompt.at(-1)!.content)).toContain('<sources>');
+    expect(String(questionTurnOf(prompt)!.content)).toContain('<sources>');
     expect(String(prompt[0]!.content)).toContain(
       `Assistant: ${FACT_REPLY} Burek is a dog.`
     );

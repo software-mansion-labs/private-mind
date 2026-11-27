@@ -1,5 +1,9 @@
 import { prepareMessagesForLLM } from '../utils/promptUtils';
 import {
+  questionTurnOf,
+  withoutAnswerLanguageTurn,
+} from '../utils/answerLanguageTurn';
+import {
   estimatePromptTokens,
   getPromptTokenBudget,
 } from '../constants/context-window';
@@ -104,7 +108,7 @@ describe('a conversation that outgrows the context window', () => {
     (turns) => {
       const prepared = prepare(turns);
       expect(prepared[0]!.role).toBe('system');
-      expect(String(prepared.at(-1)!.content)).toContain(
+      expect(String(questionTurnOf(prepared)!.content)).toContain(
         'A ile kosztuje wersja 512GB?'
       );
     }
@@ -115,7 +119,7 @@ describe('a conversation that outgrows the context window', () => {
     (turns) => {
       const full = conversation(turns);
       const prepared = prepare(turns);
-      const kept = prepared.slice(1, -1);
+      const kept = withoutAnswerLanguageTurn(prepared).slice(1, -1);
       if (kept.length === 0) return;
       const original = full.slice(0, -2);
       const tail = original.slice(original.length - kept.length);
@@ -151,7 +155,7 @@ describe('a conversation that outgrows the context window', () => {
   it('never opens the kept history with an assistant reply whose question was cut', () => {
     for (const turns of LENGTHS) {
       const prepared = prepare(turns);
-      const kept = prepared.slice(1, -1);
+      const kept = withoutAnswerLanguageTurn(prepared).slice(1, -1);
       if (kept.length === 0) continue;
       expect(kept[0]!.role).toBe('user');
     }

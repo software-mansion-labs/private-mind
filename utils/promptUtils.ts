@@ -7,6 +7,7 @@ import {
 } from '../database/chatRepository';
 import { isGreetingOnly } from './openingGreeting';
 import { questionForImage } from './imageQuestion';
+import { answerLanguageTurn } from './answerLanguageTurn';
 import { deviceLanguage } from './deviceLanguage';
 import { OPENING_WELCOME_INSTRUCTION } from '../constants/opening-greetings';
 import { Model } from '../database/modelRepository';
@@ -272,13 +273,6 @@ export const focusedRetrySystemPrompt = (
     'The user message quotes lines taken from the sources retrieved for the question. They are the only material to answer from; do not add anything from memory.',
     languageInstruction(language),
   ].join('\n');
-
-export const answerLanguageAnchor = (
-  language: QuestionLanguage | null
-): string =>
-  language
-    ? ` (Answer in ${language.name}.)`
-    : ' (Answer in the same language as this message.)';
 
 const getDateInstruction = (
   sources?: SourceDocument[],
@@ -658,7 +652,12 @@ const isBareGreeting = (message: Message): boolean =>
   !message.documentName &&
   isGreetingOnly(message.content);
 
-const withoutAnsweredOpeningGreeting = <T extends Message>(
+const FIRST_SENTENCE = /[^.!?\n。！？।॥۔؟]+[.!?。！？।॥۔؟]*[^\p{L}\p{N}\n]*/u;
+
+const firstSentenceOf = (text: string): string =>
+  text.trim().match(FIRST_SENTENCE)?.[0].trim() || text.trim();
+
+const withOpeningWelcomeCutToFirstSentence = <T extends Message>(
   messages: T[]
 ): T[] => {
   const [opening, welcome, ...later] = messages;
@@ -667,7 +666,12 @@ const withoutAnsweredOpeningGreeting = <T extends Message>(
     isBareGreeting(opening) &&
     welcome?.role === 'assistant' &&
     later.some((message) => message.role === 'user');
-  return chatMovedOn ? later : messages;
+  if (!chatMovedOn) return messages;
+  return [
+    opening,
+    { ...welcome, content: firstSentenceOf(welcome.content) },
+    ...later,
+  ];
 };
 
 const withoutReasoning = <T extends Message>(message: T): T =>
@@ -790,15 +794,13 @@ export const prepareMessagesForLLM = (
   }
   systemPrompt += getDateInstruction(sourceDocuments, question);
 
-  const nonEventMessages = withoutAnsweredOpeningGreeting(
-    activeChatMessages.filter(
-      (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
-        msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
-    )
+  const nonEventMessages = activeChatMessages.filter(
+    (msg): msg is Message & { role: Exclude<Message['role'], 'event'> } =>
+      msg.role !== 'event' && !isAbandonedQuestion(msg) && !wasCutShort(msg)
   );
-  const messagesForLLM = nonEventMessages
-    .map(withoutReasoning)
-    .filter((msg) => msg.role !== 'assistant' || msg.content.trim() !== '');
+  const messagesForLLM = withOpeningWelcomeCutToFirstSentence(
+    nonEventMessages.map(withoutReasoning)
+  ).filter((msg) => msg.role !== 'assistant' || msg.content.trim() !== '');
 
   const filteredMessages: ExecutorchMessage[] = messagesForLLM.map((msg) => ({
     role: msg.role,
@@ -816,8 +818,7 @@ export const prepareMessagesForLLM = (
   }
 
   const lastMessage = messagesWithSystemPrompt.at(-1)!;
-
-  lastMessage.content += answerLanguageAnchor(language);
+  const languageTurn = answerLanguageTurn(language);
 
   if (!usesTemplateThinkingSwitch(model)) {
     if (settings.thinkingEnabled) {
@@ -829,7 +830,7 @@ export const prepareMessagesForLLM = (
 
   const budgetSample = `${messagesWithSystemPrompt[0].content}${context.join(
     ' '
-  )}${lastMessage.content}`;
+  )}${lastMessage.content}${languageTurn.content}`;
   const conversationWindow = conversationWindowFor(model, {
     memory: conversationMemory,
     thinkingEnabled: settings.thinkingEnabled,
@@ -939,7 +940,10 @@ export const prepareMessagesForLLM = (
     ? `${CONVERSATION_DIGEST_PREFIX}${digest.trim()}`
     : '';
   const mandatoryChars =
-    systemChars + lastMessage.content.length + digestLine.length;
+    systemChars +
+    lastMessage.content.length +
+    languageTurn.content.length +
+    digestLine.length;
   const remainingChars = conversationBudgetChars - mandatoryChars;
   const greetingTurn =
     lastMessage.role === 'user' && !!question && isGreetingOnly(question);
@@ -1025,7 +1029,7 @@ export const prepareMessagesForLLM = (
       return { block, next, nextStart };
     };
     const baselineTokens = estimatePromptTokens(
-      [messagesWithSystemPrompt[0]!, ...baselineKept, lastMessage]
+      [messagesWithSystemPrompt[0]!, ...baselineKept, lastMessage, languageTurn]
         .map((msg) => msg.content)
         .join(' ')
     );
@@ -1041,6 +1045,7 @@ export const prepareMessagesForLLM = (
         },
         ...attempt.next,
         lastMessage,
+        languageTurn,
       ]
         .map((msg) => msg.content)
         .join(' ');
@@ -1066,7 +1071,7 @@ export const prepareMessagesForLLM = (
         }
       : messagesWithSystemPrompt[0];
 
-  const finalMessages = [systemMessage, ...kept, lastMessage];
+  const finalMessages = [systemMessage, ...kept, lastMessage, languageTurn];
 
   if (recallEnabled) {
     onConversationMemory?.({

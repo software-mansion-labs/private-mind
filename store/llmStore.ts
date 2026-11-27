@@ -52,11 +52,15 @@ import { needsUpdate, requiresUpdate } from '../utils/modelUpdate';
 import { onModelFilesReplaced } from '../utils/modelFilesReplaced';
 import { Feedback } from '../utils/Feedback';
 import {
-  answerLanguageAnchor,
   answerLanguageOf,
   focusedRetrySystemPrompt,
   prepareMessagesForLLM,
 } from '../utils/promptUtils';
+import {
+  questionTurnOf,
+  withAnswerLanguageTurn,
+  withoutAnswerLanguageTurn,
+} from '../utils/answerLanguageTurn';
 import { type QuestionLanguage } from '../utils/questionLanguage';
 import {
   detectGroundingCaveats,
@@ -361,11 +365,16 @@ const buildAssistantPlaceholder = (
   localId: nextMessageLocalId(),
 });
 
+const noThinkTurnIndex = (messages: ExecutorchMessage[]): number => {
+  const lastUser = messages.findLastIndex((message) => message.role === 'user');
+  return lastUser === -1 ? messages.length - 1 : lastUser;
+};
+
 const withNoThink = (messages: ExecutorchMessage[]): ExecutorchMessage[] => {
   if (messages.length === 0) return messages;
-  const last = messages.length - 1;
+  const target = noThinkTurnIndex(messages);
   return messages.map((message, index) =>
-    index === last
+    index === target
       ? { ...message, content: `${message.content} /no_think` }
       : message
   );
@@ -1713,7 +1722,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         }
       );
 
-      const lastPreparedMessage = messagesWithSystemPrompt.at(-1);
+      const lastPreparedMessage = questionTurnOf(messagesWithSystemPrompt);
       const lastPreparedContent =
         typeof lastPreparedMessage?.content === 'string'
           ? lastPreparedMessage.content
@@ -1861,7 +1870,9 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
         ((last) =>
           typeof last?.content === 'string'
             ? last.content
-            : JSON.stringify(last?.content ?? ''))(effectivePrepared.at(-1))
+            : JSON.stringify(last?.content ?? ''))(
+          questionTurnOf(effectivePrepared)
+        )
       );
 
       const welcomeTakesNoNudge = openingWelcome !== null;
@@ -1869,26 +1880,29 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
       const answerRetries: AnswerRetry[] = [];
 
       const answerLanguage = answerLanguageOf(get().activeChatMessages);
-      const continuedRetry = (prompt: string): ExecutorchMessage[] => [
-        ...effectivePrepared,
-        { role: 'assistant', content: finalResponse as string },
-        {
-          role: 'user',
-          content: prompt + answerLanguageAnchor(answerLanguage),
-        },
-      ];
-      const focusedRetry = (lines: string[]): ExecutorchMessage[] => [
-        {
-          role: 'system',
-          content: focusedRetrySystemPrompt(answerLanguage),
-        },
-        {
-          role: 'user',
-          content:
-            focusedEvidencePrompt(currentQuestion ?? '', lines) +
-            answerLanguageAnchor(answerLanguage),
-        },
-      ];
+      const continuedRetry = (prompt: string): ExecutorchMessage[] =>
+        withAnswerLanguageTurn(
+          [
+            ...withoutAnswerLanguageTurn(effectivePrepared),
+            { role: 'assistant', content: finalResponse as string },
+            { role: 'user', content: prompt },
+          ],
+          answerLanguage
+        );
+      const focusedRetry = (lines: string[]): ExecutorchMessage[] =>
+        withAnswerLanguageTurn(
+          [
+            {
+              role: 'system',
+              content: focusedRetrySystemPrompt(answerLanguage),
+            },
+            {
+              role: 'user',
+              content: focusedEvidencePrompt(currentQuestion ?? '', lines),
+            },
+          ],
+          answerLanguage
+        );
       const evidenceRetry = (prompt: string): ExecutorchMessage[] => {
         const lines = evidenceLinesFor(currentQuestion, promptContext);
         return lines.length > 0 ? focusedRetry(lines) : continuedRetry(prompt);
@@ -2090,15 +2104,8 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           'Dangling list answer, retrying once with a continuation nudge'
         );
         updateChatStateForGeneration(set, 'generating');
-        const continuationPrompt =
-          DANGLING_LIST_CONTINUATION_PROMPT +
-          answerLanguageAnchor(answerLanguage);
         const continuationGeneration = await generateRefinement(
-          [
-            ...effectivePrepared,
-            { role: 'assistant', content: finalResponse },
-            { role: 'user', content: continuationPrompt },
-          ],
+          continuedRetry(DANGLING_LIST_CONTINUATION_PROMPT),
           get,
           {
             memory: conversationMemory,
@@ -2155,7 +2162,7 @@ export const useLLMStore = create<LLMStore>((set, get) => ({
           ),
           sourceDocuments ?? []
         );
-        const effectiveLast = effectivePrepared.at(-1);
+        const effectiveLast = questionTurnOf(effectivePrepared);
         const effectiveContent =
           typeof effectiveLast?.content === 'string'
             ? effectiveLast.content
