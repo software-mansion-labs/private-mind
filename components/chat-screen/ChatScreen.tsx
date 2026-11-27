@@ -16,7 +16,8 @@ import { useIsFocused } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
-import { sendWasRefused, useSendChatMessage } from './useSendChatMessage';
+import { sendWasRefused } from './send/sendRefusal';
+import { useSendChatMessage } from './useSendChatMessage';
 import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
