@@ -2,7 +2,7 @@ import {
   WEB_FAST_PLAN_MIN_TERMS,
   WEB_QUERY_MAX_CHARS,
 } from '../../constants/web';
-import { detectQuestionLanguage } from '../questionLanguage';
+import { detectQuestionLanguage, scriptLanguagesOf } from '../questionLanguage';
 import { extractQueryTerms, hasStopwordCoverage } from '../queryTerms';
 import {
   dependsOnConversation,
@@ -57,11 +57,26 @@ export const keywordQueryFor = (
   digest?: string
 ): string => toKeywordQuery(topicAnchorer(query, history, digest)(query));
 
-const lexiconLanguageOf = (query: string): string | null => {
+const lexiconLanguageAmong = (
+  query: string,
+  candidates: (string | undefined)[]
+): string | null => {
   if (!query || isAboutTheConversation(query)) return null;
-  const language = detectQuestionLanguage(query)?.code;
-  return language && hasNoSearchLexicon(language) ? language : null;
+  return (
+    candidates.find(
+      (code): code is string => !!code && hasNoSearchLexicon(code)
+    ) ?? null
+  );
 };
+
+const lexiconLanguageOf = (query: string): string | null =>
+  lexiconLanguageAmong(query, [detectQuestionLanguage(query)?.code]);
+
+const requestLanguageOf = (query: string): string | null =>
+  lexiconLanguageAmong(query, [
+    detectQuestionLanguage(query)?.code,
+    ...scriptLanguagesOf(query),
+  ]);
 
 const carriesLookupSignal = (query: string, language: string): boolean => {
   const prose = query.replace(CODE_SPANS, ' ');
@@ -75,7 +90,7 @@ const carriesLookupSignal = (query: string, language: string): boolean => {
 
 export const isNoSearchRequest = (userInput: string): boolean => {
   const query = userInput.trim();
-  const language = lexiconLanguageOf(query);
+  const language = requestLanguageOf(query);
   return (
     !!language &&
     lacksSearchSignal(query, language) &&

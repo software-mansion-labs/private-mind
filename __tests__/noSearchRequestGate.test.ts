@@ -122,6 +122,13 @@ const REQUESTS_THAT_NEED_NO_SEARCH = [
   { language: 'ar', question: 'اكتب قصيدة عن البحر' },
   { language: 'ar', question: 'هل يمكنك كتابة قصيدة عن البحر؟' },
   { language: 'ar', question: 'ما رأيك في العمل عن بعد؟' },
+  { language: 'ru', question: 'Напиши стихотворение о дожде' },
+  { language: 'ru', question: 'Напиши про дождь' },
+  { language: 'uk', question: 'Напиши про дощ' },
+  { language: 'cs', question: 'Co si myslíš o práci z domova?' },
+  { language: 'cs', question: 'Napiš mi pohádku o drakovi' },
+  { language: 'id', question: 'Beritahu aku lelucon' },
+  { language: 'id', question: 'Kasih tahu aku sebuah lelucon' },
 ];
 
 const REQUESTS_WITH_A_FRESHNESS_OR_LOOKUP_SIGNAL = [
