@@ -2,44 +2,36 @@ import React, { useCallback } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { router, useRouter } from 'expo-router';
-import { useHeaderHeight } from 'expo-router/react-navigation';
 import Toast from 'react-native-toast-message';
-import useDefaultHeader from '../../hooks/useDefaultHeader';
-import { SettingsRow } from '../../components/settings/SettingsRow';
-import { SettingsGroup } from '../../components/settings/SettingsGroup';
-import { SettingsToggleRow } from '../../components/settings/SettingsToggleRow';
-import { SettingsChoiceRow } from '../../components/settings/SettingsChoiceRow';
-import { ContextSizeSettingRow } from '../../components/settings/ContextSizeSettingRow';
-import { GlassScrollEdge } from '../../components/chat-screen/GlassScrollEdge';
-import EditIcon from '../../assets/icons/edit.svg';
-import InfoCircleIcon from '../../assets/icons/info-circle.svg';
-import BenchmarkIcon from '../../assets/icons/benchmark.svg';
-import DownloadIcon from '../../assets/icons/download.svg';
-import TrashIcon from '../../assets/icons/trash.svg';
-import { useThemedStyles } from '../../hooks/useThemedStyles';
-import { useConfirm } from '../../hooks/useConfirm';
-import { useImportChat } from '../../hooks/useImportChat';
-import { useVectorStore } from '../../context/VectorStoreContext';
-import { useChatStore } from '../../store/chatStore';
-import { useLLMStore } from '../../store/llmStore';
-import {
-  type ThemePreference,
-  useSettingsStore,
-} from '../../store/settingsStore';
-import { Feedback } from '../../utils/Feedback';
-import { Theme } from '../../styles/colors';
-import { space } from '../../constants/design-system';
-
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-];
+import { SettingsRow } from '../../../components/settings/SettingsRow';
+import { SettingsGroup } from '../../../components/settings/SettingsGroup';
+import { SettingsToggleRow } from '../../../components/settings/SettingsToggleRow';
+import { ThemePicker } from '../../../components/settings/ThemePicker';
+import { ContextSizeSettingRow } from '../../../components/settings/ContextSizeSettingRow';
+import GlassScreenHeader, {
+  useGlassScreenHeaderHeight,
+} from '../../../components/GlassScreenHeader';
+import EditIcon from '../../../assets/icons/edit.svg';
+import InfoCircleIcon from '../../../assets/icons/info-circle.svg';
+import BenchmarkIcon from '../../../assets/icons/benchmark.svg';
+import DownloadIcon from '../../../assets/icons/download.svg';
+import TrashIcon from '../../../assets/icons/trash.svg';
+import PhoneIcon from '../../../assets/icons/phone.svg';
+import { useThemedStyles } from '../../../hooks/useThemedStyles';
+import { useConfirm } from '../../../hooks/useConfirm';
+import { useImportChat } from '../../../hooks/useImportChat';
+import { useVectorStore } from '../../../context/VectorStoreContext';
+import { useChatStore } from '../../../store/chatStore';
+import { useLLMStore } from '../../../store/llmStore';
+import { useSettingsStore } from '../../../store/settingsStore';
+import { Feedback } from '../../../utils/Feedback';
+import { currentAppVersion } from '../../../utils/appVersion';
+import { Theme } from '../../../styles/colors';
+import { space } from '../../../constants/design-system';
 
 const SettingsScreen = () => {
-  useDefaultHeader({ glass: true });
   const navigation = useRouter();
-  const headerHeight = useHeaderHeight();
+  const headerHeight = useGlassScreenHeaderHeight(true);
   const { styles } = useThemedStyles(createStyles, headerHeight);
   const showPerformanceMetrics = useSettingsStore(
     (state) => state.showPerformanceMetrics
@@ -55,6 +47,9 @@ const SettingsScreen = () => {
   const setHapticsEnabled = useSettingsStore(
     (state) => state.setHapticsEnabled
   );
+  const hasCustomInstructions = useSettingsStore(
+    (state) => state.customSystemPrompt.length > 0
+  );
   const deleteAllChats = useChatStore((state) => state.deleteAllChats);
   const { vectorStore } = useVectorStore();
   const { confirm, ConfirmElement } = useConfirm();
@@ -69,8 +64,8 @@ const SettingsScreen = () => {
   );
 
   const handleOpenCustomInstructions = () =>
-    navigation.push('/custom-system-prompt');
-  const handleOpenAppInfo = () => navigation.push('/app-info');
+    navigation.push('/settings/custom-system-prompt');
+  const handleOpenAppInfo = () => navigation.push('/settings/app-info');
 
   const handleDeleteAllChats = useCallback(async () => {
     const confirmed = await confirm({
@@ -87,7 +82,7 @@ const SettingsScreen = () => {
       await deleteAllChats(vectorStore ?? undefined);
       Feedback.destructive();
       Toast.show({ type: 'defaultToast', text1: 'All chats deleted' });
-      router.replace('/');
+      router.dismissTo('/');
     } catch (error) {
       console.error('Error deleting all chats:', error);
       Alert.alert('Error', 'Failed to delete chats. Please try again.');
@@ -100,38 +95,41 @@ const SettingsScreen = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <SettingsGroup title="General">
+          <ThemePicker
+            value={themePreference}
+            onValueChange={setThemePreference}
+          />
+          <SettingsToggleRow
+            label="Haptic feedback"
+            icon={<PhoneIcon width={20} height={20} style={styles.rowIcon} />}
+            value={hapticsEnabled}
+            onValueChange={handleHapticsChange}
+            testID="settings-haptics-switch"
+          />
+        </SettingsGroup>
         <SettingsGroup title="Chat">
           <SettingsRow
             label="Custom instructions"
             icon={<EditIcon width={20} height={20} style={styles.rowIcon} />}
+            value={hasCustomInstructions ? 'On' : 'Off'}
+            valueTestID="settings-custom-instructions-value"
             onPress={handleOpenCustomInstructions}
             showChevron
           />
           <ContextSizeSettingRow />
           <SettingsToggleRow
             label="Response speed stats"
-            description="Show what each answer cost: document and web retrieval, time to first token, tokens per second."
+            description="Show retrieval time, time to first token and tokens per second under each answer."
             icon={
               <BenchmarkIcon width={20} height={20} style={styles.rowIcon} />
             }
             value={showPerformanceMetrics}
             onValueChange={setShowPerformanceMetrics}
+            testID="settings-speed-stats-switch"
           />
         </SettingsGroup>
-        <SettingsGroup title="Appearance">
-          <SettingsChoiceRow
-            label="Theme"
-            options={THEME_OPTIONS}
-            value={themePreference}
-            onValueChange={setThemePreference}
-          />
-          <SettingsToggleRow
-            label="Haptic feedback"
-            value={hapticsEnabled}
-            onValueChange={handleHapticsChange}
-          />
-        </SettingsGroup>
-        <SettingsGroup title="Data controls">
+        <SettingsGroup title="Data">
           <SettingsRow
             label="Import chat"
             icon={
@@ -158,12 +156,18 @@ const SettingsScreen = () => {
             icon={
               <InfoCircleIcon width={20} height={20} style={styles.rowIcon} />
             }
+            value={`v${currentAppVersion()}`}
             onPress={handleOpenAppInfo}
             showChevron
           />
         </SettingsGroup>
       </ScrollView>
-      <GlassScrollEdge anchor={headerHeight} />
+      <GlassScreenHeader
+        title="Settings"
+        icon="close"
+        onBack={() => navigation.back()}
+        sheet
+      />
       {ConfirmElement}
     </View>
   );
@@ -179,7 +183,7 @@ const createStyles = (theme: Theme, headerHeight: number) =>
     },
     scrollContent: {
       gap: space.six,
-      paddingTop: headerHeight + 24,
+      paddingTop: headerHeight + space.six,
       paddingHorizontal: space.four,
       paddingBottom: theme.insets.bottom + 16,
     },

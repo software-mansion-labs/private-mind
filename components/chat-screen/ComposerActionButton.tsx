@@ -8,7 +8,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import SendIcon from '../../assets/icons/send_icon.svg';
 import PauseIcon from '../../assets/icons/pause_icon.svg';
-import SoundwaveIcon from '../../assets/icons/soundwave.svg';
+import MicIcon from '../../assets/icons/mic.svg';
 import { useThemedStyles } from '../../hooks/useThemedStyles';
 import { Theme } from '../../styles/colors';
 import { composerControlSurface } from './composerControl';
@@ -112,11 +112,7 @@ const ComposerActionButton = ({
       ) : (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <Reanimated.View style={[styles.iconLayer, speechStyle]}>
-            <SoundwaveIcon
-              width={20}
-              height={20}
-              color={theme.text.onChatBar}
-            />
+            <MicIcon width={20} height={20} color={theme.text.onChatBar} />
           </Reanimated.View>
           <Reanimated.View style={[styles.iconLayer, sendStyle]}>
             <SendIcon

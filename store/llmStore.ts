@@ -8,8 +8,8 @@ import {
   conversationWindowFor,
 } from '../utils/conversationWindow';
 import {
-  createStrayThinkCloseFilter,
-  cutAtStrayThinkClose,
+  createThinkingOffFilter,
+  cutThinkingOffAnswer,
   mapOutsideThink,
   stripThinkBlocks,
   unclosedThinkAsAnswer,
@@ -274,7 +274,7 @@ let streamedSoFar = '';
 let thinkOpenedByTemplate = false;
 let thinkClosedByTemplate = false;
 let generationSawToken = false;
-let strayThinkClose = createStrayThinkCloseFilter();
+let thinkingOffFilter = createThinkingOffFilter();
 let flushStreamNow = () => {};
 
 const resetStreamState = () => {
@@ -288,9 +288,9 @@ const resetStreamState = () => {
 
 const streamedTextOf = (token: string): string => {
   if (!thinkClosedByTemplate || benchmarkTokenBudget !== null) return token;
-  const endedBefore = strayThinkClose.answerEnded();
-  const text = strayThinkClose.push(token);
-  if (!endedBefore && strayThinkClose.answerEnded() && llmInstance) {
+  const endedBefore = thinkingOffFilter.answerEnded();
+  const text = thinkingOffFilter.push(token);
+  if (!endedBefore && thinkingOffFilter.answerEnded() && llmInstance) {
     interruptQuietly(llmInstance);
   }
   return text;
@@ -1057,8 +1057,8 @@ const generateLLMResponse = (
     thinkOpenedByTemplate = chatTemplateFlags.enable_thinking === true;
     thinkClosedByTemplate = chatTemplateFlags.enable_thinking === false;
     streamBuffer = '';
-    const generationFilter = createStrayThinkCloseFilter();
-    strayThinkClose = generationFilter;
+    const generationFilter = createThinkingOffFilter();
+    thinkingOffFilter = generationFilter;
 
     generationSawToken = false;
     let firstTokenTimedOut = false;
@@ -1077,7 +1077,7 @@ const generateLLMResponse = (
     } finally {
       clearTimeout(firstTokenWatchdog);
     }
-    if (strayThinkClose === generationFilter) {
+    if (thinkingOffFilter === generationFilter) {
       streamBuffer += generationFilter.finish();
       flushStreamNow();
     }
@@ -1099,7 +1099,7 @@ const generateLLMResponse = (
         response: thinkOpenedByTemplate
           ? withTemplateThinkOpener(finalResponse)
           : thinkClosedByTemplate
-            ? cutAtStrayThinkClose(finalResponse).text
+            ? cutThinkingOffAnswer(finalResponse).text
             : finalResponse,
         performance: { timeToFirstToken, tokensPerSecond },
         stalled,

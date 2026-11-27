@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Keyboard,
   StyleSheet,
@@ -10,7 +16,8 @@ import { useIsFocused } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useKeyboardLift } from './useKeyboardLift';
 import { useModelSwitch } from './useModelSwitch';
-import { sendWasRefused, useSendChatMessage } from './useSendChatMessage';
+import { sendWasRefused } from './send/sendRefusal';
+import { useSendChatMessage } from './useSendChatMessage';
 import { useChatScreenLayout } from './useChatScreenLayout';
 import { useChatScreenActions } from './useChatScreenActions';
 import Animated, {
@@ -36,6 +43,7 @@ import NewChatHero from './NewChatHero';
 import { useHeadingAnchor } from './useHeadingAnchor';
 import NewChatSwarm, {
   SWARM_CLEARANCE_WITH_PROMPTS,
+  useNewChatStartedWhileAway,
   useSwarmOncePerNewChat,
 } from './NewChatSwarm';
 import { TopFade, topFadeHeight } from './TopFade';
@@ -379,6 +387,20 @@ export default function ChatScreen({
   const headingReveal = useSharedValue(heroOpacityBeforeSwarm);
   const ownBadgeReveal = useSharedValue(heroOpacityBeforeSwarm);
   const badgeReveal = heroReveal ?? ownBadgeReveal;
+  const swarmQueuedForReturn = useNewChatStartedWhileAway(
+    showHero && isFocused,
+    phantomChatOpens
+  );
+  useLayoutEffect(() => {
+    if (!swarmQueuedForReturn) return;
+    headingReveal.set(heroOpacityBeforeSwarm);
+    badgeReveal.set(heroOpacityBeforeSwarm);
+  }, [
+    badgeReveal,
+    headingReveal,
+    heroOpacityBeforeSwarm,
+    swarmQueuedForReturn,
+  ]);
 
   return (
     <View

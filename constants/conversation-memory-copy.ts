@@ -28,6 +28,7 @@ export const contextSizeUnavailableCopy = (
 ) =>
   `${CONVERSATION_MEMORY_OPTION_LABELS[level]} is not available on ${deviceName}.`;
 
+export const CONTEXT_SIZE_AUTO_HEADER = 'Automatic';
 export const CONTEXT_SIZE_MANUAL_HEADER = 'Manual';
 
 export const CONTEXT_SIZE_SAME_AS_MEDIUM = 'Same as Medium on this phone';

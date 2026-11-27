@@ -1,33 +1,34 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import SettingsRowGroup from '../components/settings/SettingsRowGroup';
-import SettingsScreen from '../app/(drawer)/settings';
+import SettingsScreen from '../app/(modals)/settings/index';
 import { useSettingsStore } from '../store/settingsStore';
 
 const mockPush = jest.fn();
+const mockBack = jest.fn();
 const mockImportChat = jest.fn();
 
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn() },
-  useRouter: () => ({ push: mockPush }),
+  router: { dismissTo: jest.fn() },
+  useRouter: () => ({ push: mockPush, back: mockBack }),
 }));
-jest.mock(
-  'expo-router/react-navigation',
-  () => ({ useHeaderHeight: () => 0 }),
-  { virtual: true }
-);
-jest.mock('../hooks/useDefaultHeader', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}));
+jest.mock('../components/GlassScreenHeader', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ title, onBack }: { title: string; onBack: () => void }) => (
+      <Pressable onPress={onBack} testID="header-close">
+        <Text>{title}</Text>
+      </Pressable>
+    ),
+    useGlassScreenHeaderHeight: () => 0,
+  };
+});
 jest.mock('../hooks/useImportChat', () => ({
   useImportChat: () => mockImportChat,
 }));
 jest.mock('../context/VectorStoreContext', () => ({
   useVectorStore: () => ({ vectorStore: null }),
-}));
-jest.mock('../components/chat-screen/GlassScrollEdge', () => ({
-  GlassScrollEdge: () => null,
 }));
 jest.mock('../utils/Feedback', () => ({
   Feedback: {
@@ -59,16 +60,16 @@ beforeEach(() => {
 });
 
 describe('the settings screen', () => {
-  it('groups every setting under Chat, Appearance, Data controls and About', () => {
+  it('groups every setting under General, Chat, Data and About', () => {
     render(<SettingsScreen />);
-    for (const title of ['Chat', 'Appearance', 'Data controls', 'About']) {
+    for (const title of ['General', 'Chat', 'Data', 'About']) {
       expect(screen.getByText(title)).toBeTruthy();
     }
     for (const label of [
       'Custom instructions',
       'Context size',
       'Response speed stats',
-      'Theme',
+      'Haptic feedback',
       'Import chat',
       'Delete all chats',
       'App info',
@@ -84,27 +85,59 @@ describe('the settings screen', () => {
       'Low'
     );
     fireEvent.press(screen.getByTestId('settings-context-size'));
-    expect(mockPush).toHaveBeenCalledWith('/context-size');
+    expect(mockPush).toHaveBeenCalledWith('/settings/context-size');
   });
 
   it('keeps the response speed stats switch working', () => {
     render(<SettingsScreen />);
-    fireEvent(screen.getAllByRole('switch')[0]!, 'valueChange', true);
+    fireEvent(
+      screen.getByTestId('settings-speed-stats-switch'),
+      'valueChange',
+      true
+    );
     expect(useSettingsStore.getState().showPerformanceMetrics).toBe(true);
   });
 
-  it('keeps the theme choice working', () => {
+  it('picks the theme from its light, dark and system previews', () => {
     render(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-choice-dark'));
+    expect(
+      screen.getByTestId('settings-theme-system').props.accessibilityState
+        .checked
+    ).toBe(true);
+    fireEvent.press(screen.getByTestId('settings-theme-dark'));
     expect(useSettingsStore.getState().themePreference).toBe('dark');
+    expect(
+      screen.getByTestId('settings-theme-dark').props.accessibilityState.checked
+    ).toBe(true);
+  });
+
+  it('tells whether custom instructions are set', () => {
+    useSettingsStore.setState({ customSystemPrompt: '' });
+    const view = render(<SettingsScreen />);
+    expect(
+      screen.getByTestId('settings-custom-instructions-value')
+    ).toHaveTextContent('Off');
+    useSettingsStore.setState({ customSystemPrompt: 'Be brief.' });
+    view.rerender(<SettingsScreen />);
+    expect(
+      screen.getByTestId('settings-custom-instructions-value')
+    ).toHaveTextContent('On');
   });
 
   it('opens custom instructions and app info', () => {
     render(<SettingsScreen />);
     fireEvent.press(screen.getByText('Custom instructions'));
-    expect(mockPush).toHaveBeenCalledWith('/custom-system-prompt');
+    expect(mockPush).toHaveBeenCalledWith('/settings/custom-system-prompt');
     fireEvent.press(screen.getByText('App info'));
-    expect(mockPush).toHaveBeenCalledWith('/app-info');
+    expect(mockPush).toHaveBeenCalledWith('/settings/app-info');
+  });
+
+  it('closes the sheet from its header', () => {
+    render(<SettingsScreen />);
+
+    fireEvent.press(screen.getByTestId('header-close'));
+
+    expect(mockBack).toHaveBeenCalled();
   });
 
   it('imports a chat from its row', () => {

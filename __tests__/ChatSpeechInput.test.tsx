@@ -23,7 +23,7 @@ jest.mock('react-native-gesture-handler', () => {
   return { Pressable, ScrollView };
 });
 
-jest.mock('../components/chat-screen/RecordingAnimation', () => {
+jest.mock('../components/swarm/VoiceDome', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
@@ -91,10 +91,10 @@ describe('ChatSpeechInput once it is listening', () => {
     mockSpeech.status = 'listening';
   });
 
-  it('offers the send', () => {
+  it('shows how long it has been listening between cancel and send', () => {
     renderSheet();
 
-    expect(screen.getByText('Click again to send')).toBeTruthy();
+    expect(screen.getByText('0:00')).toBeTruthy();
   });
 
   it('stops the recording on send', () => {
@@ -104,6 +104,21 @@ describe('ChatSpeechInput once it is listening', () => {
 
     expect(mockSpeech.stop).toHaveBeenCalledTimes(1);
     expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  it('takes no cancel once a send is on its way, so the message is neither sent under a Cancelled label nor dropped', () => {
+    jest.useFakeTimers();
+    const onCancel = jest.fn();
+    render(<ChatSpeechInput onSubmit={jest.fn()} onCancel={onCancel} />);
+
+    fireEvent.press(screen.getByTestId('speech-send'));
+    fireEvent.press(screen.getByTestId('speech-cancel'));
+    act(() => jest.runAllTimers());
+
+    expect(screen.queryByText('Cancelled')).toBeNull();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(mockSpeech.stop).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
   });
 
   it('spins the send it took and takes no second one while the transcript finishes', () => {

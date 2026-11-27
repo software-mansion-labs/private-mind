@@ -174,23 +174,29 @@ jest.mock('../components/chat-screen/AttachmentThumbnail', () => {
   );
 });
 
+let mockSpeechMounts = 0;
 jest.mock('../components/chat-screen/ChatSpeechInput', () => {
-  const { View, Pressable } = require('react-native');
+  const { View, Pressable, Text } = require('react-native');
+  const { useState } = require('react');
   return ({
     onSubmit,
     onCancel,
   }: {
     onSubmit: (transcript: string) => void;
     onCancel: () => void;
-  }) => (
-    <View testID="speech-input">
-      <Pressable
-        testID="speech-submit"
-        onPress={() => onSubmit('voice transcript')}
-      />
-      <Pressable testID="speech-cancel" onPress={onCancel} />
-    </View>
-  );
+  }) => {
+    const [mount] = useState(() => ++mockSpeechMounts);
+    return (
+      <View testID="speech-input">
+        <Text testID="speech-mount">{mount}</Text>
+        <Pressable
+          testID="speech-submit"
+          onPress={() => onSubmit('voice transcript')}
+        />
+        <Pressable testID="speech-cancel" onPress={onCancel} />
+      </View>
+    );
+  };
 });
 
 jest.mock('../components/chat-screen/PromptSuggestions', () => {
@@ -940,6 +946,54 @@ describe('speech input', () => {
     expect(onSpeechInputChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('opens a fresh dictation when the mic is tapped while the cancelled one still fades out', async () => {
+    const reanimated = require('react-native-reanimated');
+    const withTiming = jest
+      .spyOn(reanimated, 'withTiming')
+      .mockImplementation((value) => value);
+    renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    const firstMount = screen.getByTestId('speech-mount').props.children;
+
+    fireEvent.press(screen.getByTestId('speech-cancel'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    expect(screen.getByTestId('speech-mount').props.children).not.toBe(
+      firstMount
+    );
+    withTiming.mockRestore();
+  });
+
+  it('keeps a reopened dictation when the earlier fade-out reports finishing late', async () => {
+    const reanimated = require('react-native-reanimated');
+    const fadeOutEnds: ((finished: boolean) => void)[] = [];
+    const withTiming = jest
+      .spyOn(reanimated, 'withTiming')
+      .mockImplementation((value, _config, callback) => {
+        if (value === 0 && callback) {
+          fadeOutEnds.push(callback as (finished: boolean) => void);
+        }
+        return value;
+      });
+    renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    fireEvent.press(screen.getByTestId('speech-cancel'));
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+
+    act(() => fadeOutEnds.forEach((end) => end(true)));
+
+    expect(screen.getByTestId('speech-input')).toBeTruthy();
+    withTiming.mockRestore();
+  });
+
   it('switches to speech input view after mic button press when permission granted', async () => {
     renderBar();
     await act(async () => {
@@ -964,6 +1018,20 @@ describe('speech input', () => {
     expect(screen.queryByTestId('speech-input')).toBeNull();
   });
 
+  it('keeps dictating when the chat model stops being available mid-dictation', async () => {
+    const { rerender } = renderBar();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('speech-btn'));
+    });
+    rerender(
+      <ChatBar
+        {...defaultProps}
+        model={{ ...downloadedModel, isDownloaded: false }}
+      />
+    );
+    expect(screen.getByTestId('speech-input')).toBeTruthy();
+  });
+
   it('calls onSend with transcript and hides speech input on submit', async () => {
     const onSend = jest.fn();
     renderBar({ onSend });
@@ -972,7 +1040,9 @@ describe('speech input', () => {
     });
     fireEvent.press(screen.getByTestId('speech-submit'));
     expect(onSend).toHaveBeenCalledWith('voice transcript', undefined, []);
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId('speech-input')).toBeNull()
+    );
   });
 
   it('spins the send button where the mic would be while a dictated message goes out', async () => {
@@ -1076,7 +1146,9 @@ describe('speech input', () => {
     });
     fireEvent.press(screen.getByTestId('speech-cancel'));
     expect(onSend).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId('speech-input')).toBeNull()
+    );
   });
 
   it('does not call onSend when transcript is empty on submit', async () => {
@@ -1098,7 +1170,9 @@ describe('speech input', () => {
     fireEvent.press(screen.getByTestId('speech-submit'));
     // With the module-level mock, transcript = 'voice transcript' (non-empty), so we
     // verify the guard by checking the original mock behavior
-    expect(screen.queryByTestId('speech-input')).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId('speech-input')).toBeNull()
+    );
   });
 });
 

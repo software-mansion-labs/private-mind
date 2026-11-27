@@ -19,7 +19,10 @@ interface Props {
   value?: string;
   valueTestID?: string;
   showChevron?: boolean;
+  accessory?: React.ReactNode;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: 'button' | 'link';
   testID?: string;
 }
 
@@ -31,7 +34,10 @@ export const SettingsRow = ({
   value,
   valueTestID,
   showChevron = false,
+  accessory,
   accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole = 'button',
   testID,
 }: Props) => {
   const { styles } = useThemedStyles(createStyles);
@@ -39,8 +45,9 @@ export const SettingsRow = ({
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
       testID={testID}
       style={({ pressed }) => [styles.row, pressed && pressedOpacity]}
     >
@@ -69,6 +76,7 @@ export const SettingsRow = ({
           />
         </View>
       ) : null}
+      {accessory}
     </Pressable>
   );
 };

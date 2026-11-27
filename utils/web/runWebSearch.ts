@@ -16,7 +16,7 @@ import {
   type QueryRewriteFn,
 } from './buildSearchQuery';
 import { partQueriesFor } from './questionParts';
-import { fastPlanWebSearch } from './fastPlan';
+import { fastPlanWebSearch, isNoSearchRequest } from './fastPlan';
 import { capWebSources, isShortHistory } from './firstTurnSourceCap';
 import type { ModelProfile } from '../../constants/model-profiles';
 import {
@@ -154,7 +154,8 @@ export interface WebRoundTelemetry {
 export interface WebSearchTelemetry {
   needsSearch: boolean;
   unnamedSubjects?: string[];
-  skippedReason?: 'gated' | 'provider-not-ready' | 'offline';
+  skippedReason?:
+    'gated' | 'no-search-request' | 'provider-not-ready' | 'offline';
   aborted?: 'timeout' | 'stopped';
   intent: string;
   intentKind?: WebIntentKind;
@@ -333,6 +334,12 @@ const searchWithCleanup = async (
         finalLabel: 'correct',
       },
     };
+  }
+
+  if (isNoSearchRequest(query)) {
+    telemetry.needsSearch = false;
+    emit({ type: 'skipped' });
+    return empty('no-search-request');
   }
 
   emit({ type: 'objectives' });
@@ -556,7 +563,11 @@ const searchWithCleanup = async (
   const groundAndEvaluate = async (
     groups: WebSearchResult[][],
     cap: number,
-    { singleWave = false, embed = useEmbeddings } = {}
+    {
+      singleWave = false,
+      embed = useEmbeddings,
+      firstWave = WEB_ENRICH_WAVE_FIRST,
+    } = {}
   ): Promise<{
     grounded: WebSearchResult[];
     evaluation: RetrievalEvaluation;
@@ -573,7 +584,7 @@ const searchWithCleanup = async (
     });
     let enriched = capped;
     let target = WEB_ADAPTIVE_ENRICH
-      ? Math.min(Math.max(1, WEB_ENRICH_WAVE_FIRST), maxEnrich)
+      ? Math.min(Math.max(1, firstWave), maxEnrich)
       : maxEnrich;
     let waves = 0;
     let spent = 0;
@@ -676,7 +687,9 @@ const searchWithCleanup = async (
     telemetry.plannedQueries = baseQueries;
   }
   const found = foundGroups.flat();
-  const outcome = await groundAndEvaluate(foundGroups, candidatePages);
+  const outcome = await groundAndEvaluate(foundGroups, candidatePages, {
+    firstWave: Math.max(WEB_ENRICH_WAVE_FIRST, partQueries.length),
+  });
 
   let finalResults = outcome.grounded;
   let evaluation = outcome.evaluation;

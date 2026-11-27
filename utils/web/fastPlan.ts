@@ -1,19 +1,24 @@
 import {
-  WEB_FAST_PLAN_LANGUAGES,
   WEB_FAST_PLAN_MIN_TERMS,
   WEB_QUERY_MAX_CHARS,
 } from '../../constants/web';
-import { detectQuestionLanguage } from '../questionLanguage';
+import { detectQuestionLanguage, scriptLanguagesOf } from '../questionLanguage';
 import { extractQueryTerms, hasStopwordCoverage } from '../queryTerms';
 import {
   dependsOnConversation,
   extractSiteRestriction,
+  hasHardSearchSignal,
   isAboutTheConversation,
   toKeywordQuery,
   withSiteRestriction,
   type WebSearchPlan,
 } from './buildSearchQuery';
 import type { WebIntentKind } from './intentKind';
+import {
+  hasNoSearchLexicon,
+  lacksSearchSignal,
+  namesFreshnessOrLookup,
+} from './noSearchSignal';
 import {
   hasPriorTurns,
   namesItsOwnSubject,
@@ -27,28 +32,8 @@ const DATE_PHRASES =
 const HOWTO_PHRASES =
   /(?<![\p{L}])(?:how\s+(?:to|do\s+i|can\s+i)|jak\s+(?:zrobi[cć]|ugotowa[cć]|naprawi[cć]|zainstalowa[cć]|za[lł]o[zż]y[cć]))(?![\p{L}])/iu;
 
-const POLITE_LEAD =
-  /^(?:(?:please|pls|can\s+you|could\s+you|would\s+you|proszę|prosze|czy\s+mo[zż]esz|mo[zż]esz|bitte|kannst\s+du|k[oö]nntest\s+du|por\s+favor|puedes|peux-tu|pouvez-vous|s'il\s+te\s+pla[iî]t)[\s,]+)*/iu;
-const TASK_OPENER =
-  /^(?:write|translate|rewrite|rephrase|paraphrase|summari[sz]e|proofread|correct|fix|draft|compose|generate|create|calculate|compute|solve|napisz|przet[lł]umacz|przepisz|przeredaguj|zredaguj|sparafrazuj|stre[sś][cć]|podsumuj|popraw|oblicz|policz|rozwi[aą][zż]|stw[oó]rz|wygeneruj|schreib\w*|[uü]bersetz\w*|formulier\w*|korrigier\w*|fasse|berechne\w*|erstell\w*|escrib\w*|traduc\w*|traduz\w*|reescrib\w*|resum\w*|calcul\w*|corrig\w*|[eé]cri[st]\w*|traduis\w*|r[eé][eé]cri\w*|r[eé]sum\w*)(?![\p{L}])/iu;
-const TRANSLATION_OR_WRITING =
-  /(?:अनुवाद|लिखो|लिखें|लिखिए|ترجمہ|ترجمه|لکھو|لکھیں|ترجم)/u;
-const OPINION_OR_ADVICE =
-  /(?<![\p{L}])(?:what\s+do\s+you\s+think|your\s+opinion|should\s+i|do\s+you\s+(?:like|prefer)|co\s+my[sś]lisz|czy\s+powin(?:ienem|nam)|jak\s+my[sś]lisz|was\s+(?:denkst|h[aä]ltst)\s+du|sollte\s+ich|qu'en\s+penses-tu|que\s+piensas|deber[ií]a)(?![\p{L}])/iu;
-const ARITHMETIC =
-  /\p{N}\s*(?:[+*/×÷^=]|\s-\s|\s(?:x|times|razy|mal|plus|minus|divided\s+by|podzielone\s+przez)\s)\s*\p{N}/iu;
-const CODE = /```|`[^`\n]+`|\bdef\s+\w+\(|=>|\bfunction\s*\w*\(/u;
-
-const lacksSearchSignal = (query: string): boolean => {
-  const request = query.replace(POLITE_LEAD, '');
-  return (
-    TASK_OPENER.test(request) ||
-    TRANSLATION_OR_WRITING.test(query) ||
-    OPINION_OR_ADVICE.test(query) ||
-    ARITHMETIC.test(query) ||
-    CODE.test(query)
-  );
-};
+const CODE_SPANS = /```[\s\S]*?```|`[^`\n]+`/gu;
+const WEB_ADDRESS = /https?:\/\/|www\./iu;
 
 const KIND_PATTERNS: [WebIntentKind, RegExp][] = [
   ['price', PRICE_WORDS],
@@ -72,18 +57,57 @@ export const keywordQueryFor = (
   digest?: string
 ): string => toKeywordQuery(topicAnchorer(query, history, digest)(query));
 
+const lexiconLanguageAmong = (
+  query: string,
+  candidates: (string | undefined)[]
+): string | null => {
+  if (!query || isAboutTheConversation(query)) return null;
+  return (
+    candidates.find(
+      (code): code is string => !!code && hasNoSearchLexicon(code)
+    ) ?? null
+  );
+};
+
+const lexiconLanguageOf = (query: string): string | null =>
+  lexiconLanguageAmong(query, [detectQuestionLanguage(query)?.code]);
+
+const requestLanguageOf = (query: string): string | null =>
+  lexiconLanguageAmong(query, [
+    detectQuestionLanguage(query)?.code,
+    ...scriptLanguagesOf(query),
+  ]);
+
+const carriesLookupSignal = (query: string, language: string): boolean => {
+  const prose = query.replace(CODE_SPANS, ' ');
+  return (
+    hasHardSearchSignal(prose) ||
+    WEB_ADDRESS.test(prose) ||
+    extractSiteRestriction(prose) !== null ||
+    namesFreshnessOrLookup(prose, language)
+  );
+};
+
+export const isNoSearchRequest = (userInput: string): boolean => {
+  const query = userInput.trim();
+  const language = requestLanguageOf(query);
+  return (
+    !!language &&
+    lacksSearchSignal(query, language) &&
+    !carriesLookupSignal(query, language)
+  );
+};
+
 export const fastPlanWebSearch = (
   userInput: string,
   history: { role: string; content: string }[],
   opts?: { digest?: string }
 ): WebSearchPlan | null => {
   const query = userInput.trim();
-  if (!query || isAboutTheConversation(query)) return null;
-  if (lacksSearchSignal(query)) return null;
+  const language = lexiconLanguageOf(query);
+  if (!language) return null;
+  if (lacksSearchSignal(query, language)) return null;
   if (mayNeedConversation(query, history)) return null;
-
-  const language = detectQuestionLanguage(query)?.code;
-  if (!language || !WEB_FAST_PLAN_LANGUAGES.has(language)) return null;
   if (!hasStopwordCoverage(language)) return null;
 
   const keywordQuery = keywordQueryFor(query, history, opts?.digest);
