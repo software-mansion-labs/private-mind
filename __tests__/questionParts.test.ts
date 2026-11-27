@@ -217,3 +217,273 @@ describe('partQueriesFor', () => {
     expect(chemistry).not.toContain('Physics');
   });
 });
+
+describe('splitQuestionParts with three parts', () => {
+  it.each([
+    [
+      'Who directs the film, when does it premiere and how much did it cost?',
+      [
+        'Who directs the film',
+        'when does film premiere',
+        'how much did film cost',
+      ],
+    ],
+    [
+      'Who directs the film, when does it premiere, and how much did it cost?',
+      [
+        'Who directs the film',
+        'when does film premiere',
+        'how much did film cost',
+      ],
+    ],
+    [
+      'Kto wyreżyserował film, kiedy jest premiera i ile kosztował?',
+      [
+        'Kto wyreżyserował film',
+        'kiedy jest premiera film',
+        'ile kosztował film',
+      ],
+    ],
+    [
+      '¿Quién dirige la película, cuándo se estrena y cuánto costó?',
+      [
+        'Quién dirige la película',
+        'cuándo se estrena película',
+        'cuánto costó película',
+      ],
+    ],
+    [
+      'फिल्म का निर्देशक कौन है, यह कब रिलीज़ होगी और इसकी लागत कितनी है?',
+      [
+        'फिल्म का निर्देशक कौन है',
+        'फिल्म निर्देशक कब रिलीज़ होगी',
+        'इसकी लागत कितनी है फिल्म निर्देशक',
+      ],
+    ],
+  ])(
+    'asks every clause of "%s" about the subject of the first',
+    (question, expected) => {
+      expect(splitQuestionParts(question)).toEqual(expected);
+    }
+  );
+
+  it.each([
+    [
+      'What is the population of Warsaw, Kraków and Gdańsk?',
+      [
+        'What is the population of Warsaw',
+        'What is the population of Kraków',
+        'What is the population of Gdańsk',
+      ],
+    ],
+    [
+      'What is the population of Warsaw and Kraków and Gdańsk?',
+      [
+        'What is the population of Warsaw',
+        'What is the population of Kraków',
+        'What is the population of Gdańsk',
+      ],
+    ],
+    [
+      'Who won the 2025 Nobel Prizes in Physics, in Chemistry and in Medicine?',
+      [
+        'Who won the 2025 Nobel Prizes in Physics',
+        'Who won the 2025 Nobel Prizes in Chemistry',
+        'Who won the 2025 Nobel Prizes in Medicine',
+      ],
+    ],
+    [
+      'Which films won Best Picture, Best Director and Best Actress at the 2025 Oscars?',
+      [
+        'Which films won Best Picture at the 2025 Oscars',
+        'Which films won Best Director at the 2025 Oscars',
+        'Which films won Best Actress at the 2025 Oscars',
+      ],
+    ],
+    [
+      'What is the price of gold, silver and platinum today?',
+      [
+        'What is the price of gold today',
+        'What is the price of silver today',
+        'What is the price of platinum today',
+      ],
+    ],
+    [
+      'Jaka jest cena biletu w Warszawie, w Krakowie i w Gdańsku?',
+      [
+        'Jaka jest cena biletu w Warszawie',
+        'Jaka jest cena biletu w Krakowie',
+        'Jaka jest cena biletu w Gdańsku',
+      ],
+    ],
+    [
+      'Wer hat 2025 den Nobelpreis für Physik, für Chemie und für Medizin gewonnen?',
+      [
+        'Wer hat 2025 den Nobelpreis für Physik gewonnen',
+        'Wer hat 2025 den Nobelpreis für Chemie gewonnen',
+        'Wer hat 2025 den Nobelpreis für Medizin gewonnen',
+      ],
+    ],
+    [
+      '¿Quién ganó el Nobel 2025 de física, de química y de medicina?',
+      [
+        'Quién ganó el Nobel 2025 de física',
+        'Quién ganó el Nobel 2025 de química',
+        'Quién ganó el Nobel 2025 de medicina',
+      ],
+    ],
+    [
+      'भौतिकी, रसायन और चिकित्सा में नोबेल पुरस्कार किसने जीता?',
+      [
+        'भौतिकी में नोबेल पुरस्कार किसने जीता',
+        'रसायन में नोबेल पुरस्कार किसने जीता',
+        'चिकित्सा में नोबेल पुरस्कार किसने जीता',
+      ],
+    ],
+    [
+      'भौतिकी में, रसायन में और चिकित्सा में 2025 का नोबेल पुरस्कार किसने जीता?',
+      [
+        'भौतिकी में 2025 का नोबेल पुरस्कार किसने जीता',
+        'रसायन में 2025 का नोबेल पुरस्कार किसने जीता',
+        'चिकित्सा में 2025 का नोबेल पुरस्कार किसने जीता',
+      ],
+    ],
+    [
+      'لاہور، کراچی اور پشاور کی آبادی کتنی ہے؟',
+      [
+        'لاہور کی آبادی کتنی ہے',
+        'کراچی کی آبادی کتنی ہے',
+        'پشاور کی آبادی کتنی ہے',
+      ],
+    ],
+    [
+      'لاہور, کراچی اور پشاور کی آبادی کتنی ہے؟',
+      [
+        'لاہور کی آبادی کتنی ہے',
+        'کراچی کی آبادی کتنی ہے',
+        'پشاور کی آبادی کتنی ہے',
+      ],
+    ],
+    [
+      'Fizik, kimya ve tıp Nobel ödülünü 2025 kim kazandı?',
+      [
+        'Fizik Nobel ödülünü 2025 kim kazandı',
+        'kimya Nobel ödülünü 2025 kim kazandı',
+        'tıp Nobel ödülünü 2025 kim kazandı',
+      ],
+    ],
+    [
+      '물리학, 화학 및 의학 노벨상 수상자는 누구인가요?',
+      [
+        '물리학 노벨상 수상자는 누구인가요',
+        '화학 노벨상 수상자는 누구인가요',
+        '의학 노벨상 수상자는 누구인가요',
+      ],
+    ],
+    [
+      'من فاز بجائزة نوبل في الفيزياء، في الكيمياء و في الطب؟',
+      [
+        'من فاز بجائزة نوبل في الفيزياء',
+        'من فاز بجائزة نوبل في الكيمياء',
+        'من فاز بجائزة نوبل في الطب',
+      ],
+    ],
+    [
+      'من فاز بجائزة نوبل في الفيزياء و في الكيمياء و في الطب؟',
+      [
+        'من فاز بجائزة نوبل في الفيزياء',
+        'من فاز بجائزة نوبل في الكيمياء',
+        'من فاز بجائزة نوبل في الطب',
+      ],
+    ],
+  ])(
+    'searches every item of "%s" with the context they share',
+    (question, expected) => {
+      expect(splitQuestionParts(question)).toEqual(expected);
+    }
+  );
+
+  it('keeps a thousands separator inside its number instead of reading it as a list comma', () => {
+    expect(
+      splitQuestionParts(
+        'What is the price of 1,000 shares of Apple, Google and Microsoft?'
+      )
+    ).toEqual([
+      'What is the price of 1,000 shares of Apple',
+      'What is the price of 1,000 shares of Google',
+      'What is the price of 1,000 shares of Microsoft',
+    ]);
+  });
+
+  it.each([
+    'What is the population of Warsaw, Kraków, Gdańsk and Poznań?',
+    'Who directs the film, who stars in it, when does it premiere and how much did it cost?',
+  ])(
+    'leaves "%s" to the planner because it lists more than three parts',
+    (question) => {
+      expect(splitQuestionParts(question)).toEqual([]);
+    }
+  );
+
+  it.each([
+    'How do you play rock, paper and scissors with kids?',
+    'Who were Crosby, Stills and Nash?',
+    'When did Earth, Wind and Fire play in Warsaw?',
+    'How old are Tom, Dick and Harry?',
+    'Who directed the Good, the Bad and the Ugly?',
+    'What is the population of Jamaica, Trinidad and Tobago?',
+    'What is the capital of Poland and of Trinidad and Tobago?',
+    'What happened in 1914, 1939 and 1989?',
+    'Who won, who lost and why?',
+  ])(
+    'leaves "%s" as one search because the list names one thing or has no shared context',
+    (question) => {
+      expect(splitQuestionParts(question)).toEqual([]);
+    }
+  );
+
+  it.each([
+    [
+      'What happened on June 5, 2025 and who was there?',
+      ['What happened on June 5, 2025', 'who was there June 5, 2025'],
+    ],
+    [
+      'What is the weather in Springfield, Illinois and Columbus, Ohio?',
+      [
+        'What is the weather in Springfield, Illinois',
+        'What is the weather in Columbus, Ohio',
+      ],
+    ],
+    [
+      'In 2025, who won the Nobel Prize in Physics and in Chemistry?',
+      [
+        'In 2025, who won the Nobel Prize in Physics',
+        'In 2025, who won the Nobel Prize in Chemistry',
+      ],
+    ],
+  ])(
+    'keeps the comma of a date, an address or an opening phrase inside its part of "%s"',
+    (question, expected) => {
+      expect(splitQuestionParts(question)).toEqual(expected);
+    }
+  );
+});
+
+describe('partQueriesFor with three parts', () => {
+  const keep = (text: string) => text;
+
+  it('gives each of three parts its own query that never names the other two', () => {
+    const parts = partQueriesFor(
+      'Who won the 2025 Nobel Prizes in Physics, in Chemistry and in Medicine?',
+      'Who won the 2025 Nobel Prizes in Physics, in Chemistry and in Medicine',
+      keep
+    );
+    const fields = ['Physics', 'Chemistry', 'Medicine'];
+    expect(parts).toHaveLength(fields.length);
+    parts.forEach((part, index) => {
+      expect(fields.filter((field) => part.includes(field))).toEqual([
+        fields[index],
+      ]);
+    });
+  });
+});
